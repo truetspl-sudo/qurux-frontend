@@ -1,0 +1,212 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import AdminLayout from "@/components/admin/AdminLayout";
+import { apiGet, apiPatch } from "@/lib/api";
+
+type OrderItem = {
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
+};
+
+type Order = {
+  _id: string;
+  orderId: string;
+  customerName: string;
+  customerPhone: string;
+  items: OrderItem[];
+  subtotal: number;
+  total: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  status: string;
+  deliveryAddress: string;
+  createdAt: string;
+};
+
+const statusColors: Record<string, string> = {
+  PENDING: "bg-orange-100 text-orange-700",
+  CONFIRMED: "bg-blue-100 text-blue-700",
+  SHIPPED: "bg-purple-100 text-purple-700",
+  DELIVERED: "bg-green-100 text-green-700",
+  CANCELLED: "bg-red-100 text-red-600",
+};
+
+const payStatusColors: Record<string, string> = {
+  PENDING: "bg-yellow-100 text-yellow-700",
+  PAID: "bg-green-100 text-green-700",
+  PARTIAL: "bg-blue-100 text-blue-700",
+  REFUNDED: "bg-red-100 text-red-600",
+};
+
+export default function AdminOrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<Order | null>(null);
+  const [filterStatus, setFilterStatus] = useState("All");
+
+  useEffect(() => {
+    async function fetchOrders() {
+      setLoading(true);
+      try {
+        const res = await apiGet<Order[]>("/orders");
+        if (res.ok && res.data.length > 0) {
+          setOrders(res.data);
+        }
+      } catch {}
+      setLoading(false);
+    }
+    fetchOrders();
+  }, []);
+
+  async function updateStatus(id: string, status: string) {
+    await apiPatch(`/orders/${id}/status`, { status });
+    setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, status } : o)));
+    if (selected?._id === id) setSelected((prev) => (prev ? { ...prev, status } : null));
+  }
+
+  const filtered = orders.filter((o) => filterStatus === "All" || o.status === filterStatus);
+  const statuses = ["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"];
+
+  return (
+    <AdminLayout title="Orders" subtitle="Manage ESSN Cosmetics product orders from MongoDB.">
+      {/* Stats */}
+      <div className="grid gap-4 sm:grid-cols-5">
+        {statuses.map((s) => (
+          <div key={s} className="rounded-2xl bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold text-gray-500">{s}</p>
+            <p className="mt-1 text-2xl font-black text-gray-900">{orders.filter((o) => o.status === s).length}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="mt-6 flex flex-wrap gap-2">
+        {["All", ...statuses].map((s) => (
+          <button key={s} type="button" onClick={() => setFilterStatus(s)} className={`rounded-full px-4 py-2 text-sm font-bold transition ${filterStatus === s ? "bg-pink-600 text-white" : "bg-white text-gray-700 shadow-sm hover:bg-pink-50"}`}>
+            {s === "All" ? "All" : s}
+          </button>
+        ))}
+      </div>
+
+      {loading && <p className="mt-4 text-sm text-gray-500">Loading orders from database...</p>}
+
+      {/* Table */}
+      <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-gray-100 bg-gray-50">
+              <tr>
+                <th className="px-5 py-3 font-bold text-gray-600">Order ID</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Customer</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Items</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Total</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Payment</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Status</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filtered.map((order) => (
+                <tr key={order._id} className="hover:bg-gray-50/50">
+                  <td className="px-5 py-4 font-mono text-xs font-bold text-gray-600">{order.orderId}</td>
+                  <td className="px-5 py-4">
+                    <p className="font-bold text-gray-900">{order.customerName}</p>
+                    <p className="text-xs text-gray-500">{order.customerPhone}</p>
+                  </td>
+                  <td className="px-5 py-4 text-gray-600">{order.items.map((i) => `${i.name} ×${i.quantity}`).join(", ")}</td>
+                  <td className="px-5 py-4 font-bold text-pink-600">₹{order.total.toLocaleString("en-IN")}</td>
+                  <td className="px-5 py-4">
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${payStatusColors[order.paymentStatus] || "bg-gray-100"}`}>
+                      {order.paymentStatus}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusColors[order.status] || "bg-gray-100"}`}>
+                      {order.status}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setSelected(order)} className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-100">View</button>
+                      {order.status === "PENDING" && (
+                        <button type="button" onClick={() => updateStatus(order._id, "CONFIRMED")} className="rounded-lg bg-green-50 px-3 py-1.5 text-xs font-bold text-green-700 hover:bg-green-100">Confirm</button>
+                      )}
+                      {order.status === "CONFIRMED" && (
+                        <button type="button" onClick={() => updateStatus(order._id, "SHIPPED")} className="rounded-lg bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-700 hover:bg-purple-100">Ship</button>
+                      )}
+                      {order.status === "SHIPPED" && (
+                        <button type="button" onClick={() => updateStatus(order._id, "DELIVERED")} className="rounded-lg bg-green-50 px-3 py-1.5 text-xs font-bold text-green-700 hover:bg-green-100">Deliver</button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {filtered.length === 0 && <div className="p-10 text-center text-gray-500">{loading ? "Loading..." : "No orders found."}</div>}
+      </div>
+
+      {/* Detail Modal */}
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-7 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-pink-600">{selected.orderId}</p>
+                <h2 className="mt-1 text-2xl font-black text-gray-900">{selected.customerName}</h2>
+              </div>
+              <button type="button" onClick={() => setSelected(null)} className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-xl font-bold hover:bg-gray-200">×</button>
+            </div>
+
+            <div className="mt-5 space-y-2">
+              {selected.items.map((item, i) => (
+                <div key={i} className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
+                  <span className="text-sm font-semibold text-gray-800">{item.name} × {item.quantity}</span>
+                  <span className="text-sm font-bold text-pink-600">₹{(item.price * item.quantity).toLocaleString("en-IN")}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between rounded-xl bg-pink-50 p-4">
+              <span className="font-bold text-gray-900">Total</span>
+              <span className="text-xl font-black text-pink-600">₹{selected.total.toLocaleString("en-IN")}</span>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-gray-50 p-4">
+                <p className="text-xs font-bold text-gray-400">PAYMENT METHOD</p>
+                <p className="mt-1 font-bold text-gray-900">{selected.paymentMethod}</p>
+              </div>
+              <div className="rounded-2xl bg-gray-50 p-4">
+                <p className="text-xs font-bold text-gray-400">PAYMENT STATUS</p>
+                <p className={`mt-1 font-bold ${selected.paymentStatus === "PAID" ? "text-green-700" : "text-yellow-700"}`}>{selected.paymentStatus}</p>
+              </div>
+              <div className="rounded-2xl bg-gray-50 p-4 sm:col-span-2">
+                <p className="text-xs font-bold text-gray-400">DELIVERY ADDRESS</p>
+                <p className="mt-1 text-sm font-bold text-gray-900">{selected.deliveryAddress || "Not provided"}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <span className={`rounded-full px-4 py-2 text-sm font-bold ${statusColors[selected.status] || "bg-gray-100"}`}>{selected.status}</span>
+              <span className="text-xs text-gray-500">{new Date(selected.createdAt).toLocaleString("en-IN")}</span>
+            </div>
+
+            {/* Status update buttons */}
+            <div className="mt-5 flex flex-wrap gap-2">
+              {statuses.filter((s) => s !== selected.status).map((s) => (
+                <button key={s} type="button" onClick={() => updateStatus(selected._id, s)} className="rounded-full border border-gray-200 px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50">
+                  → {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </AdminLayout>
+  );
+}
