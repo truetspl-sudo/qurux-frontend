@@ -1,13 +1,21 @@
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
 import { services } from "@/components/book/services";
 import { apiPost, getLoggedInUser } from "@/lib/api";
 import { createBOBEMIPlan } from "@/lib/bob-emi";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
 
 export default function BookingPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-4 border-pink-200 border-t-pink-600" /></div>}>
+      <BookingContent />
+    </Suspense>
+  );
+}
+
+function BookingContent() {
   const searchParams = useSearchParams();
   const slug = searchParams.get("service");
   const paymentParam = searchParams.get("payment");
