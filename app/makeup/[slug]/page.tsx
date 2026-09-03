@@ -735,6 +735,172 @@ const extraDetails: Record<
       "Customers should inform the professional about allergies or sensitivities.",
     ],
   },
+
+  // =========================
+  // PACKAGES
+  // =========================
+
+  "classic-bridal-package": {
+    about:
+      "A complete bridal package combining professional bridal makeup, hair styling, bridal facial and pre-bridal grooming — everything needed for a flawless wedding-day look in one convenient bundle.",
+    suitableFor:
+      "Brides who want a complete, coordinated bridal look with all grooming and styling handled together.",
+    benefits: [
+      "Complete bridal look in one package",
+      "Coordinated makeup, hair and skin prep",
+      "Better price than booking separately",
+      "One professional team for everything",
+      "Hassle-free wedding-day planning",
+      "Final touch-up included",
+    ],
+    process: [
+      "Beauty consultation",
+      "Pre bridal facial & skin preparation",
+      "Bridal makeup application",
+      "Bridal hair styling",
+      "Manicure & pedicure",
+      "Final look coordination",
+    ],
+    notes: [
+      "Package inclusions can be customised according to requirements.",
+      "Additional services may be added at extra cost.",
+      "A pre-event consultation is recommended.",
+    ],
+  },
+
+  "luxury-bridal-package": {
+    about:
+      "A premium all-inclusive wedding package with luxury bridal makeup, advanced hair styling, spa facials and complete bridal grooming for an unforgettable wedding look.",
+    suitableFor:
+      "Brides seeking the ultimate premium wedding experience with every beauty service included.",
+    benefits: [
+      "Premium luxury makeup",
+      "Advanced hair styling",
+      "Spa-level skin preparation",
+      "Complete bridal grooming",
+      "Priority scheduling",
+      "Personalised service",
+    ],
+    process: [
+      "Detailed bridal consultation",
+      "Skin preparation & facials",
+      "Luxury bridal makeup",
+      "Advanced hair styling",
+      "Spa manicure & pedicure",
+      "Final styling check",
+    ],
+    notes: [
+      "Premium package — inclusions can be customised.",
+      "Draping and additional styling can be arranged.",
+      "Book well in advance for wedding dates.",
+    ],
+  },
+
+  "pre-bridal-glow-package": {
+    about:
+      "A pre-wedding skin and hair preparation package with facials, cleanups and spa treatments designed to give brides a natural glow before the big day.",
+    suitableFor:
+      "Brides preparing for their wedding who want glowing skin and healthy hair in the weeks before the event.",
+    benefits: [
+      "Glowing, prepped skin",
+      "Nourished, healthy hair",
+      "Relaxing spa experience",
+      "Convenient multi-session plan",
+      "Great value bundle pricing",
+    ],
+    process: [
+      "Skin assessment",
+      "Pre bridal facial",
+      "Skin cleanup",
+      "Hair spa treatment",
+      "Manicure & pedicure",
+      "Post-treatment care guidance",
+    ],
+    notes: [
+      "Sessions can be scheduled across multiple visits.",
+      "Start 3-4 weeks before the wedding for best results.",
+      "Treatment plan can be customised to skin needs.",
+    ],
+  },
+
+  "party-glam-package": {
+    about:
+      "A complete party look package with professional party makeup, hair styling, curls or ironing and nail art — everything you need to shine at any celebration.",
+    suitableFor:
+      "Anyone attending a party, celebration, family function or special occasion who wants a complete glam look.",
+    benefits: [
+      "Complete party look",
+      "Makeup + hair + nails together",
+      "Save vs booking separately",
+      "Quick single-visit service",
+      "Perfect for events and functions",
+    ],
+    process: [
+      "Style consultation",
+      "Party makeup application",
+      "Hair styling / curls",
+      "Nail art",
+      "Final glam check",
+    ],
+    notes: [
+      "Style can be customised to the occasion.",
+      "Ideal for evening parties and functions.",
+      "Additional services can be added on request.",
+    ],
+  },
+
+  "skin-glow-facial-package": {
+    about:
+      "Three premium facials bundled together — Korean glow, fruit and gold facial — for deep cleansing, nourishment and radiant, glowing skin.",
+    suitableFor:
+      "Anyone looking for radiant skin through a series of premium facial treatments at a discounted price.",
+    benefits: [
+      "3 premium facials in one package",
+      "Deep cleansing & nourishment",
+      "Radiant, glowing complexion",
+      "Save vs booking separately",
+      "Spread sessions as you like",
+    ],
+    process: [
+      "Skin consultation",
+      "Korean glow facial",
+      "Fruit facial",
+      "Gold facial",
+      "Hydration finish",
+    ],
+    notes: [
+      "Sessions can be booked across different visits.",
+      "Best results when spaced 2-3 weeks apart.",
+      "Treatments can be customised to skin type.",
+    ],
+  },
+
+  "hair-care-package": {
+    about:
+      "A complete hair care bundle with haircut, hair spa, keratin treatment and colour touch-up for healthy, shiny and beautifully styled hair.",
+    suitableFor:
+      "Anyone wanting complete hair transformation — cut, treatment and colour — at a bundled price.",
+    benefits: [
+      "Complete hair makeover",
+      "Cut + treatment + colour combined",
+      "Healthier, shinier hair",
+      "Great value bundle pricing",
+      "Professional finishing",
+    ],
+    process: [
+      "Hair consultation",
+      "Haircut",
+      "Keratin treatment",
+      "Hair colour touch-up",
+      "Hair spa",
+      "Blow dry finish",
+    ],
+    notes: [
+      "Keratin and colour suitability depends on hair condition.",
+      "Sessions may be spread across visits if needed.",
+      "Final pricing may vary with hair length and density.",
+    ],
+  },
 };
 
 export default function ServiceDetails() {

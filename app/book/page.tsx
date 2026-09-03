@@ -10,14 +10,16 @@ type ServiceItem = {
   category: string;
   description: string;
   price: string;
+  regularPrice?: string;
   duration: string;
   slug: string;
   image: string;
   includes?: string[];
+  save?: string;
 };
 
-const categories = [
-  "All",
+const categoryOrder = [
+  "Packages",
   "Bridal Makeup",
   "Pre Bridal Makeup",
   "Party Makeup",
@@ -32,8 +34,6 @@ const categories = [
 
 export default function BookPage() {
   const services = staticServices as ServiceItem[];
-  const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuQuery, setMenuQuery] = useState("");
 
@@ -51,15 +51,13 @@ export default function BookPage() {
     s.name.toLowerCase().includes(menuQuery.toLowerCase())
   );
 
-  const filteredServices = services.filter((s) => {
-    const matchCategory = activeCategory === "All" || s.category === activeCategory;
-    const matchSearch =
-      search === "" ||
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.category.toLowerCase().includes(search.toLowerCase()) ||
-      s.description.toLowerCase().includes(search.toLowerCase());
-    return matchCategory && matchSearch;
-  });
+  // Ordered categories for display
+  const displayCategories = [
+    ...categoryOrder.filter((c) => groupedByCategory[c]),
+    ...Object.keys(groupedByCategory).filter(
+      (c) => !categoryOrder.includes(c)
+    ),
+  ];
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-white via-pink-50 to-white py-14">
@@ -76,7 +74,7 @@ export default function BookPage() {
           </h1>
 
           <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-gray-600">
-            Choose a beauty service and view its complete details,
+            Choose a beauty service or package and view its complete details,
             price, duration and booking options.
           </p>
         </section>
@@ -91,30 +89,8 @@ export default function BookPage() {
           </Link>
         </div>
 
-        {/* SEARCH BAR + SERVICE MENU */}
-        <div className="mx-auto mt-8 max-w-2xl space-y-3">
-          {/* Search */}
-          <div className="relative">
-            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search services... (e.g. bridal, facial, waxing, haircut)"
-              className="w-full rounded-full border border-pink-200 bg-white py-4 pl-14 pr-6 text-gray-800 shadow-md outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-pink-600"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* Dropdown Menu — select a service to open it directly */}
+        {/* SERVICE MENU — select a service to open it directly */}
+        <div className="mx-auto mt-8 max-w-xl">
           <div className="relative">
             <button
               type="button"
@@ -136,7 +112,7 @@ export default function BookPage() {
                     type="text"
                     value={menuQuery}
                     onChange={(e) => setMenuQuery(e.target.value)}
-                    placeholder="Type to filter services..."
+                    placeholder="Search services..."
                     autoFocus
                     className="w-full rounded-full border border-pink-200 bg-pink-50 px-5 py-3 text-sm outline-none focus:border-pink-500"
                   />
@@ -167,12 +143,12 @@ export default function BookPage() {
                   ) : (
                     /* Grouped by category */
                     <div>
-                      {Object.entries(groupedByCategory).map(([category, items]) => (
+                      {displayCategories.map((category) => (
                         <div key={category} className="mb-1">
                           <p className="px-4 pb-1 pt-3 text-xs font-bold uppercase tracking-wider text-pink-600">
                             {category}
                           </p>
-                          {items.map((service) => (
+                          {groupedByCategory[category].map((service) => (
                             <Link
                               key={service.slug}
                               href={`/makeup/${service.slug}`}
@@ -196,107 +172,54 @@ export default function BookPage() {
           </div>
         </div>
 
-        {/* QUICK CATEGORIES */}
-        <section className="mt-6 flex flex-wrap justify-center gap-3">
-          {categories.map((category) => (
-            <button
-              key={category}
-              type="button"
-              onClick={() => {
-                setActiveCategory(category);
-                setSearch("");
-              }}
-              className={`rounded-full border px-5 py-2.5 text-sm font-semibold shadow-sm transition ${
-                activeCategory === category
-                  ? "border-pink-600 bg-pink-600 text-white"
-                  : "border-pink-200 bg-white text-pink-600 hover:bg-pink-600 hover:text-white"
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </section>
-
-        {/* SERVICES GRID */}
+        {/* SERVICES GRID — grouped by category */}
         <section id="services" className="mt-12">
-
-          {activeCategory === "All" && !search ? (
-            /* Show grouped by category when All is selected and no search */
-            categories
-              .filter((category) => category !== "All")
-              .map((category) => {
-                const categoryServices = filteredServices.filter(
-                  (service) => service.category === category
-                );
-                if (categoryServices.length === 0) return null;
-                return (
-                  <div
-                    key={category}
-                    id={category.toLowerCase().replace(/\s+/g, "-")}
-                    className="mb-14 scroll-mt-24"
-                  >
-                    <div className="mb-6">
-                      <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-600">
-                        OUR SERVICES
-                      </p>
-                      <h2 className="mt-2 text-3xl font-bold text-gray-900">
-                        {category}
-                      </h2>
-                      <p className="mt-1 text-sm text-gray-500">
-                        {categoryServices.length} service{categoryServices.length !== 1 ? "s" : ""} available
-                      </p>
-                    </div>
-                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                      {categoryServices.map(renderServiceCard)}
-                    </div>
-                  </div>
-                );
-              })
-          ) : (
-            /* Flat grid when searching or specific category */
-            <div>
-              {search && (
-                <p className="mb-6 text-center text-sm text-gray-500">
-                  {filteredServices.length} result{filteredServices.length !== 1 ? "s" : ""} for &ldquo;{search}&rdquo;
-                </p>
-              )}
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredServices.map(renderServiceCard)}
-              </div>
-            </div>
-          )}
-
-          {filteredServices.length === 0 && (
-            <div className="mt-12 rounded-3xl bg-white p-12 text-center shadow-md">
-              <div className="text-6xl">🔍</div>
-              <h2 className="mt-5 text-2xl font-bold text-gray-900">No services found</h2>
-              <p className="mt-2 text-gray-600">Try a different search term or category.</p>
-              <button
-                type="button"
-                onClick={() => { setSearch(""); setActiveCategory("All"); }}
-                className="mt-4 rounded-full bg-pink-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-pink-700"
+          {displayCategories.map((category) => {
+            const categoryServices = groupedByCategory[category];
+            if (categoryServices.length === 0) return null;
+            const isPackages = category === "Packages";
+            return (
+              <div
+                key={category}
+                id={category.toLowerCase().replace(/\s+/g, "-")}
+                className="mb-14 scroll-mt-24"
               >
-                Show All Services
-              </button>
-            </div>
-          )}
-
+                <div className="mb-6">
+                  <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-600">
+                    {isPackages ? "SPECIAL OFFERS" : "OUR SERVICES"}
+                  </p>
+                  <h2 className="mt-2 text-3xl font-bold text-gray-900">
+                    {category}
+                  </h2>
+                  {isPackages && (
+                    <p className="mt-2 max-w-2xl text-sm text-gray-500">
+                      🎁 Bundle multiple services at special discounted prices — save more when you book together.
+                    </p>
+                  )}
+                  <p className="mt-1 text-sm text-gray-500">
+                    {categoryServices.length} option{categoryServices.length !== 1 ? "s" : ""} available
+                  </p>
+                </div>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {categoryServices.map(renderServiceCard)}
+                </div>
+              </div>
+            );
+          })}
         </section>
 
         {/* BOTTOM CTA */}
-        {filteredServices.length > 0 && (
-          <section className="mt-12 rounded-[30px] bg-gradient-to-r from-pink-600 to-pink-500 p-10 text-center text-white shadow-xl">
-            <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-100">
-              READY TO BOOK?
-            </p>
-            <h2 className="mt-3 text-3xl font-bold">
-              Choose Your Service
-            </h2>
-            <p className="mx-auto mt-3 max-w-2xl leading-7 text-white/90">
-              Select a service above to see complete details and continue to the booking page.
-            </p>
-          </section>
-        )}
+        <section className="mt-12 rounded-[30px] bg-gradient-to-r from-pink-600 to-pink-500 p-10 text-center text-white shadow-xl">
+          <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-100">
+            READY TO BOOK?
+          </p>
+          <h2 className="mt-3 text-3xl font-bold">
+            Choose Your Service
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl leading-7 text-white/90">
+            Select a service above to see complete details and continue to the booking page.
+          </p>
+        </section>
 
       </div>
     </main>
@@ -304,10 +227,13 @@ export default function BookPage() {
 }
 
 function renderServiceCard(service: ServiceItem) {
+  const isPackage = service.category === "Packages";
   return (
     <article
       key={service.slug}
-      className="overflow-hidden rounded-[25px] bg-white shadow-lg ring-1 ring-pink-100 transition hover:-translate-y-1 hover:shadow-xl"
+      className={`overflow-hidden rounded-[25px] bg-white shadow-lg ring-1 ring-pink-100 transition hover:-translate-y-1 hover:shadow-xl ${
+        isPackage ? "ring-2 ring-pink-500" : ""
+      }`}
     >
       <div className="relative h-64 w-full overflow-hidden bg-pink-100">
         <Image
@@ -317,6 +243,16 @@ function renderServiceCard(service: ServiceItem) {
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className="object-cover transition duration-500 hover:scale-105"
         />
+        {isPackage && (
+          <span className="absolute left-4 top-4 rounded-full bg-pink-600 px-4 py-1.5 text-xs font-bold text-white shadow-md">
+            🎁 PACKAGE
+          </span>
+        )}
+        {service.save && (
+          <span className="absolute bottom-4 right-4 rounded-full bg-green-600 px-3 py-1.5 text-xs font-bold text-white shadow-md">
+            {service.save}
+          </span>
+        )}
       </div>
       <div className="p-6">
         <div className="flex items-start justify-between gap-3">
@@ -328,15 +264,31 @@ function renderServiceCard(service: ServiceItem) {
               {service.name}
             </h3>
           </div>
-          <span className="text-2xl">✨</span>
+          <span className="text-2xl">{isPackage ? "🎁" : "✨"}</span>
         </div>
         <p className="mt-3 line-clamp-3 text-sm leading-6 text-gray-600">
           {service.description}
         </p>
+
+        {/* Included services for packages */}
+        {isPackage && service.includes && (
+          <ul className="mt-4 space-y-1.5 rounded-2xl bg-pink-50 p-4">
+            {service.includes.map((item) => (
+              <li key={item} className="flex items-center gap-2 text-sm text-gray-700">
+                <span className="text-pink-600">✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        )}
+
         <div className="mt-5 grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-pink-50 p-3">
-            <p className="text-xs text-gray-500">Starting Price</p>
+            <p className="text-xs text-gray-500">{isPackage ? "Package Price" : "Starting Price"}</p>
             <p className="mt-1 font-bold text-pink-600">{service.price}</p>
+            {service.regularPrice && (
+              <p className="text-xs text-gray-400 line-through">{service.regularPrice}</p>
+            )}
           </div>
           <div className="rounded-xl bg-gray-50 p-3">
             <p className="text-xs text-gray-500">Duration</p>
@@ -358,4 +310,4 @@ function renderServiceCard(service: ServiceItem) {
       </div>
     </article>
   );
-}
+}

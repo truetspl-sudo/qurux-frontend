@@ -1376,4 +1376,131 @@ export const services = [
       "Finishing care",
     ],
   },
+
+  // =========================
+  // PACKAGES — Multiple services bundled at a special price
+  // =========================
+
+  {
+    name: "Classic Bridal Package",
+    category: "Packages",
+    description:
+      "Complete bridal package with bridal makeup, hair styling, bridal facial and pre-bridal grooming for the perfect wedding look.",
+    price: "₹24,999",
+    regularPrice: "₹30,000",
+    duration: "6–8 Hours",
+    slug: "classic-bridal-package",
+    image: "/service-images/bridalmakeup-services.jpg.jpg",
+    includes: [
+      "Classic Bridal Makeup",
+      "Bridal Hair Styling",
+      "Bridal Facial",
+      "Pre Bridal Manicure",
+      "Pre Bridal Pedicure",
+      "Lashes & Final Touch-up",
+    ],
+    save: "SAVE ₹5,001",
+  },
+
+  {
+    name: "Luxury Bridal Package",
+    category: "Packages",
+    description:
+      "Premium wedding package with luxury bridal makeup, advanced hair styling, spa care and complete bridal grooming.",
+    price: "₹34,999",
+    regularPrice: "₹41,000",
+    duration: "8–10 Hours",
+    slug: "luxury-bridal-package",
+    image: "/service-images/luxurybridalmakeup-services.jpg.jpg",
+    includes: [
+      "Luxury Bridal Makeup",
+      "Advanced Hair Do",
+      "Bridal Facial",
+      "Gold Facial",
+      "Spa Manicure",
+      "Spa Pedicure",
+      "Keratin Hair Spa",
+      "Final Styling Check",
+    ],
+    save: "SAVE ₹6,001",
+  },
+
+  {
+    name: "Pre Bridal Glow Package",
+    category: "Packages",
+    description:
+      "Pre-wedding skin and hair preparation package with facials, cleanups and spa treatments for a glowing bridal look.",
+    price: "₹6,999",
+    regularPrice: "₹8,700",
+    duration: "4–5 Sessions",
+    slug: "pre-bridal-glow-package",
+    image: "/service-images/bridalfacial-services.jpg.jpg",
+    includes: [
+      "Pre Bridal Facial",
+      "Pre Bridal Cleanup",
+      "Pre Bridal Hair Spa",
+      "Pre Bridal Manicure",
+      "Pre Bridal Pedicure",
+    ],
+    save: "SAVE ₹1,701",
+  },
+
+  {
+    name: "Party Glam Package",
+    category: "Packages",
+    description:
+      "Perfect party look with party makeup, hair styling and nail care bundled at a special price.",
+    price: "₹5,999",
+    regularPrice: "₹7,000",
+    duration: "2–3 Hours",
+    slug: "party-glam-package",
+    image: "/service-images/partymakeup-services.jpg.jpg",
+    includes: [
+      "Party Makeup",
+      "Hair Styling",
+      "Tong Curls / Ironing",
+      "Nail Art",
+      "Final Finishing",
+    ],
+    save: "SAVE ₹1,001",
+  },
+
+  {
+    name: "Skin Glow Facial Package",
+    category: "Packages",
+    description:
+      "Three premium facials bundled together — Korean glow, fruit and gold facial — for radiant, glowing skin.",
+    price: "₹4,999",
+    regularPrice: "₹6,100",
+    duration: "3 Sessions",
+    slug: "skin-glow-facial-package",
+    image: "/service-images/koreanglowfacial-services.jpg.jpg",
+    includes: [
+      "Korean Glow Facial",
+      "Fruit Facial",
+      "Gold Facial",
+      "Hydration Finish",
+    ],
+    save: "SAVE ₹1,101",
+  },
+
+  {
+    name: "Hair Care Package",
+    category: "Packages",
+    description:
+      "Complete hair care bundle with haircut, hair spa, keratin treatment and colour touch-up for healthy, beautiful hair.",
+    price: "₹5,499",
+    regularPrice: "₹6,500",
+    duration: "3 Sessions",
+    slug: "hair-care-package",
+    image: "/service-images/hairspa-services.jpg.jpg",
+    includes: [
+      "Haircut",
+      "Hair Spa",
+      "Keratin Treatment",
+      "Hair Colour Touch-Up",
+      "Blow Dry Finish",
+    ],
+    save: "SAVE ₹1,001",
+  },
 ];

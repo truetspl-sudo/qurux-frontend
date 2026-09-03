@@ -18,15 +18,6 @@ type Product = {
   stock: number;
 };
 
-const productCategories = [
-  "All",
-  "Makeup",
-  "Skincare",
-  "Hair Care",
-  "Tools & Brushes",
-  "Fragrance",
-];
-
 const products: Product[] = [
   {
     id: "p1",
@@ -139,8 +130,6 @@ const products: Product[] = [
 ];
 
 export default function ShopPage() {
-  const [category, setCategory] = useState("All");
-  const [search, setSearch] = useState("");
   const [cart, setCart] = useState<
     { product: Product; qty: number }[]
   >([]);
@@ -180,15 +169,6 @@ export default function ShopPage() {
     }
     fetchProducts();
   }, []);
-
-  const filtered = allProducts.filter((p) => {
-    const matchCat =
-      category === "All" || p.category === category;
-    const matchSearch =
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.category.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
-  });
 
   function addToCart(product: Product) {
     // Save to localStorage cart (used by checkout page)
@@ -324,17 +304,8 @@ export default function ShopPage() {
           </section>
         )}
 
-        {/* Search + Product Menu */}
-        <div className="mx-auto max-w-2xl space-y-3">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search for products..."
-            className="w-full rounded-full border border-pink-200 bg-white px-6 py-4 text-gray-800 shadow-md outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
-          />
-
-          {/* Dropdown Menu — pick a product to open it directly */}
+        {/* Product Menu — pick a product to open it directly */}
+        <div className="mx-auto max-w-xl">
           <div className="relative">
             <button
               type="button"
@@ -387,27 +358,9 @@ export default function ShopPage() {
           </div>
         </div>
 
-        {/* Categories */}
-        <div className="mx-auto mt-6 flex max-w-3xl flex-wrap justify-center gap-2">
-          {productCategories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setCategory(cat)}
-              className={`whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition ${
-                category === cat
-                  ? "bg-pink-600 text-white shadow-md"
-                  : "bg-white text-gray-700 shadow-sm hover:bg-pink-50 hover:text-pink-600"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Products Grid */}
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((product) => (
+        {/* Products Grid — all products */}
+        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {allProducts.map((product) => (
             <div
               key={product.id}
               className="group overflow-hidden rounded-[28px] bg-white shadow-md transition duration-300 hover:-translate-y-1 hover:shadow-xl"
@@ -470,18 +423,6 @@ export default function ShopPage() {
           ))}
         </div>
 
-        {/* No Results */}
-        {filtered.length === 0 && (
-          <div className="mt-12 rounded-3xl bg-white p-12 text-center shadow-md">
-            <div className="text-6xl">🔍</div>
-            <h2 className="mt-5 text-2xl font-bold text-gray-900">
-              No products found
-            </h2>
-            <p className="mt-2 text-gray-600">
-              Try another search term or choose a different category.
-            </p>
-          </div>
-        )}
       </div>
     </main>
   );
