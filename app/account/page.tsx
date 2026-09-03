@@ -53,6 +53,13 @@ export default function AuthPage() {
   const [loginUserId, setLoginUserId] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
+  // Change password fields
+  const [pwCurrent, setPwCurrent] = useState("");
+  const [pwNew, setPwNew] = useState("");
+  const [pwConfirm, setPwConfirm] = useState("");
+  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pwBusy, setPwBusy] = useState(false);
+
   useEffect(() => {
     const user = getLoggedInUser();
     if (user) setExistingUser(user as LoggedInUser);
@@ -149,6 +156,36 @@ export default function AuthPage() {
     setForm({ fullName: "", phone: "", password: "", confirmPassword: "" });
     setLoginUserId("");
     setLoginPassword("");
+  }
+
+  async function handleChangePassword() {
+    setPwMsg(null);
+    if (!pwCurrent || !pwNew || !pwConfirm) {
+      setPwMsg({ ok: false, text: "Saare fields bharo — current password, naya password aur confirm password." });
+      return;
+    }
+    if (pwNew.length < 6) {
+      setPwMsg({ ok: false, text: "Naya password kam se kam 6 characters ka hona chahiye." });
+      return;
+    }
+    if (pwNew !== pwConfirm) {
+      setPwMsg({ ok: false, text: "Naya password aur confirm password match nahi kar rahe." });
+      return;
+    }
+    setPwBusy(true);
+    const res = await apiPost<any>("/auth/change-password", {
+      currentPassword: pwCurrent,
+      newPassword: pwNew,
+    });
+    setPwBusy(false);
+    if (res.ok) {
+      setPwMsg({ ok: true, text: "Password update ho gaya! Agli baar naye password se login karein." });
+      setPwCurrent("");
+      setPwNew("");
+      setPwConfirm("");
+    } else {
+      setPwMsg({ ok: false, text: res.message || "Password change failed." });
+    }
   }
 
   // ── Already logged in view ──
@@ -250,6 +287,30 @@ export default function AuthPage() {
               >
                 🛒 Shop
               </Link>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-gray-100 bg-gray-50/60 p-5">
+              <p className="text-sm font-bold text-gray-800">🔒 Change Password</p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Current password verify karke naya password set karein.
+              </p>
+
+              {pwMsg && (
+                <div className={`mt-3 rounded-xl p-3 text-center text-xs font-bold ${pwMsg.ok ? "bg-green-100 text-green-700" : "bg-red-50 text-red-600"}`}>
+                  {pwMsg.ok ? "✅" : "❌"} {pwMsg.text}
+                </div>
+              )}
+
+              <div className="mt-4 space-y-3">
+                <input type="password" placeholder="Current Password *" value={pwCurrent} onChange={(e) => { setPwCurrent(e.target.value); setPwMsg(null); }} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-pink-400 focus:outline-none" />
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="password" placeholder="New Password *" value={pwNew} onChange={(e) => { setPwNew(e.target.value); setPwMsg(null); }} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-pink-400 focus:outline-none" />
+                  <input type="password" placeholder="Confirm *" value={pwConfirm} onChange={(e) => { setPwConfirm(e.target.value); setPwMsg(null); }} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-pink-400 focus:outline-none" />
+                </div>
+                <button onClick={handleChangePassword} disabled={pwBusy} className="w-full rounded-xl bg-slate-900 py-2.5 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50">
+                  {pwBusy ? "Updating..." : "CHANGE PASSWORD"}
+                </button>
+              </div>
             </div>
 
             <button

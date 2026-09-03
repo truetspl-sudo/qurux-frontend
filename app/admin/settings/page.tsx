@@ -2,9 +2,15 @@
 
 import { useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { apiPost } from "@/lib/api";
 
 export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
+
+  // Change password state
+  const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
+  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pwBusy, setPwBusy] = useState(false);
   const [brand, setBrand] = useState({
     name: "QURUX Makeover & Academy",
     tagline: "Luxury Beauty • Premium Products • Easy No Cost EMI",
@@ -31,6 +37,34 @@ export default function AdminSettingsPage() {
   function handleSave() {
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  }
+
+  async function handleChangePassword() {
+    setPwMsg(null);
+    if (!pw.current || !pw.next || !pw.confirm) {
+      setPwMsg({ ok: false, text: "Saare fields bharo — current password, naya password aur confirm password." });
+      return;
+    }
+    if (pw.next.length < 6) {
+      setPwMsg({ ok: false, text: "Naya password kam se kam 6 characters ka hona chahiye." });
+      return;
+    }
+    if (pw.next !== pw.confirm) {
+      setPwMsg({ ok: false, text: "Naya password aur confirm password match nahi kar rahe." });
+      return;
+    }
+    setPwBusy(true);
+    const res = await apiPost("/auth/change-password", {
+      currentPassword: pw.current,
+      newPassword: pw.next,
+    });
+    setPwBusy(false);
+    if (res.ok) {
+      setPwMsg({ ok: true, text: "Password update ho gaya! Agli baar naye password se login karein." });
+      setPw({ current: "", next: "", confirm: "" });
+    } else {
+      setPwMsg({ ok: false, text: res.message || "Password change failed." });
+    }
   }
 
   return (
@@ -157,6 +191,41 @@ export default function AdminSettingsPage() {
               <p className="text-xs font-bold text-blue-700">WHATSAPP INTEGRATION</p>
               <p className="mt-1 text-sm text-gray-600">Interakt / WATI / Meta Cloud API — to be connected during backend deployment.</p>
             </div>
+          </div>
+        </section>
+
+        {/* Change Password */}
+        <section className="rounded-3xl bg-white p-6 shadow-sm md:p-8">
+          <h2 className="text-xl font-black text-gray-900">🔒 Change Admin Password</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Update the password you use to log in to the admin panel. Next login will require the new password.
+          </p>
+
+          {pwMsg && (
+            <div className={`mt-4 rounded-xl p-4 text-center text-sm font-bold ${pwMsg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+              {pwMsg.ok ? "✅" : "❌"} {pwMsg.text}
+            </div>
+          )}
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            <label className="block text-sm font-bold text-gray-800">
+              Current Password
+              <input type="password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} placeholder="Current password" className="mt-1.5 w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100" />
+            </label>
+            <label className="block text-sm font-bold text-gray-800">
+              New Password
+              <input type="password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} placeholder="Min 6 characters" className="mt-1.5 w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100" />
+            </label>
+            <label className="block text-sm font-bold text-gray-800">
+              Confirm New Password
+              <input type="password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} placeholder="Repeat new password" className="mt-1.5 w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100" />
+            </label>
+          </div>
+
+          <div className="mt-5 flex justify-end">
+            <button type="button" onClick={handleChangePassword} disabled={pwBusy} className="rounded-full bg-slate-900 px-8 py-3.5 font-bold text-white hover:bg-slate-800 disabled:opacity-50">
+              {pwBusy ? "Updating..." : "CHANGE PASSWORD"}
+            </button>
           </div>
         </section>
 
