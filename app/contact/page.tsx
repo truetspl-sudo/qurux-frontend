@@ -142,6 +142,55 @@ export default function ContactPage() {
 
             </div>
 
+            {/* Social Media */}
+            <div className="mt-4 rounded-2xl bg-pink-50 p-5">
+
+              <div className="flex items-start gap-4">
+
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-pink-600 text-xl text-white">
+                  🌐
+                </div>
+
+                <div className="flex-1">
+                  <p className="text-sm text-gray-500">
+                    Follow Us
+                  </p>
+
+                  <div className="mt-3 flex items-center gap-3">
+                    <a
+                      href="https://www.instagram.com/quruxmakeover?igsi=YTMzYnN6bndmeHQ1"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-pink-700 text-lg text-white transition hover:scale-110"
+                      aria-label="Instagram"
+                    >
+                      📸
+                    </a>
+                    <a
+                      href="https://www.facebook.com/share/1EpLVyWx4a/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-lg text-white transition hover:scale-110"
+                      aria-label="Facebook"
+                    >
+                      👍
+                    </a>
+                    <a
+                      href="https://wa.me/919911227916"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-green-600 text-lg text-white transition hover:scale-110"
+                      aria-label="WhatsApp"
+                    >
+                      💬
+                    </a>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
           </div>
 
           {/* Contact Form */}

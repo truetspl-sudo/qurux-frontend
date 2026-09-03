@@ -34,6 +34,22 @@ export default function BookPage() {
   const services = staticServices as ServiceItem[];
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuQuery, setMenuQuery] = useState("");
+
+  // Group services by category for the dropdown menu
+  const groupedByCategory = services.reduce<Record<string, ServiceItem[]>>(
+    (acc, service) => {
+      if (!acc[service.category]) acc[service.category] = [];
+      acc[service.category].push(service);
+      return acc;
+    },
+    {}
+  );
+
+  const menuResults = services.filter((s) =>
+    s.name.toLowerCase().includes(menuQuery.toLowerCase())
+  );
 
   const filteredServices = services.filter((s) => {
     const matchCategory = activeCategory === "All" || s.category === activeCategory;
@@ -75,8 +91,9 @@ export default function BookPage() {
           </Link>
         </div>
 
-        {/* SEARCH BAR */}
-        <div className="mx-auto mt-8 max-w-2xl">
+        {/* SEARCH BAR + SERVICE MENU */}
+        <div className="mx-auto mt-8 max-w-2xl space-y-3">
+          {/* Search */}
           <div className="relative">
             <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
             <input
@@ -94,6 +111,87 @@ export default function BookPage() {
               >
                 ✕
               </button>
+            )}
+          </div>
+
+          {/* Dropdown Menu — select a service to open it directly */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="flex w-full items-center justify-between rounded-full border-2 border-pink-600 bg-white px-6 py-4 font-bold text-pink-600 shadow-md transition hover:bg-pink-50"
+            >
+              <span className="flex items-center gap-3">
+                <span className="text-lg">📋</span>
+                <span>{menuOpen ? "Choose a Service" : "Browse All Services ▼"}</span>
+              </span>
+              <span className={`transition-transform ${menuOpen ? "rotate-180" : ""}`}>▼</span>
+            </button>
+
+            {menuOpen && (
+              <div className="absolute left-0 right-0 z-50 mt-2 max-h-[420px] overflow-hidden rounded-3xl border border-pink-100 bg-white shadow-2xl">
+                {/* Search inside menu */}
+                <div className="border-b border-pink-50 p-3">
+                  <input
+                    type="text"
+                    value={menuQuery}
+                    onChange={(e) => setMenuQuery(e.target.value)}
+                    placeholder="Type to filter services..."
+                    autoFocus
+                    className="w-full rounded-full border border-pink-200 bg-pink-50 px-5 py-3 text-sm outline-none focus:border-pink-500"
+                  />
+                </div>
+
+                <div className="max-h-[360px] overflow-y-auto p-2">
+                  {menuQuery ? (
+                    /* Filtered flat list */
+                    <div className="space-y-1">
+                      {menuResults.map((service) => (
+                        <Link
+                          key={service.slug}
+                          href={`/makeup/${service.slug}`}
+                          onClick={() => {
+                            setMenuOpen(false);
+                            setMenuQuery("");
+                          }}
+                          className="flex items-center justify-between rounded-2xl px-4 py-3 transition hover:bg-pink-50"
+                        >
+                          <span className="font-semibold text-gray-800">{service.name}</span>
+                          <span className="text-xs font-bold text-pink-600">{service.price}</span>
+                        </Link>
+                      ))}
+                      {menuResults.length === 0 && (
+                        <p className="px-4 py-6 text-center text-sm text-gray-500">No service found</p>
+                      )}
+                    </div>
+                  ) : (
+                    /* Grouped by category */
+                    <div>
+                      {Object.entries(groupedByCategory).map(([category, items]) => (
+                        <div key={category} className="mb-1">
+                          <p className="px-4 pb-1 pt-3 text-xs font-bold uppercase tracking-wider text-pink-600">
+                            {category}
+                          </p>
+                          {items.map((service) => (
+                            <Link
+                              key={service.slug}
+                              href={`/makeup/${service.slug}`}
+                              onClick={() => {
+                                setMenuOpen(false);
+                                setMenuQuery("");
+                              }}
+                              className="flex items-center justify-between rounded-2xl px-4 py-2.5 transition hover:bg-pink-50"
+                            >
+                              <span className="font-medium text-gray-800">{service.name}</span>
+                              <span className="text-xs font-bold text-pink-600">{service.price}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>

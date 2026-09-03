@@ -147,6 +147,12 @@ export default function ShopPage() {
   const [showCart, setShowCart] = useState(false);
   const [allProducts, setAllProducts] = useState<Product[]>(products);
   const [loading, setLoading] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuQuery, setMenuQuery] = useState("");
+
+  const menuResults = allProducts.filter((p) =>
+    p.name.toLowerCase().includes(menuQuery.toLowerCase())
+  );
 
   useEffect(() => {
     async function fetchProducts() {
@@ -318,8 +324,8 @@ export default function ShopPage() {
           </section>
         )}
 
-        {/* Search */}
-        <div className="mx-auto max-w-2xl">
+        {/* Search + Product Menu */}
+        <div className="mx-auto max-w-2xl space-y-3">
           <input
             type="text"
             value={search}
@@ -327,6 +333,58 @@ export default function ShopPage() {
             placeholder="Search for products..."
             className="w-full rounded-full border border-pink-200 bg-white px-6 py-4 text-gray-800 shadow-md outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
           />
+
+          {/* Dropdown Menu — pick a product to open it directly */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="flex w-full items-center justify-between rounded-full border-2 border-pink-600 bg-white px-6 py-4 font-bold text-pink-600 shadow-md transition hover:bg-pink-50"
+            >
+              <span className="flex items-center gap-3">
+                <span className="text-lg">🛍️</span>
+                <span>{menuOpen ? "Choose a Product" : "Browse All Products ▼"}</span>
+              </span>
+              <span className={`transition-transform ${menuOpen ? "rotate-180" : ""}`}>▼</span>
+            </button>
+
+            {menuOpen && (
+              <div className="absolute left-0 right-0 z-50 mt-2 max-h-[420px] overflow-hidden rounded-3xl border border-pink-100 bg-white shadow-2xl">
+                <div className="border-b border-pink-50 p-3">
+                  <input
+                    type="text"
+                    value={menuQuery}
+                    onChange={(e) => setMenuQuery(e.target.value)}
+                    placeholder="Type to filter products..."
+                    autoFocus
+                    className="w-full rounded-full border border-pink-200 bg-pink-50 px-5 py-3 text-sm outline-none focus:border-pink-500"
+                  />
+                </div>
+
+                <div className="max-h-[360px] overflow-y-auto p-2">
+                  <div className="space-y-1">
+                    {menuResults.map((product) => (
+                      <Link
+                        key={product.id}
+                        href={`/shop/${product.slug || product.id}`}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setMenuQuery("");
+                        }}
+                        className="flex items-center justify-between rounded-2xl px-4 py-3 transition hover:bg-pink-50"
+                      >
+                        <span className="font-semibold text-gray-800">{product.name}</span>
+                        <span className="text-xs font-bold text-pink-600">{product.price}</span>
+                      </Link>
+                    ))}
+                    {menuResults.length === 0 && (
+                      <p className="px-4 py-6 text-center text-sm text-gray-500">No product found</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Categories */}
