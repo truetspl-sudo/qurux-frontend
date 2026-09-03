@@ -24,65 +24,7 @@ type Salon = {
   submittedAt: string;
 };
 
-const defaultSalons: Salon[] = [
-  {
-    id: "sal1",
-    salonName: "Glow Beauty Studio",
-    ownerName: "Neha Sharma",
-    email: "neha@glowbeauty.in",
-    phone: "9876543210",
-    altPhone: "",
-    address: "45, Main Market, Naraina Vihar",
-    city: "Delhi",
-    pincode: "110028",
-    salonType: "Unisex Salon",
-    servicesOffered: "Bridal Makeup, Hair Styling, Facial, Waxing",
-    experience: "5–10 years",
-    teamSize: "6–10 staff",
-    gstNumber: "07AABCU9603R1ZM",
-    description: "Premium unisex salon in Naraina Vihar with 8 years of experience in bridal and party makeup.",
-    status: "PENDING",
-    submittedAt: "2026-08-28T10:30:00Z",
-  },
-  {
-    id: "sal2",
-    salonName: "Royal Touch Salon",
-    ownerName: "Vikram Singh",
-    email: "vikram@royaltouch.in",
-    phone: "9123456789",
-    altPhone: "9988776655",
-    address: "12, GTB Nagar, Uttam Nagar",
-    city: "Delhi",
-    pincode: "110059",
-    salonType: "Women's Salon",
-    servicesOffered: "Makeup, Hair Styling, Manicure, Pedicure",
-    experience: "3–5 years",
-    teamSize: "3–5 staff",
-    gstNumber: "",
-    description: "Women-only salon specialising in bridal packages and skincare treatments.",
-    status: "APPROVED",
-    submittedAt: "2026-08-20T09:00:00Z",
-  },
-  {
-    id: "sal3",
-    salonName: "Style Hub Studio",
-    ownerName: "Ritu Verma",
-    email: "ritu@stylehub.in",
-    phone: "9001234567",
-    altPhone: "",
-    address: "78, Vikas Puri",
-    city: "Delhi",
-    pincode: "110018",
-    salonType: "Makeup Studio",
-    servicesOffered: "Bridal Makeup, HD Makeup, Party Makeup",
-    experience: "1–3 years",
-    teamSize: "1–2 staff",
-    gstNumber: "",
-    description: "Home-based makeup studio focused on bridal and HD makeup.",
-    status: "REJECTED",
-    submittedAt: "2026-08-15T14:00:00Z",
-  },
-];
+const defaultSalons: Salon[] = [];
 
 export default function AdminSalonsPage() {
   const [salons, setSalons] = useState(defaultSalons);
@@ -93,7 +35,7 @@ export default function AdminSalonsPage() {
       setLoading(true);
       try {
         const res = await apiGet<any[]>("/salons/all");
-        if (res.ok && res.data.length > 0) {
+        if (res.ok) {
           setSalons(res.data.map((s: any) => ({
             id: s._id, salonName: s.name, ownerName: s.ownerName, email: s.ownerEmail,
             phone: s.ownerMobile, altPhone: s.alternatePhone || "", address: s.address,

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { apiGet } from "@/lib/api";
 
 type Review = {
   id: string;
@@ -15,16 +16,33 @@ type Review = {
   serviceType: "Home Service" | "Salon";
 };
 
-const defaultReviews: Review[] = [
-  { id: "r1", customerName: "Sunita Devi", service: "Full Body Wax", rating: 4, customerRemarks: "Good service, a bit painful but overall fine.", adminRemarks: "Closed. Payment reconciled — BOB ₹800 + Cash ₹799.", bookingId: "BK-2026-0865", date: "2026-08-22", serviceType: "Salon" },
-  { id: "r2", customerName: "Ritu Kapoor", service: "Party Makeup + Hair Styling", rating: 5, customerRemarks: "Loved the look! Very professional.", adminRemarks: "Verified with customer. All good.", bookingId: "BK-2026-0876", date: "2026-08-25", serviceType: "Salon" },
-  { id: "r3", customerName: "Priya Sharma", service: "Classic Bridal Makeup", rating: 5, customerRemarks: "My bridal makeup was absolutely perfect! The team was amazing.", adminRemarks: "Premium service delivered. Customer very satisfied.", bookingId: "BK-2026-0891", date: "2026-08-28", serviceType: "Salon" },
-  { id: "r4", customerName: "Neha Gupta", service: "Korean Glow Facial", rating: 4, customerRemarks: "Skin felt great after the facial. Would come again.", adminRemarks: "Good service. Facial completed at home.", bookingId: "BK-2026-0883", date: "2026-08-20", serviceType: "Home Service" },
-];
+const defaultReviews: Review[] = [];
 
 export default function AdminRatingsPage() {
-  const [reviews] = useState(defaultReviews);
+  const [reviews, setReviews] = useState(defaultReviews);
   const [filterRating, setFilterRating] = useState(0);
+
+  useEffect(() => {
+    async function loadRatings() {
+      try {
+        const res = await apiGet<any[]>("/ratings");
+        if (res.ok) {
+          setReviews(res.data.map((r: any) => ({
+            id: r._id || r.id,
+            customerName: r.customerName || "Customer",
+            service: r.targetName || "",
+            rating: Number(r.stars || 0),
+            customerRemarks: r.customerRemarks || "",
+            adminRemarks: r.adminRemarks || "",
+            bookingId: r.bookingRef || (r.bookingId && typeof r.bookingId === "string" ? r.bookingId : ""),
+            date: r.createdAt ? new Date(r.createdAt).toISOString().split("T")[0] : "",
+            serviceType: r.targetType === "PRODUCT" ? "Home Service" : "Salon",
+          })));
+        }
+      } catch {}
+    }
+    loadRatings();
+  }, []);
 
   const filtered = filterRating === 0 ? reviews : reviews.filter((r) => r.rating === filterRating);
   const avgRating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : "0";

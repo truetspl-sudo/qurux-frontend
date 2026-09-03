@@ -17,68 +17,7 @@ type ServiceItem = {
   includes: string[];
 };
 
-const defaultServices: ServiceItem[] = [
-  {
-    id: "s1",
-    name: "Classic Bridal Makeup",
-    category: "Bridal Makeup",
-    price: "₹15,999+",
-    duration: "3–4 Hours",
-    slug: "bridal-makeup",
-    image: "/service-images/bridalmakeup-services.jpg.png",
-    description: "Professional bridal makeup for your special day.",
-    active: true,
-    includes: ["Base makeup", "Eye makeup", "Lip makeup", "Lashes", "Touch-up"],
-  },
-  {
-    id: "s2",
-    name: "HD Bridal Makeup",
-    category: "Bridal Makeup",
-    price: "₹18,999+",
-    duration: "3–4 Hours",
-    slug: "hd-bridal-makeup",
-    image: "/service-images/hdbridalmakeup-services.jpg.png",
-    description: "High-definition bridal makeup for camera-friendly finish.",
-    active: true,
-    includes: ["HD base", "Eye makeup", "Lashes", "Lip makeup", "Finishing"],
-  },
-  {
-    id: "s3",
-    name: "Party Makeup",
-    category: "Party Makeup",
-    price: "₹4,999+",
-    duration: "1.5–2 Hours",
-    slug: "party-makeup",
-    image: "/service-images/partymakeup-services.jpg.png",
-    description: "Glamorous makeup for parties and celebrations.",
-    active: true,
-    includes: ["Base makeup", "Eye makeup", "Lashes", "Lip makeup"],
-  },
-  {
-    id: "s4",
-    name: "Korean Glow Facial",
-    category: "Facial",
-    price: "₹2,499",
-    duration: "60–90 Minutes",
-    slug: "korean-glow-facial",
-    image: "/service-images/koreanglowfacial-services.jpg.png",
-    description: "K-beauty inspired facial for radiant skin.",
-    active: true,
-    includes: ["Cleansing", "Exfoliation", "Facial treatment", "Hydration"],
-  },
-  {
-    id: "s5",
-    name: "Classic Manicure",
-    category: "Manicure",
-    price: "₹399+",
-    duration: "30–45 Minutes",
-    slug: "classic-manicure",
-    image: "/service-images/classicmanicure-services.jpg.png",
-    description: "Professional manicure for clean, well-groomed hands.",
-    active: false,
-    includes: ["Nail shaping", "Cuticle care", "Hand massage"],
-  },
-];
+const defaultServices: ServiceItem[] = [];
 
 const serviceCategories = [
   "Bridal Makeup",
@@ -117,7 +56,7 @@ export default function AdminServicesPage() {
       setLoading(true);
       try {
         const res = await apiGet<any[]>("/services/all");
-        if (res.ok && res.data.length > 0) {
+        if (res.ok) {
           const apiServices: ServiceItem[] = res.data.map((s: any) => ({
             id: s._id,
             name: s.name,
@@ -125,7 +64,7 @@ export default function AdminServicesPage() {
             price: `\u20B9${(s.price || 0).toLocaleString("en-IN")}`,
             duration: s.duration || "60 min",
             slug: s.slug,
-            image: s.image || "/service-images/bridalmakeup-services.jpg.png",
+            image: s.image || "/cards/buy.jpg",
             description: s.description || "",
             active: s.isActive !== false,
             includes: s.includes || [],

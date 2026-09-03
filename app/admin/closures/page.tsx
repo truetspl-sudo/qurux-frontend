@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { apiGet, apiPatch } from "@/lib/api";
 
 type BookingClosure = {
   id: string;
@@ -153,10 +154,57 @@ const defaultClosures: BookingClosure[] = [
 ];
 
 export default function AdminClosuresPage() {
-  const [closures, setClosures] = useState(defaultClosures);
+  const [closures, setClosures] = useState<BookingClosure[]>([]);
   const [selected, setSelected] = useState<BookingClosure | null>(null);
   const [filterStatus, setFilterStatus] = useState("All");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    async function loadClosures() {
+      try {
+        const res = await apiGet<any[]>("/bookings");
+        if (!res.ok) {
+          setClosures([]);
+          return;
+        }
+        const items: BookingClosure[] = res.data
+          .filter((b: any) => b.status !== "CANCELLED")
+          .map((b: any) => ({
+            id: b._id,
+            bookingId: b.bookingId || b._id,
+            customerName: b.customerName || "",
+            customerPhone: b.customerPhone || "",
+            service: b.serviceName || "",
+            salon: b.salonName || (b.serviceLocation === "HOME" ? "Home Service" : "QURUX Salon"),
+            bookingDate: b.createdAt ? new Date(b.createdAt).toISOString().split("T")[0] : "",
+            serviceDate: b.date || "",
+            serviceType: b.serviceLocation === "HOME" ? "Home Service" : "Salon",
+            amount: Number(b.amount || 0),
+            paymentMethod: b.paymentMethod === "BOB" ? "Pay from BOB" : b.paymentMethod === "EMI" ? "No Cost EMI" : b.paymentMethod === "MIXED" ? "Mixed/Split" : "Full Payment",
+            bobUsed: Number(b.bobPaidAmount || 0),
+            emiPending: Number(b.emiAmount || 0),
+            cashCollected: Number(b.cashAmount || 0),
+            status: b.status === "COMPLETED" ? "CLOSED" : "PARTNER_COMPLETED",
+            partnerRemarks: "",
+            adminRemarks: b.adminRemarks || "",
+            rating: Number(b.rating || 0),
+            customerRemarks: b.customerRemarks || "",
+            address: b.address || "",
+            timeSlot: b.timeSlot || "",
+            verificationChecklist: {
+              serviceDelivered: false,
+              customerPresent: false,
+              qualityConfirmed: false,
+              paymentConfirmed: false,
+            },
+          }));
+        setClosures(items);
+      } catch {
+        setClosures([]);
+      }
+    }
+    loadClosures();
+  }, []);
 
   const filtered = closures.filter((c) =>
     filterStatus === "All" || c.status === filterStatus
@@ -218,7 +266,7 @@ export default function AdminClosuresPage() {
     }, 500);
   }
 
-  function closeClosure(id: string, adminRemarks: string, customerRemarks: string, rating: number) {
+  async function closeClosure(id: string, adminRemarks: string, customerRemarks: string, rating: number) {
     if (!adminRemarks.trim()) {
       alert("Admin remarks are required to close the service.");
       return;
@@ -229,33 +277,40 @@ export default function AdminClosuresPage() {
     }
 
     setBusy(true);
-    setTimeout(() => {
-      setClosures((prev) =>
-        prev.map((c) =>
-          c.id === id
-            ? {
-                ...c,
-                status: "CLOSED" as const,
-                adminRemarks,
-                customerRemarks,
-                rating,
-              }
-            : c
-        )
-      );
-      setSelected((prev) =>
-        prev
+    const res = await apiPatch(`/bookings/${id}/close`, {
+      adminRemarks,
+      customerRemarks,
+      rating,
+    });
+    setBusy(false);
+    if (!res.ok) {
+      alert(res.message || "Failed to close booking. Please try again.");
+      return;
+    }
+    setClosures((prev) =>
+      prev.map((c) =>
+        c.id === id
           ? {
-              ...prev,
-              status: "CLOSED",
+              ...c,
+              status: "CLOSED" as const,
               adminRemarks,
               customerRemarks,
               rating,
             }
-          : null
-      );
-      setBusy(false);
-    }, 500);
+          : c
+      )
+    );
+    setSelected((prev) =>
+      prev
+        ? {
+            ...prev,
+            status: "CLOSED",
+            adminRemarks,
+            customerRemarks,
+            rating,
+          }
+        : null
+    );
   }
 
   const pendingCount = closures.filter((c) => c.status === "PARTNER_COMPLETED").length;

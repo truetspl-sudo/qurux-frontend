@@ -18,14 +18,7 @@ type Booking = {
   status: "PENDING" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 };
 
-const defaultBookings: Booking[] = [
-  { id: "BK-2026-0892", customerName: "Neha Gupta", phone: "9871112233", service: "Airbrush Bridal Makeup", date: "2026-09-05", timeSlot: "10:00 AM", location: "QURUX Salon — Naraina Vihar", locationType: "Salon", paymentMethod: "No Cost EMI", amount: 21999, status: "CONFIRMED" },
-  { id: "BK-2026-0891", customerName: "Priya Sharma", phone: "9876543210", service: "Classic Bridal Makeup", date: "2026-08-28", timeSlot: "10:00 AM", location: "QURUX Salon — Naraina Vihar", locationType: "Salon", paymentMethod: "Full Payment", amount: 15999, status: "COMPLETED" },
-  { id: "BK-2026-0890", customerName: "Deepa Nair", phone: "9112233445", service: "Korean Glow Facial", date: "2026-09-01", timeSlot: "2:00 PM", location: "Home Service — 12/B, Janakpuri", locationType: "Home Service", paymentMethod: "Full Payment", amount: 2499, status: "PENDING" },
-  { id: "BK-2026-0889", customerName: "Rina Joshi", phone: "9998887770", service: "HD Bridal Makeup + Hair Styling", date: "2026-08-27", timeSlot: "9:00 AM", location: "QURUX Salon — Uttam Nagar", locationType: "Salon", paymentMethod: "Pay from BOB", amount: 24498, status: "IN_PROGRESS" },
-  { id: "BK-2026-0888", customerName: "Suman Patel", phone: "9001122334", service: "Party Makeup", date: "2026-08-30", timeSlot: "4:00 PM", location: "QURUX Salon — Naraina Vihar", locationType: "Salon", paymentMethod: "Full Payment", amount: 4999, status: "CONFIRMED" },
-  { id: "BK-2026-0887", customerName: "Anjali Mehta", phone: "9123456789", service: "Korean Glow Facial", date: "2026-08-27", timeSlot: "2:00 PM", location: "Home Service — 45/A, Uttam Nagar", locationType: "Home Service", paymentMethod: "Pay from BOB", amount: 2499, status: "COMPLETED" },
-];
+const defaultBookings: Booking[] = [];
 
 const statusColors: Record<string, string> = {
   PENDING: "bg-orange-100 text-orange-700",
@@ -38,21 +31,27 @@ const statusColors: Record<string, string> = {
 export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState(defaultBookings);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     async function fetchBookings() {
       setLoading(true);
+      setLoadError("");
       try {
         const res = await apiGet<any[]>("/bookings");
-        if (res.ok && res.data.length > 0) {
-          setBookings(res.data.map((b: any) => ({
-            id: b.bookingId, customerName: b.customerName, phone: b.customerPhone,
-            service: b.serviceName, date: b.date, timeSlot: b.timeSlot || "",
-            location: b.serviceLocation === "HOME" ? `Home — ${b.address}` : (b.salonName || "QURUX Salon"),
-            locationType: b.serviceLocation === "HOME" ? "Home Service" : "Salon",
-            paymentMethod: b.paymentMethod, amount: b.amount, status: b.status,
-          })));
+        if (!res.ok) {
+          setLoadError(res.status === 401 || res.status === 403
+            ? "Login as Admin required. Pehle /account pe ADMIN User ID se login karein."
+            : res.message || "Failed to load bookings");
+          return;
         }
+        setBookings(res.data.map((b: any) => ({
+          id: b.bookingId, customerName: b.customerName, phone: b.customerPhone,
+          service: b.serviceName, date: b.date, timeSlot: b.timeSlot || "",
+          location: b.serviceLocation === "HOME" ? `Home — ${b.address}` : (b.salonName || "QURUX Salon"),
+          locationType: b.serviceLocation === "HOME" ? "Home Service" : "Salon",
+          paymentMethod: b.paymentMethod, amount: b.amount, status: b.status,
+        })));
       } catch {}
       setLoading(false);
     }
@@ -81,6 +80,12 @@ export default function AdminBookingsPage() {
           </div>
         ))}
       </div>
+
+      {loadError && (
+        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+          ❌ {loadError}
+        </div>
+      )}
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, ID, or service..." className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm outline-none focus:border-pink-500" />

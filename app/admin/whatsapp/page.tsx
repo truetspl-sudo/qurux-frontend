@@ -21,12 +21,7 @@ type Dispatch = {
   completedAt?: string;
 };
 
-const DEMO_DISPATCHES: Dispatch[] = [
-  { id: "WD-001", bookingId: "BK-2026-0892", customerName: "Neha Gupta", customerPhone: "9871112233", address: "QURUX Salon — Naraina Vihar", service: "Airbrush Bridal Makeup", date: "2026-09-05", timeSlot: "10:00 AM", paymentMode: "No Cost EMI", amount: 21999, salonName: "QURUX Salon — Naraina Vihar", salonPhone: "9911227916", status: "SENT", sentAt: "2026-08-30T14:00:00Z" },
-  { id: "WD-002", bookingId: "BK-2026-0890", customerName: "Deepa Nair", customerPhone: "9112233445", address: "12/B, Janakpuri, Delhi — 110058", service: "Korean Glow Facial", date: "2026-09-01", timeSlot: "2:00 PM", paymentMode: "Full Payment", amount: 2499, salonName: "Home Service Partner", salonPhone: "9911227916", status: "PENDING", sentAt: "" },
-  { id: "WD-003", bookingId: "BK-2026-0888", customerName: "Suman Patel", customerPhone: "9001122334", address: "QURUX Salon — Naraina Vihar", service: "Party Makeup", date: "2026-08-30", timeSlot: "4:00 PM", paymentMode: "Full Payment", amount: 4999, salonName: "QURUX Salon — Naraina Vihar", salonPhone: "9911227916", status: "COMPLETED", sentAt: "2026-08-29T10:00:00Z", completedAt: "2026-08-30T16:30:00Z" },
-  { id: "WD-004", bookingId: "BK-2026-0889", customerName: "Rina Joshi", customerPhone: "9998887770", address: "QURUX Salon — Uttam Nagar", service: "HD Bridal Makeup + Hair Styling", date: "2026-08-27", timeSlot: "9:00 AM", paymentMode: "Pay from BOB", amount: 24498, salonName: "QURUX Salon — Uttam Nagar", salonPhone: "9911227916", status: "COMPLETED", sentAt: "2026-08-26T08:00:00Z", completedAt: "2026-08-27T18:00:00Z" },
-];
+const DEMO_DISPATCHES: Dispatch[] = [];
 
 function readLocalArray(key: string): any[] {
   try {
@@ -72,32 +67,27 @@ export default function AdminWhatsAppPage() {
   async function loadDispatches() {
     try {
       const res = await apiGet<any[]>("/bookings");
-      if (res.ok && res.data.length > 0) {
-        const mapped: Dispatch[] = res.data
-          .filter((b: any) => b.status !== "CANCELLED")
-          .map((b: any) => ({
-            id: `WD-${b.bookingId || b._id}`,
-            bookingId: b.bookingId || b._id,
-            customerName: b.customerName || "Customer",
-            customerPhone: b.customerPhone || "",
-            address: b.address || b.salonName || "",
-            service: b.serviceName || "Service",
-            date: b.date || "",
-            timeSlot: b.timeSlot || "",
-            paymentMode: b.paymentMethod === "BOB" ? "Pay from BOB" : b.paymentMethod === "EMI" ? "No Cost EMI" : "Full Payment",
-            amount: Number(b.amount || 0),
-            salonName: b.salonName || "QURUX Salon",
-            salonPhone: "9911227916",
-            status: b.whatsappDispatched ? "SENT" : "PENDING",
-            sentAt: b.whatsappSentAt || "",
-          }));
-        setDispatches(mapped.length > 0 ? mapped : DEMO_DISPATCHES);
-      } else {
-        setDispatches(DEMO_DISPATCHES);
-      }
-    } catch {
-      setDispatches(DEMO_DISPATCHES);
-    }
+      if (!res.ok) return;
+      const mapped: Dispatch[] = res.data
+        .filter((b: any) => b.status !== "CANCELLED")
+        .map((b: any) => ({
+          id: `WD-${b.bookingId || b._id}`,
+          bookingId: b.bookingId || b._id,
+          customerName: b.customerName || "Customer",
+          customerPhone: b.customerPhone || "",
+          address: b.address || b.salonName || "",
+          service: b.serviceName || "Service",
+          date: b.date || "",
+          timeSlot: b.timeSlot || "",
+          paymentMode: b.paymentMethod === "BOB" ? "Pay from BOB" : b.paymentMethod === "EMI" ? "No Cost EMI" : "Full Payment",
+          amount: Number(b.amount || 0),
+          salonName: b.salonName || "QURUX Salon",
+          salonPhone: "9911227916",
+          status: b.whatsappDispatched ? "SENT" : "PENDING",
+          sentAt: b.whatsappSentAt || "",
+        }));
+      setDispatches(mapped);
+    } catch {}
   }
 
   function saveDispatches(list: Dispatch[]) {

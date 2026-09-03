@@ -17,56 +17,7 @@ type CourseItem = {
   topics: string[];
 };
 
-const defaultCourses: CourseItem[] = [
-  {
-    id: "c1",
-    title: "Basic Makeup Artist Course",
-    duration: "15 Days",
-    hours: "45 Hours",
-    fee: "₹26,999",
-    level: "Beginner",
-    image: "/course-images/basic-makeup-artist.jpg",
-    description: "Build a strong foundation in professional makeup techniques.",
-    active: true,
-    topics: ["Makeup fundamentals", "Skin preparation", "Face shapes", "Colour theory"],
-  },
-  {
-    id: "c2",
-    title: "Professional Makeup Artist Course",
-    duration: "30 Days",
-    hours: "90 Hours",
-    fee: "₹49,999",
-    level: "Professional",
-    image: "/course-images/professional-makeup-artist.jpg",
-    description: "Complete professional makeup course with hands-on practice.",
-    active: true,
-    topics: ["Professional techniques", "Party makeup", "Engagement makeup", "Hands-on practice"],
-  },
-  {
-    id: "c3",
-    title: "Advanced Bridal & HD Makeup Course",
-    duration: "45 Days",
-    hours: "135 Hours",
-    fee: "₹74,999",
-    level: "Advanced",
-    image: "/course-images/advanced-bridal-hd-makeup.jpg",
-    description: "Advanced bridal training covering HD techniques and long-wear preparation.",
-    active: true,
-    topics: ["Bridal makeup", "HD makeup", "Colour correction", "Live model practice"],
-  },
-  {
-    id: "c4",
-    title: "Complete Beauty Artist Course",
-    duration: "3 Months",
-    hours: "270 Hours",
-    fee: "₹89,999",
-    level: "Professional",
-    image: "",
-    description: "Comprehensive beauty training combining makeup, hair and beauty services.",
-    active: false,
-    topics: ["Professional makeup", "Bridal makeup", "Hair styling", "Skin care"],
-  },
-];
+const defaultCourses: CourseItem[] = [];
 
 type EmptyCourse = Omit<CourseItem, "id">;
 
@@ -91,7 +42,7 @@ export default function AdminCoursesPage() {
       setLoading(true);
       try {
         const res = await apiGet<any[]>("/courses/all");
-        if (res.ok && res.data.length > 0) {
+        if (res.ok) {
           setCourses(res.data.map((c: any) => ({
             id: c._id, title: c.title, duration: c.duration || "", hours: c.hours || "",
             fee: `\u20B9${(c.fee || 0).toLocaleString("en-IN")}`,

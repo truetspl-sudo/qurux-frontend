@@ -15,58 +15,7 @@ type ProductItem = {
   active: boolean;
 };
 
-const defaultProducts: ProductItem[] = [
-  {
-    id: "p1",
-    name: "ESSN HD Foundation",
-    category: "Makeup",
-    price: "₹1,299",
-    image: "/cards/buy.jpg",
-    description: "High-definition foundation for a smooth, camera-ready finish.",
-    stock: 25,
-    active: true,
-  },
-  {
-    id: "p2",
-    name: "ESSN Matte Lipstick Set",
-    category: "Makeup",
-    price: "₹899",
-    image: "/cards/buy.jpg",
-    description: "Set of 6 long-lasting matte lipsticks in trending shades.",
-    stock: 40,
-    active: true,
-  },
-  {
-    id: "p3",
-    name: "ESSN Glow Serum",
-    category: "Skincare",
-    price: "₹1,499",
-    image: "/cards/buy.jpg",
-    description: "Vitamin C glow serum for radiant and even-toned skin.",
-    stock: 30,
-    active: true,
-  },
-  {
-    id: "p4",
-    name: "ESSN Hydrating Moisturiser",
-    category: "Skincare",
-    price: "₹799",
-    image: "/cards/buy.jpg",
-    description: "Lightweight hydrating moisturiser for all skin types.",
-    stock: 50,
-    active: true,
-  },
-  {
-    id: "p5",
-    name: "ESSN Professional Brush Kit",
-    category: "Tools & Brushes",
-    price: "₹2,499",
-    image: "/cards/buy.jpg",
-    description: "12-piece professional makeup brush set with travel pouch.",
-    stock: 20,
-    active: false,
-  },
-];
+const defaultProducts: ProductItem[] = [];
 
 const productCategories = [
   "Makeup",
@@ -97,7 +46,7 @@ export default function AdminProductsPage() {
       setLoading(true);
       try {
         const res = await apiGet<any[]>("/products/all");
-        if (res.ok && res.data.length > 0) {
+        if (res.ok) {
           setProducts(res.data.map((p: any) => ({
             id: p._id, name: p.name, category: p.category,
             price: `\u20B9${(p.price || 0).toLocaleString("en-IN")}`,

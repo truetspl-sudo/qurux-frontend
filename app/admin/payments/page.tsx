@@ -16,37 +16,45 @@ type Payment = {
   transactionId?: string;
 };
 
-const defaultPayments: Payment[] = [
-  { id: "PAY-001", customerName: "Priya Sharma", reference: "BK-2026-0891", type: "BOOKING", method: "Full Payment", amount: 15999, status: "APPROVED", date: "2026-08-20", transactionId: "TXN-9876543210" },
-  { id: "PAY-002", customerName: "Anjali Mehta", reference: "BK-2026-0887", type: "BOOKING", method: "Pay from BOB", amount: 2499, status: "APPROVED", date: "2026-08-18" },
-  { id: "PAY-003", customerName: "Ritu Kapoor", reference: "BK-2026-0876", type: "BOOKING", method: "No Cost EMI", amount: 3000, status: "APPROVED", date: "2026-08-15", transactionId: "TXN-1122334455" },
-  { id: "PAY-004", customerName: "Priya Sharma", reference: "ORD-2026-0123", type: "ORDER", method: "Full Payment", amount: 4097, status: "APPROVED", date: "2026-08-20", transactionId: "TXN-5566778899" },
-  { id: "PAY-005", customerName: "Ritu Kapoor", reference: "EMI-PAY-003", type: "EMI", method: "Cash", amount: 2000, status: "PENDING", date: "2026-08-28" },
-  { id: "PAY-006", customerName: "Sunita Devi", reference: "ORD-2026-0126", type: "ORDER", method: "No Cost EMI", amount: 2397, status: "PENDING", date: "2026-08-29" },
-];
+const defaultPayments: Payment[] = [];
 
 const typeColors: Record<string, string> = { BOOKING: "bg-pink-100 text-pink-600", ORDER: "bg-blue-100 text-blue-700", EMI: "bg-amber-100 text-amber-700", WALLET: "bg-green-100 text-green-700" };
 const statusColors: Record<string, string> = { PENDING: "bg-orange-100 text-orange-700", APPROVED: "bg-green-100 text-green-700", REJECTED: "bg-red-100 text-red-600", REFUNDED: "bg-purple-100 text-purple-700" };
 
+const methodLabels: Record<string, string> = {
+  UPI: "UPI",
+  CASH: "Cash",
+  BOB: "Pay from BOB",
+  CARD: "Card",
+  NET_BANKING: "Net Banking",
+};
+
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>(defaultPayments);
+  const [loadError, setLoadError] = useState("");
   useEffect(() => {
     async function load() {
       try {
-        const bookings = await apiGet<any[]>("/bookings");
-        if (bookings.ok && bookings.data.length > 0) {
-          const mapped: Payment[] = bookings.data.map((b: any) => ({
-            id: b.bookingId || b._id,
-            customerName: b.customerName || "Unknown",
-            reference: b.bookingId || b._id,
-            type: "BOOKING" as const,
-            method: b.paymentMethod === "BOB" ? "Pay from BOB" : b.paymentMethod === "EMI" ? "No Cost EMI" : b.paymentMethod === "MIXED" ? "Mixed/Split" : "Full Payment",
-            amount: b.amount || 0,
-            status: b.paymentStatus || "PENDING",
-            date: b.createdAt ? new Date(b.createdAt).toISOString().split("T")[0] : "",
-          }));
-          setPayments(mapped);
+        setLoadError("");
+        const res = await apiGet<any[]>("/payments");
+        if (!res.ok) {
+          setLoadError(res.status === 401 || res.status === 403
+            ? "Login as Admin required. Pehle /account pe ADMIN User ID se login karein."
+            : res.message || "Failed to load payments");
+          return;
         }
+        const mapped: Payment[] = res.data.map((b: any) => ({
+          id: b.paymentId || b._id,
+          customerName: b.customerId?.fullName || b.customerName || "Customer",
+          reference: b.bookingId?.bookingId || b.orderId?.orderId || b.referenceName || b._id,
+          type: (b.referenceType === "ORDER" || b.referenceType === "EMI" || b.referenceType === "WALLET" ? b.referenceType : "BOOKING") as Payment["type"],
+          method: methodLabels[b.method] || b.method || "UPI",
+          amount: b.amount || 0,
+          status: b.status || "PENDING",
+          date: b.createdAt ? new Date(b.createdAt).toISOString().split("T")[0] : "",
+          transactionId: b.transactionId || "",
+        }));
+        setPayments(mapped);
       } catch {}
     }
     load();
@@ -71,6 +79,12 @@ export default function AdminPaymentsPage() {
         <div className="rounded-2xl bg-orange-50 p-5 shadow-sm"><p className="text-sm font-semibold text-orange-700">PENDING</p><p className="mt-2 text-3xl font-black text-orange-700">₹{pendingAmount.toLocaleString("en-IN")}</p></div>
         <div className="rounded-2xl bg-blue-50 p-5 shadow-sm"><p className="text-sm font-semibold text-blue-700">APPROVED</p><p className="mt-2 text-3xl font-black text-blue-700">₹{payments.filter((p) => p.status === "APPROVED").reduce((s, p) => s + p.amount, 0).toLocaleString("en-IN")}</p></div>
       </div>
+
+      {loadError && (
+        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+          ❌ {loadError}
+        </div>
+      )}
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm outline-none focus:border-pink-500">
