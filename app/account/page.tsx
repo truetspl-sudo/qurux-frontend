@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   apiPost,
+  apiPut,
   getLoggedInUser,
   logout as apiLogout,
 } from "../../lib/api";
@@ -173,7 +174,7 @@ export default function AuthPage() {
       return;
     }
     setPwBusy(true);
-    const res = await apiPost<any>("/auth/change-password", {
+    const res = await apiPut<any>("/auth/change-password", {
       currentPassword: pwCurrent,
       newPassword: pwNew,
     });

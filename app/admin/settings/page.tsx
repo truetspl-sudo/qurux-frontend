@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { apiPost } from "@/lib/api";
+import { apiPost, apiPut } from "@/lib/api";
 
 export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
@@ -54,7 +54,7 @@ export default function AdminSettingsPage() {
       return;
     }
     setPwBusy(true);
-    const res = await apiPost("/auth/change-password", {
+    const res = await apiPut("/auth/change-password", {
       currentPassword: pw.current,
       newPassword: pw.next,
     });
