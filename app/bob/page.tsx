@@ -94,6 +94,8 @@ export default function BOBPage() {
   // Deposit form
   const [depositAmount, setDepositAmount] = useState("");
   const [depositUpiRef, setDepositUpiRef] = useState("");
+  const [depositShot, setDepositShot] = useState<File | null>(null);
+  const [depositShotUrl, setDepositShotUrl] = useState("");
   const [depositSuccess, setDepositSuccess] = useState("");
   const [depositing, setDepositing] = useState(false);
 
@@ -130,6 +132,22 @@ export default function BOBPage() {
     setLoading(false);
   }
 
+  // Upload deposit payment screenshot (proof) -> returns URL
+  async function uploadDepositShot(file: File): Promise<string> {
+    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const token = localStorage.getItem("qurux_token") || "";
+    const fd = new FormData();
+    fd.append("screenshot", file);
+    const r = await fetch(`${base}/api/payments/upload`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.message || "Screenshot upload failed");
+    return data.url || "";
+  }
+
   async function handleDeposit(e: React.FormEvent) {
     e.preventDefault();
     const amount = Number(depositAmount);
@@ -137,23 +155,37 @@ export default function BOBPage() {
       alert("Minimum deposit ₹10 hai.");
       return;
     }
+    if (!depositUpiRef.trim()) {
+      alert("UPI Transaction ID / UTR daalna zaroori hai (payment ke baad milta hai).");
+      return;
+    }
     setDepositing(true);
     try {
+      // Upload screenshot proof first if selected
+      let shotUrl = depositShotUrl;
+      if (depositShot && !shotUrl) {
+        shotUrl = await uploadDepositShot(depositShot);
+        setDepositShotUrl(shotUrl);
+      }
+
       const res = await apiPost<any>("/wallet/deposit", {
         amount,
-        reference: depositUpiRef.trim() || `DEP-${Date.now()}`,
+        reference: depositUpiRef.trim(),
+        screenshotUrl: shotUrl,
       });
       if (res.ok) {
         setDepositAmount("");
         setDepositUpiRef("");
-        setDepositSuccess(`₹${amount.toLocaleString("en-IN")} deposit request bheja gaya. Admin verify karke approve karega — phir balance credit hoga (benefit 30 din baad start).`);
+        setDepositShot(null);
+        setDepositShotUrl("");
+        setDepositSuccess(`₹${amount.toLocaleString("en-IN")} deposit request bheja gaya. Admin proof verify karke approve karega — phir balance credit hoga (benefit 30 din baad start).`);
         setTimeout(() => setDepositSuccess(""), 8000);
         loadWallet();
       } else {
         alert(res.message || "Deposit failed.");
       }
-    } catch {
-      alert("Deposit failed. Backend offline.");
+    } catch (err: any) {
+      alert(err?.message || "Deposit failed. Backend offline.");
     }
     setDepositing(false);
   }
@@ -317,11 +349,29 @@ export default function BOBPage() {
                 </ul>
               </div>
 
-              {/* Deposit Form */}
+              {/* Deposit Form — company UPI barcode scan karke pay, proof: txn ID + screenshot */}
               <div className="mt-6 rounded-2xl border border-pink-100 p-6">
                 <h4 className="font-bold text-gray-800">Make a Deposit</h4>
-                <p className="mt-1 text-xs text-gray-500">UPI se pay karke transaction ID/UTR yahan daalein — admin verify karke approve karega.</p>
-                <form onSubmit={handleDeposit} className="mt-4 flex flex-col gap-3">
+                <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-gray-600">
+                  <li>Neeche <strong>company ka UPI barcode</strong> scan karke (ya UPI ID par) payment karein</li>
+                  <li>Payment ke baad <strong>Transaction ID / UTR</strong> daalein</li>
+                  <li><strong>Payment screenshot</strong> upload karein (proof)</li>
+                  <li>Submit karein — admin verify karke approve karega</li>
+                </ol>
+
+                <form onSubmit={handleDeposit} className="mt-5 flex flex-col gap-4">
+                  {/* Company UPI Barcode */}
+                  <div className="flex flex-col items-center rounded-2xl border border-dashed border-pink-200 bg-pink-50/60 p-5 text-center">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-pink-600">SCAN & PAY — QURUX UPI</p>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/payment/quruxbarcode.jpg"
+                      alt="Qurux UPI barcode"
+                      className="mx-auto mt-3 h-48 w-48 rounded-xl bg-white object-contain shadow-sm ring-1 ring-pink-100"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">UPI ID: <span className="font-mono font-bold text-pink-600">qurux@upi</span></p>
+                  </div>
+
                   <div className="flex flex-col gap-4 sm:flex-row">
                     <input type="number" min={10} value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)}
                       placeholder="Enter amount (min ₹10)" required
@@ -331,9 +381,38 @@ export default function BOBPage() {
                       {depositing ? "Submitting..." : "SUBMIT DEPOSIT REQUEST"}
                     </button>
                   </div>
+
+                  {/* Transaction ID */}
                   <input type="text" value={depositUpiRef} onChange={(e) => setDepositUpiRef(e.target.value)}
-                    placeholder="UPI Transaction ID / UTR (optional)"
+                    placeholder="UPI Transaction ID / UTR * (payment ke baad milta hai)" required
                     className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-500" />
+
+                  {/* Screenshot proof upload */}
+                  <label className="flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 p-5 transition hover:border-pink-300 hover:bg-pink-50">
+                    {depositShot ? (
+                      <div className="text-center">
+                        <span className="text-3xl">✅</span>
+                        <p className="mt-2 text-sm font-bold text-green-700">{depositShot.name}</p>
+                        <p className="text-xs text-gray-500">Payment screenshot — click to change</p>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <span className="text-3xl">📷</span>
+                        <p className="mt-2 text-sm font-bold text-gray-600">Upload Payment Screenshot (proof)</p>
+                        <p className="text-xs text-gray-400">JPG / PNG — max 5MB</p>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        setDepositShot(f || null);
+                        if (f) setDepositShotUrl("");
+                      }}
+                    />
+                  </label>
                 </form>
                 {depositSuccess && <p className="mt-3 text-sm font-semibold text-green-600">{depositSuccess}</p>}
               </div>
@@ -352,6 +431,9 @@ export default function BOBPage() {
                             Status: <span className="font-bold">PENDING</span>
                             {pd.deposit.reference ? ` • Ref: ${pd.deposit.reference}` : ""}
                           </p>
+                          {pd.deposit.screenshotUrl && (
+                            <a href={pd.deposit.screenshotUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-bold text-blue-600 hover:underline">📷 View proof screenshot</a>
+                          )}
                         </div>
                         <span className="rounded-full bg-amber-200 px-4 py-1.5 text-xs font-bold text-amber-800">⏳ AWAITING ADMIN APPROVAL</span>
                       </div>

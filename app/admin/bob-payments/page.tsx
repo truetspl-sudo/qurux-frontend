@@ -13,6 +13,7 @@ type DepositRow = {
   accountNumber: string;
   amount: number;
   reference: string;
+  screenshotUrl?: string;
   submittedAt: string;
   status: string;
 };
@@ -58,6 +59,7 @@ export default function AdminBobPaymentsPage() {
             accountNumber: w.accountNumber,
             amount: dep.originalAmount || 0,
             reference: dep.reference || "",
+            screenshotUrl: dep.screenshotUrl || "",
             submittedAt: dep.submittedAt || dep.depositDate || "",
             status: dep.status || "PENDING",
           });
@@ -210,6 +212,7 @@ export default function AdminBobPaymentsPage() {
                 <th className="px-5 py-3 font-bold text-gray-600">BOB Account</th>
                 <th className="px-5 py-3 font-bold text-gray-600">Amount</th>
                 <th className="px-5 py-3 font-bold text-gray-600">UPI Ref</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Proof</th>
                 <th className="px-5 py-3 font-bold text-gray-600">Requested</th>
                 <th className="px-5 py-3 font-bold text-gray-600">Status</th>
                 <th className="px-5 py-3 font-bold text-gray-600">Actions</th>
@@ -218,7 +221,7 @@ export default function AdminBobPaymentsPage() {
             <tbody>
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-gray-400">
+                  <td colSpan={8} className="px-5 py-10 text-center text-gray-400">
                     {loading ? "Loading..." : "No deposit requests found."}
                   </td>
                 </tr>
@@ -232,6 +235,13 @@ export default function AdminBobPaymentsPage() {
                   <td className="px-5 py-4 font-mono text-xs text-gray-600">{row.accountNumber}</td>
                   <td className="px-5 py-4 font-bold text-gray-900">₹{row.amount.toLocaleString("en-IN")}</td>
                   <td className="px-5 py-4 font-mono text-xs text-gray-600">{row.reference || "—"}</td>
+                  <td className="px-5 py-4">
+                    {row.screenshotUrl ? (
+                      <a href={row.screenshotUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100">📷 Screenshot</a>
+                    ) : (
+                      <span className="text-xs text-gray-300">—</span>
+                    )}
+                  </td>
                   <td className="px-5 py-4 text-xs text-gray-500">
                     {row.submittedAt ? new Date(row.submittedAt).toLocaleString("en-IN") : "—"}
                   </td>
