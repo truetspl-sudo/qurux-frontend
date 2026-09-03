@@ -3,7 +3,9 @@
  * Central fetch wrapper with JWT auth, error handling, and base URL config.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+// NEXT_PUBLIC_API_URL is the server root (e.g. https://api.example.com).
+// All backend routes live under /api, so append it here.
+const API_BASE = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api`;
 
 // ── Token helpers ──────────────────────────
 export function getToken(): string | null {
