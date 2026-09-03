@@ -21,6 +21,7 @@ const defaultCustomers: Customer[] = [];
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>(defaultCustomers);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [selected, setSelected] = useState<Customer | null>(null);
   const [filterStatus, setFilterStatus] = useState("All");
   const [search, setSearch] = useState("");
@@ -34,9 +35,16 @@ export default function AdminCustomersPage() {
   useEffect(() => {
     async function fetchCustomers() {
       setLoading(true);
+      setLoadError("");
       try {
         const res = await apiGet<any[]>("/admin/customers");
-        if (res.ok && res.data.length > 0) {
+        if (!res.ok) {
+          setLoadError(res.status === 401 || res.status === 403
+            ? "Login as Admin required. Pehle /account pe ADMIN User ID se login karein."
+            : res.message || "Failed to load customers");
+          return;
+        }
+        if (res.data.length > 0) {
           setCustomers(res.data.map((c: any) => ({
             id: c._id, fullName: c.fullName, email: c.email || "", phone: c.mobile,
             userId: c.userId || "",
@@ -116,6 +124,12 @@ export default function AdminCustomersPage() {
           <p className="mt-2 text-3xl font-black text-blue-700">₹{totalRevenue.toLocaleString("en-IN")}</p>
         </div>
       </div>
+
+      {loadError && (
+        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+          ❌ {loadError}
+        </div>
+      )}
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, phone, or User ID..." className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100" />
