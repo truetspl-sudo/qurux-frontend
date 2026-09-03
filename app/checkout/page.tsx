@@ -56,17 +56,13 @@ export default function CheckoutPage() {
     localStorage.setItem("qurux_cart", JSON.stringify(updated));
   }
 
-  function handleDetailsSubmit(e: React.FormEvent) {
+  // Step 1 → create order FIRST (paymentStatus PENDING — no auto-PAID),
+  // then the real PaymentForm submits the UPI proof against that orderId.
+  async function handleDetailsSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (cart.length === 0) return;
-    setStep("payment");
-  }
-
-  async function handlePaymentSuccess() {
     setOrderSaving(true);
     setSaveError("");
-
-    // Try to save order to MongoDB
     try {
       const methodMap: Record<string, string> = {
         full: "FULL",
@@ -88,21 +84,25 @@ export default function CheckoutPage() {
 
       if (res.ok && res.data?.order?.orderId) {
         setOrderId(res.data.order.orderId);
+        setStep("payment");
       } else {
-        // Fallback to local orderId
-        setOrderId("ORD-" + Date.now().toString(36).toUpperCase());
-        setSaveError("Order saved locally. Backend sync pending.");
+        setSaveError(
+          res.status === 401 || res.status === 403
+            ? "Order banane ke liye login zaroori hai. Pehle /account pe login karein."
+            : res.message || "Order create nahi ho paya. Backend offline?"
+        );
       }
     } catch {
-      // Backend offline — use local orderId
-      setOrderId("ORD-" + Date.now().toString(36).toUpperCase());
-      setSaveError("Backend offline. Order saved locally.");
+      setSaveError("Order create nahi ho paya. Backend offline?");
     }
+    setOrderSaving(false);
+  }
 
+  // Payment proof submitted (real /payments record) → confirmation
+  async function handlePaymentSuccess() {
     setPaymentDone(true);
     setStep("confirmation");
     localStorage.removeItem("qurux_cart");
-    setOrderSaving(false);
   }
 
   // ── Empty Cart ──
@@ -328,12 +328,17 @@ export default function CheckoutPage() {
                 </section>
 
                 {/* Submit */}
+                {saveError && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+                    ❌ {saveError}
+                  </div>
+                )}
                 <button
                   type="submit"
-                  disabled={cart.length === 0}
+                  disabled={cart.length === 0 || orderSaving}
                   className="w-full rounded-full bg-pink-600 px-8 py-4 text-lg font-bold text-white shadow-lg hover:bg-pink-700 disabled:opacity-50"
                 >
-                  PROCEED TO PAYMENT →
+                  {orderSaving ? "CREATING ORDER..." : "PROCEED TO PAYMENT →"}
                 </button>
               </form>
             )}
@@ -352,6 +357,7 @@ export default function CheckoutPage() {
                   amount={total}
                   referenceType="ORDER"
                   referenceName={cart.map((c) => c.name).join(", ")}
+                  referenceId={orderId || undefined}
                   onSuccess={handlePaymentSuccess}
                   onCancel={() => setStep("details")}
                 />

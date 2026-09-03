@@ -4,16 +4,20 @@ import { useState } from "react";
 
 type Props = {
   amount: number;
-  referenceType: string;
+  referenceType: string; // "BOOKING" | "ORDER"
   referenceName: string;
+  referenceId?: string; // bookingId / orderId string
   onSuccess: () => void;
   onCancel: () => void;
 };
+
+const API_BASE = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api`;
 
 export default function PaymentForm({
   amount,
   referenceType,
   referenceName,
+  referenceId,
   onSuccess,
   onCancel,
 }: Props) {
@@ -21,6 +25,7 @@ export default function PaymentForm({
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
 
   const upiId = "qurux@upi";
 
@@ -29,20 +34,67 @@ export default function PaymentForm({
     if (file) setScreenshot(file);
   }
 
+  async function uploadScreenshot(file: File): Promise<string> {
+    const token = localStorage.getItem("qurux_token") || "";
+    const fd = new FormData();
+    fd.append("screenshot", file);
+    const res = await fetch(`${API_BASE}/payments/upload`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || "Screenshot upload failed");
+    return data.url || "";
+  }
+
   async function handleSubmit() {
-    if (!transactionId.trim()) return;
+    if (!transactionId.trim()) {
+      setError("UPI Transaction ID daalna zaroori hai.");
+      return;
+    }
+    setError("");
     setSubmitting(true);
+    try {
+      // 1) Upload screenshot if chosen
+      let screenshotUrl = "";
+      if (screenshot) {
+        screenshotUrl = await uploadScreenshot(screenshot);
+      }
 
-    // Simulate processing
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+      // 2) Submit real Payment record (status PENDING — admin verifies)
+      const token = localStorage.getItem("qurux_token") || "";
+      const body: Record<string, unknown> = {
+        amount,
+        method: "UPI",
+        transactionId: transactionId.trim(),
+        screenshotUrl,
+        referenceType,
+        referenceName,
+      };
+      if (referenceType === "BOOKING") body.bookingId = referenceId;
+      if (referenceType === "ORDER") body.orderId = referenceId;
 
-    setSubmitting(false);
-    setSubmitted(true);
+      const res = await fetch(`${API_BASE}/payments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Payment submit failed");
 
-    // Trigger success after brief confirmation
-    setTimeout(() => {
-      onSuccess();
-    }, 1000);
+      setSubmitting(false);
+      setSubmitted(true);
+      setTimeout(() => {
+        onSuccess();
+      }, 1200);
+    } catch (err: any) {
+      setError(err?.message || "Payment submit me problem hui. Thodi der baad try karein.");
+      setSubmitting(false);
+    }
   }
 
   if (submitted) {
@@ -55,7 +107,8 @@ export default function PaymentForm({
           Payment Submitted!
         </h2>
         <p className="mt-2 text-sm text-gray-600">
-          Your UPI transaction is being verified. You will receive confirmation shortly.
+          Aapki UPI payment detail admin verification ke liye bhej di gayi hai.
+          Admin approve karte hi booking/order PAID ho jayegi. Confirmation WhatsApp par milegi.
         </p>
       </div>
     );
@@ -112,6 +165,11 @@ export default function PaymentForm({
               ₹{amount.toLocaleString("en-IN")}
             </p>
           </div>
+
+          <p className="mt-3 max-w-sm text-center text-[11px] leading-5 text-gray-400">
+            ⚠️ Ye automatic payment gateway nahi hai. UPI app me payment karke
+            transaction ID + screenshot submit karein. Admin manually verify karke approve karega.
+          </p>
         </div>
       </section>
 
@@ -123,6 +181,12 @@ export default function PaymentForm({
         <p className="mt-1 text-sm text-gray-500">
           Complete the payment above, then enter your transaction details below.
         </p>
+
+        {error && (
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+            ❌ {error}
+          </div>
+        )}
 
         <div className="mt-6 space-y-4">
           {/* Transaction ID */}
@@ -181,6 +245,7 @@ export default function PaymentForm({
             <p className="text-xs font-bold text-blue-700">ℹ️ PAYMENT REFERENCE</p>
             <p className="mt-1 text-xs text-blue-600">
               {referenceType}: {referenceName}
+              {referenceId ? ` (${referenceId})` : ""}
             </p>
             <p className="mt-1 text-xs text-gray-500">
               Amount: ₹{amount.toLocaleString("en-IN")}

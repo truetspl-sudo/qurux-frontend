@@ -6,6 +6,7 @@ import { services } from "@/components/book/services";
 import { apiPost, getLoggedInUser } from "@/lib/api";
 import { createBOBEMIPlan } from "@/lib/bob-emi";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
+import PaymentForm from "@/components/PaymentForm";
 
 export default function BookingPage() {
   return (
@@ -44,6 +45,7 @@ function BookingContent() {
   const [selectedSalon, setSelectedSalon] = useState("");
 
   const [submitted, setSubmitted] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<{ bookingId: string; amount: number; serviceName: string } | null>(null);
   const [bobBalance, setBobBalance] = useState(0);
   const [bobSavingBalance, setBobSavingBalance] = useState(0);
   const [beautyBenefitBalance, setBeautyBenefitBalance] = useState(0);
@@ -799,13 +801,14 @@ function BookingContent() {
     }
 
     // Save booking to backend API
+    let createdBookingId = "";
     try {
       const priceText = selectedService?.price || "0";
       const amount = Number(String(priceText).replace(/[^0-9.]/g, ""));
       const locationType = formData.location === "Home Service" ? "HOME" : "SALON";
       const paymentMethod = formData.payment === "Pay from BOB" ? "BOB" : formData.payment === "No Cost EMI" ? "EMI" : "FULL";
 
-      await apiPost("/bookings", {
+      const res = await apiPost("/bookings", {
         serviceName: selectedService?.name || "",
         serviceCategory: selectedService?.category || "",
         serviceLocation: locationType,
@@ -816,11 +819,55 @@ function BookingContent() {
         amount: amount,
         paymentMethod: paymentMethod,
       });
+      createdBookingId = (res.data as any)?.booking?.bookingId || (res.data as any)?.booking?._id || "";
     } catch (err) {
       console.error("Booking API error:", err);
     }
 
+    // Manual payment flow: FULL/UPI bookings need a payment proof step
+    if (formData.payment === "Full Payment" && createdBookingId) {
+      const priceText = selectedService?.price || "0";
+      const amount = Number(String(priceText).replace(/[^0-9.]/g, ""));
+      setPendingPayment({ bookingId: createdBookingId, amount, serviceName: selectedService?.name || "" });
+      return;
+    }
+
     setSubmitted(true);
+  }
+
+  if (pendingPayment) {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-white via-pink-50 to-white px-6 py-14">
+        <div className="mx-auto max-w-3xl">
+          <div className="mb-6 rounded-[30px] bg-white p-7 text-center shadow-xl">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-2xl text-green-600">✓</div>
+            <h1 className="mt-4 text-2xl font-black text-gray-900">Booking Created — Payment Pending</h1>
+            <p className="mt-2 text-sm text-gray-600">
+              Aapki booking request bana di gayi hai.
+              UPI se payment karke transaction details submit karein — admin verify karke approve karega.
+            </p>
+            <div className="mt-4 inline-block rounded-2xl bg-gray-50 px-5 py-3">
+              <p className="text-xs font-bold uppercase text-gray-500">Booking ID</p>
+              <p className="text-lg font-black text-pink-600">{pendingPayment.bookingId}</p>
+            </div>
+          </div>
+          <PaymentForm
+            amount={pendingPayment.amount}
+            referenceType="BOOKING"
+            referenceName={pendingPayment.serviceName || "Qurux Service"}
+            referenceId={pendingPayment.bookingId}
+            onSuccess={() => {
+              setPendingPayment(null);
+              setSubmitted(true);
+            }}
+            onCancel={() => {
+              setPendingPayment(null);
+              setSubmitted(true);
+            }}
+          />
+        </div>
+      </main>
+    );
   }
 
   if (submitted) {
