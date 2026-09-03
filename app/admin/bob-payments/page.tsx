@@ -1,449 +1,283 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import AdminLayout from "../../../components/admin/AdminLayout";
-import { getBobPaymentProof } from "../../../lib/bob-indexeddb";
+import { useState, useEffect, useCallback } from "react";
+import AdminLayout from "@/components/admin/AdminLayout";
+import { apiGet, apiPatch } from "@/lib/api";
 
-type BobPayment = {
-  id: string;
-  customerId: string;
+type DepositRow = {
+  requestId: string;
+  walletId: string;
+  customerId: any;
   customerName: string;
   mobile: string;
-  accountNumber?: string;
+  accountNumber: string;
   amount: number;
-  transactionId: string;
-  paymentMethod: string;
-  paymentScreenshotId?: string;
-  paymentScreenshotName?: string;
-  purchaseName?: string;
-  paymentDate: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  reference: string;
   submittedAt: string;
-  _type?: "DEPOSIT" | "EMI";
-  _key?: string;
+  status: string;
 };
 
-function readLocalArray(key: string): any[] {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
+const statusColors: Record<string, string> = {
+  PENDING: "bg-orange-100 text-orange-700",
+  ACTIVE: "bg-green-100 text-green-700",
+  REJECTED: "bg-red-100 text-red-600",
+  USED: "bg-slate-100 text-slate-600",
+};
 
 export default function AdminBobPaymentsPage() {
-  const [payments, setPayments] = useState<BobPayment[]>([]);
-  const [filter, setFilter] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("PENDING");
-  const [typeFilter, setTypeFilter] = useState<"ALL" | "DEPOSIT" | "EMI">("ALL");
-  const [selected, setSelected] = useState<BobPayment | null>(null);
-  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
-  const [loadingScreenshot, setLoadingScreenshot] = useState(false);
+  const [rows, setRows] = useState<DepositRow[]>([]);
+  const [loadError, setLoadError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [actionBusy, setActionBusy] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
+  const [filter, setFilter] = useState("PENDING");
+  const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    loadPayments();
-    window.addEventListener("focus", loadPayments);
-    window.addEventListener("storage", loadPayments);
-    return () => {
-      window.removeEventListener("focus", loadPayments);
-      window.removeEventListener("storage", loadPayments);
-    };
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const res = await apiGet<any[]>("/wallet/all");
+      if (!res.ok) {
+        setLoadError(
+          res.status === 401 || res.status === 403
+            ? "Login as Admin required. Pehle /account pe ADMIN User ID se login karein."
+            : res.message || "Failed to load BOB payments"
+        );
+        return;
+      }
+      const flattened: DepositRow[] = [];
+      (res.data || []).forEach((w: any) => {
+        (w.deposits || []).forEach((dep: any) => {
+          flattened.push({
+            requestId: dep._id,
+            walletId: w._id,
+            customerId: w.customerId?._id || w.customerId,
+            customerName: w.customerId?.fullName || "Customer",
+            mobile: w.customerId?.mobile || "",
+            accountNumber: w.accountNumber,
+            amount: dep.originalAmount || 0,
+            reference: dep.reference || "",
+            submittedAt: dep.submittedAt || dep.depositDate || "",
+            status: dep.status || "PENDING",
+          });
+        });
+      });
+      flattened.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+      setRows(flattened);
+    } catch {
+      // ignore
+    }
+    setLoading(false);
   }, []);
 
-  function loadPayments() {
-    const deposits = readLocalArray("bobPayments").map((p: any) => ({
-      ...p,
-      _type: "DEPOSIT" as const,
-      _key: "bobPayments",
-    }));
-    const emis = readLocalArray("bobEMIPayments").map((p: any) => ({
-      ...p,
-      _type: "EMI" as const,
-      _key: "bobEMIPayments",
-    }));
-    const all = [...deposits, ...emis].sort(
-      (a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime()
-    );
-    setPayments(all);
-  }
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const filtered = payments.filter((p) => {
-    if (filter !== "ALL" && p.status !== filter) return false;
-    if (typeFilter === "DEPOSIT" && p._type !== "DEPOSIT") return false;
-    if (typeFilter === "EMI" && p._type !== "EMI") return false;
-    return true;
-  });
-
-  const stats = {
-    total: payments.length,
-    pending: payments.filter((p) => p.status === "PENDING").length,
-    approved: payments.filter((p) => p.status === "APPROVED").length,
-    rejected: payments.filter((p) => p.status === "REJECTED").length,
-    pendingAmount: payments.filter((p) => p.status === "PENDING").reduce((s, p) => s + (Number(p.amount) || 0), 0),
-  };
-
-  function handleApprove(payment: BobPayment) {
-    updatePaymentStatus(payment, "APPROVED");
-    setSelected(null);
-    setScreenshotUrl(null);
-  }
-
-  function handleReject(payment: BobPayment) {
-    updatePaymentStatus(payment, "REJECTED");
-    setSelected(null);
-    setScreenshotUrl(null);
-  }
-
-  function updatePaymentStatus(payment: BobPayment, newStatus: "APPROVED" | "REJECTED") {
-    const key = (payment as any)._key || "bobPayments";
-    const list = readLocalArray(key);
-    const updated = list.map((item: any) =>
-      item.id === payment.id ? { ...item, status: newStatus } : item
-    );
-    localStorage.setItem(key, JSON.stringify(updated));
-
-    // If approving a deposit, also mark it in the main bobPayments
-    if (newStatus === "APPROVED" && key === "bobPayments") {
-      // Already handled above
-    }
-
-    loadPayments();
-  }
-
-  async function viewScreenshot(payment: BobPayment) {
-    if (!payment.paymentScreenshotId) {
-      setScreenshotUrl(null);
-      return;
-    }
-    setLoadingScreenshot(true);
-    setScreenshotUrl(null);
+  async function act(row: DepositRow, action: "approve" | "reject") {
+    setActionBusy(`${action}:${row.requestId}`);
+    setToast(null);
     try {
-      const blob = await getBobPaymentProof(payment.paymentScreenshotId);
-      if (blob) {
-        const url = URL.createObjectURL(blob);
-        setScreenshotUrl(url);
+      const res = await apiPatch(
+        `/wallet/${row.walletId}/deposits/${row.requestId}/${action}`,
+        {}
+      );
+      if (res.ok) {
+        setToast({
+          ok: true,
+          text:
+            action === "approve"
+              ? `✅ ₹${row.amount.toLocaleString("en-IN")} deposit APPROVED — BOB balance credit ho gaya. Customer ko WhatsApp par confirm karein.`
+              : `❌ Deposit request REJECTED. Customer ko WhatsApp par inform karein.`,
+        });
+        load();
       } else {
-        setScreenshotUrl(null);
+        setToast({ ok: false, text: res.message || "Action failed" });
       }
-    } catch {
-      setScreenshotUrl(null);
+    } catch (err: any) {
+      setToast({ ok: false, text: err?.message || "Error occurred" });
     }
-    setLoadingScreenshot(false);
+    setActionBusy(null);
   }
 
-  function closeModal() {
-    setSelected(null);
-    if (screenshotUrl) {
-      URL.revokeObjectURL(screenshotUrl);
-      setScreenshotUrl(null);
-    }
+  function copyMsg(row: DepositRow) {
+    const lines = [
+      "🌟 *QURUX MAKEOVER & ACADEMY* 🌟",
+      "",
+      `Dear *${row.customerName}*,`,
+      "",
+      actionCopy(row),
+      "",
+      `💰 Amount: ₹${row.amount.toLocaleString("en-IN")}`,
+      row.reference ? `🧾 Ref: ${row.reference}` : "",
+      `💳 BOB Account: ${row.accountNumber}`,
+      "",
+      "Thank you for choosing Qurux! ✨",
+    ].filter(Boolean);
+    navigator.clipboard?.writeText(lines.join("\n"));
+    setToast({ ok: true, text: "WhatsApp message copy ho gaya — customer ko bhejein." });
   }
+
+  function actionCopy(row: DepositRow) {
+    return row.status === "ACTIVE"
+      ? "Aapki BOB deposit APPROVE ho gayi hai aur balance credit ho gaya hai ✅"
+      : row.status === "REJECTED"
+        ? "Aapki BOB deposit request REJECT ho gayi hai. Kripya WhatsApp par sampark karein."
+        : "Aapka BOB deposit request aa gaya hai — verification ke liye kuch der intazaar karein.";
+  }
+
+  const pending = rows.filter((r) => r.status === "PENDING");
+  const pendingTotal = pending.reduce((s, r) => s + r.amount, 0);
+
+  const filtered = rows.filter((r) => {
+    const matchStatus = filter === "ALL" || r.status === filter;
+    const q = search.toLowerCase();
+    const matchSearch =
+      !q ||
+      r.customerName.toLowerCase().includes(q) ||
+      r.mobile.includes(q) ||
+      r.accountNumber.toLowerCase().includes(q) ||
+      (r.reference || "").toLowerCase().includes(q);
+    return matchStatus && matchSearch;
+  });
 
   return (
     <AdminLayout
-      title="BOB Payment Verification"
-      subtitle="Approve or reject customer BOB payments after UPI verification"
+      title="BOB Payments"
+      subtitle="Manual deposit approval — customer ka UPI payment verify karke approve/reject karein."
     >
-      {/* Stats */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl bg-white p-5 shadow-sm">
-          <p className="text-xs font-bold text-gray-500">TOTAL PAYMENTS</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900">{stats.total}</p>
+          <p className="text-sm font-semibold text-gray-500">PENDING REQUESTS</p>
+          <p className="mt-2 text-3xl font-black text-gray-900">{pending.length}</p>
         </div>
-        <div className="rounded-2xl bg-yellow-50 p-5 shadow-sm">
-          <p className="text-xs font-bold text-yellow-700">PENDING</p>
-          <p className="mt-1 text-2xl font-bold text-yellow-600">{stats.pending}</p>
+        <div className="rounded-2xl bg-orange-50 p-5 shadow-sm">
+          <p className="text-sm font-semibold text-orange-700">PENDING AMOUNT</p>
+          <p className="mt-2 text-3xl font-black text-orange-700">₹{pendingTotal.toLocaleString("en-IN")}</p>
         </div>
         <div className="rounded-2xl bg-green-50 p-5 shadow-sm">
-          <p className="text-xs font-bold text-green-700">APPROVED</p>
-          <p className="mt-1 text-2xl font-bold text-green-600">{stats.approved}</p>
-        </div>
-        <div className="rounded-2xl bg-red-50 p-5 shadow-sm">
-          <p className="text-xs font-bold text-red-700">REJECTED</p>
-          <p className="mt-1 text-2xl font-bold text-red-600">{stats.rejected}</p>
-        </div>
-        <div className="rounded-2xl bg-pink-50 p-5 shadow-sm">
-          <p className="text-xs font-bold text-pink-700">PENDING AMOUNT</p>
-          <p className="mt-1 text-2xl font-bold text-pink-600">
-            ₹{stats.pendingAmount.toLocaleString("en-IN")}
-          </p>
+          <p className="text-sm font-semibold text-green-700">TOTAL DEPOSIT REQUESTS</p>
+          <p className="mt-2 text-3xl font-black text-green-700">{rows.length}</p>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 flex flex-wrap gap-3">
-        <div className="flex gap-2">
-          {(["PENDING", "ALL", "APPROVED", "REJECTED"] as const).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFilter(f)}
-              className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-                filter === f
-                  ? f === "PENDING"
-                    ? "bg-yellow-500 text-white"
-                    : f === "APPROVED"
-                      ? "bg-green-600 text-white"
-                      : f === "REJECTED"
-                        ? "bg-red-500 text-white"
-                        : "bg-gray-800 text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          {(["ALL", "DEPOSIT", "EMI"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTypeFilter(t)}
-              className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-                typeFilter === t
-                  ? "bg-slate-800 text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              {t === "DEPOSIT" ? "💰 Deposits" : t === "EMI" ? "📊 EMI" : "All Types"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="px-4 py-3 font-bold text-gray-700">DATE</th>
-              <th className="px-4 py-3 font-bold text-gray-700">CUSTOMER</th>
-              <th className="px-4 py-3 font-bold text-gray-700">TYPE</th>
-              <th className="px-4 py-3 font-bold text-gray-700">AMOUNT</th>
-              <th className="px-4 py-3 font-bold text-gray-700">UTR / TXN</th>
-              <th className="px-4 py-3 font-bold text-gray-700">SCREENSHOT</th>
-              <th className="px-4 py-3 font-bold text-gray-700">STATUS</th>
-              <th className="px-4 py-3 font-bold text-gray-700">ACTION</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
-                  No payments found.
-                </td>
-              </tr>
-            ) : (
-              filtered.map((payment) => (
-                <tr
-                  key={payment.id}
-                  className="border-t border-gray-100 hover:bg-slate-50"
-                >
-                  <td className="px-4 py-3">
-                    {new Date(payment.submittedAt).toLocaleDateString("en-IN")}
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="font-semibold text-gray-900">{payment.customerName}</p>
-                    <p className="text-xs text-gray-500">{payment.mobile}</p>
-                    {payment.accountNumber && (
-                      <p className="text-xs text-gray-400">Acct: {payment.accountNumber}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${
-                      (payment as any)._type === "EMI"
-                        ? "bg-purple-100 text-purple-700"
-                        : "bg-blue-100 text-blue-700"
-                    }`}>
-                      {(payment as any)._type === "EMI"
-                        ? `EMI - ${payment.purchaseName || "Purchase"}`
-                        : "Deposit"
-                      }
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 font-bold text-gray-900">
-                    ₹{Number(payment.amount || 0).toLocaleString("en-IN")}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="rounded bg-slate-100 px-2 py-1 font-mono text-xs text-gray-700">
-                      {payment.transactionId || "N/A"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {payment.paymentScreenshotId ? (
-                      <span className="text-xs font-semibold text-green-600">
-                        ✓ Available
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">None</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${
-                      payment.status === "APPROVED"
-                        ? "bg-green-100 text-green-700"
-                        : payment.status === "REJECTED"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-yellow-100 text-yellow-700"
-                    }`}>
-                      {payment.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelected(payment);
-                        viewScreenshot(payment);
-                      }}
-                      className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-900"
-                    >
-                      REVIEW
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Review Modal */}
-      {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-8 shadow-2xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-pink-600">
-                  PAYMENT VERIFICATION
-                </p>
-                <h2 className="mt-1 text-2xl font-bold text-gray-900">
-                  ₹{Number(selected.amount || 0).toLocaleString("en-IN")}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={closeModal}
-                className="text-2xl font-bold text-gray-400 hover:text-gray-700"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Customer Info */}
-            <div className="mt-6 rounded-2xl bg-slate-50 p-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-bold text-gray-500">CUSTOMER NAME</p>
-                  <p className="text-sm font-semibold text-gray-900">{selected.customerName}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-500">MOBILE</p>
-                  <p className="text-sm font-semibold text-gray-900">{selected.mobile}</p>
-                </div>
-                {selected.accountNumber && (
-                  <div>
-                    <p className="text-xs font-bold text-gray-500">BOB ACCOUNT</p>
-                    <p className="text-sm font-semibold text-gray-900">{selected.accountNumber}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-xs font-bold text-gray-500">PAYMENT TYPE</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {(selected as any)._type === "EMI" ? `EMI - ${selected.purchaseName || "Purchase"}` : "Beauty Saving Deposit"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Info */}
-            <div className="mt-4 rounded-2xl bg-slate-50 p-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-bold text-gray-500">AMOUNT</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    ₹{Number(selected.amount || 0).toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-500">METHOD</p>
-                  <p className="text-sm font-semibold text-gray-900">{selected.paymentMethod || "UPI"}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-500">TRANSACTION ID / UTR</p>
-                  <p className="rounded bg-white px-3 py-2 font-mono text-sm font-bold text-gray-900">
-                    {selected.transactionId || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-500">SUBMITTED</p>
-                  <p className="text-sm text-gray-900">
-                    {new Date(selected.submittedAt).toLocaleString("en-IN")}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Screenshot */}
-            <div className="mt-4 rounded-2xl bg-slate-50 p-5">
-              <p className="text-xs font-bold text-gray-500">PAYMENT SCREENSHOT</p>
-              {loadingScreenshot ? (
-                <div className="mt-3 flex items-center gap-3">
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-pink-200 border-t-pink-600" />
-                  <span className="text-sm text-gray-500">Loading screenshot...</span>
-                </div>
-              ) : screenshotUrl ? (
-                <div className="mt-3">
-                  <img
-                    src={screenshotUrl}
-                    alt="Payment Screenshot"
-                    className="max-h-80 rounded-xl border border-gray-200 object-contain"
-                  />
-                  <p className="mt-2 text-xs text-gray-400">
-                    {selected.paymentScreenshotName || "payment-proof.jpg"}
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-3 rounded-xl border-2 border-dashed border-gray-200 p-8 text-center">
-                  <p className="text-sm text-gray-400">No screenshot available</p>
-                </div>
-              )}
-            </div>
-
-            {/* Verify Note */}
-            <div className="mt-4 rounded-2xl bg-yellow-50 p-5">
-              <p className="font-bold text-yellow-800">⚠ Verification Checklist</p>
-              <ul className="mt-2 space-y-1 text-sm text-yellow-700">
-                <li>☐ Verify UTR/Transaction ID in your bank/UPI app</li>
-                <li>☐ Confirm amount matches the declared amount</li>
-                <li>☐ Check screenshot is genuine (not edited)</li>
-                <li>☐ Verify payment was made to correct UPI ID</li>
-              </ul>
-            </div>
-
-            {/* Actions */}
-            <div className="mt-6 flex gap-4">
-              <button
-                type="button"
-                onClick={() => handleApprove(selected)}
-                className="flex-1 rounded-2xl bg-green-600 px-6 py-3.5 font-bold text-white hover:bg-green-700"
-              >
-                ✓ APPROVE PAYMENT
-              </button>
-              <button
-                type="button"
-                onClick={() => handleReject(selected)}
-                className="flex-1 rounded-2xl bg-red-500 px-6 py-3.5 font-bold text-white hover:bg-red-600"
-              >
-                ✗ REJECT PAYMENT
-              </button>
-            </div>
-          </div>
+      {toast && (
+        <div className={`mt-6 rounded-2xl border p-4 text-sm font-semibold ${toast.ok ? "border-green-200 bg-green-50 text-green-700" : "border-red-200 bg-red-50 text-red-700"}`}>
+          {toast.text}
         </div>
       )}
+
+      {loadError && (
+        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+          ❌ {loadError}
+        </div>
+      )}
+
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search customer, mobile, account, ref..."
+          className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+        />
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm outline-none focus:border-pink-500"
+        >
+          <option value="PENDING">Pending (Review Queue)</option>
+          <option value="ALL">All</option>
+          <option value="ACTIVE">Approved</option>
+          <option value="REJECTED">Rejected</option>
+          <option value="USED">Used</option>
+        </select>
+        <button
+          onClick={load}
+          className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+        >
+          ↻ Refresh
+        </button>
+      </div>
+
+      <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-gray-100 bg-gray-50">
+              <tr>
+                <th className="px-5 py-3 font-bold text-gray-600">Customer</th>
+                <th className="px-5 py-3 font-bold text-gray-600">BOB Account</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Amount</th>
+                <th className="px-5 py-3 font-bold text-gray-600">UPI Ref</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Requested</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Status</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-5 py-10 text-center text-gray-400">
+                    {loading ? "Loading..." : "No deposit requests found."}
+                  </td>
+                </tr>
+              )}
+              {filtered.map((row) => (
+                <tr key={row.requestId} className="border-b border-gray-50 hover:bg-gray-50/60">
+                  <td className="px-5 py-4">
+                    <p className="font-semibold text-gray-900">{row.customerName}</p>
+                    <p className="text-xs text-gray-500">{row.mobile}</p>
+                  </td>
+                  <td className="px-5 py-4 font-mono text-xs text-gray-600">{row.accountNumber}</td>
+                  <td className="px-5 py-4 font-bold text-gray-900">₹{row.amount.toLocaleString("en-IN")}</td>
+                  <td className="px-5 py-4 font-mono text-xs text-gray-600">{row.reference || "—"}</td>
+                  <td className="px-5 py-4 text-xs text-gray-500">
+                    {row.submittedAt ? new Date(row.submittedAt).toLocaleString("en-IN") : "—"}
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusColors[row.status] || "bg-gray-100 text-gray-600"}`}>
+                      {row.status}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex flex-wrap gap-2">
+                      {row.status === "PENDING" && (
+                        <>
+                          <button
+                            onClick={() => act(row, "approve")}
+                            disabled={actionBusy === `approve:${row.requestId}`}
+                            className="rounded-full bg-green-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-green-700 disabled:opacity-50"
+                          >
+                            {actionBusy === `approve:${row.requestId}` ? "..." : "✓ APPROVE"}
+                          </button>
+                          <button
+                            onClick={() => act(row, "reject")}
+                            disabled={actionBusy === `reject:${row.requestId}`}
+                            className="rounded-full bg-red-100 px-4 py-1.5 text-xs font-bold text-red-600 hover:bg-red-200 disabled:opacity-50"
+                          >
+                            ✕ REJECT
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => copyMsg(row)}
+                        className="rounded-full border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-bold text-green-700 hover:bg-green-100"
+                      >
+                        📋 WhatsApp Msg
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p className="mt-4 text-xs text-gray-500">
+        💡 Rule: Customer UPI se paise bhejta hai → aap verify karein (bank app / WhatsApp) → APPROVE dabayein. Approve hote hi deposit ACTIVE hota hai aur 30-din beauty benefit clock start hota hai. Manual WhatsApp message customer ko bhejna na bhoolein.
+      </p>
     </AdminLayout>
   );
 }

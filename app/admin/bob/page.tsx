@@ -1,852 +1,360 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useState, useEffect, useCallback } from "react";
+import AdminLayout from "@/components/admin/AdminLayout";
+import { apiGet, apiPost } from "@/lib/api";
 
-type BOBApplication = {
-  id: string;
-  fullName: string;
-  mobile: string;
-  email: string;
-  dob: string;
-  address: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
-  submittedAt: string;
-  accountNumber?: string;
+type WalletRow = {
+  _id: string;
+  accountNumber: string;
+  customerId: any;
+  deposits: any[];
+  promotionalBalance: number;
+  promotionalHistory: any[];
+  usageHistory: any[];
+  createdAt?: string;
 };
 
-export default function BOBAdminPage() {
-  const [applications, setApplications] =
-    useState<BOBApplication[]>([]);
+function num(v: any) {
+  return Number(v || 0);
+}
 
-  const [selected, setSelected] =
-    useState<BOBApplication | null>(null);
+export default function AdminBobWalletPage() {
+  const [wallets, setWallets] = useState<WalletRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<WalletRow | null>(null);
+  const [creditTarget, setCreditTarget] = useState<WalletRow | null>(null);
+  const [creditAmount, setCreditAmount] = useState("");
+  const [creditDesc, setCreditDesc] = useState("");
+  const [creditMsg, setCreditMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [creditBusy, setCreditBusy] = useState(false);
 
-  const [accountNumber, setAccountNumber] =
-    useState("");
-
-  const [loading, setLoading] =
-    useState(false);
-
-  useEffect(() => {
-    loadApplications();
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const res = await apiGet<any[]>("/wallet/all");
+      if (!res.ok) {
+        setLoadError(
+          res.status === 401 || res.status === 403
+            ? "Login as Admin required. Pehle /account pe ADMIN User ID se login karein."
+            : res.message || "Failed to load wallets"
+        );
+        return;
+      }
+      setWallets(res.data || []);
+    } catch {}
+    setLoading(false);
   }, []);
 
-  /* =====================================================
-     LOAD APPLICATIONS
-  ===================================================== */
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  async function loadApplications() {
-    try {
-      const apiBaseUrl =
-        process.env.NEXT_PUBLIC_API_URL ||
-        "http://localhost:5000";
-
-      const response = await fetch(
-        `${apiBaseUrl}/api/bob/applications`,
-        {
-          method: "GET",
-          cache: "no-store",
-        }
-      );
-
-      const text =
-        await response.text();
-
-      let data: any = {};
-
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error(
-          "Backend ne valid response nahi diya."
-        );
-      }
-
-      if (
-        !response.ok ||
-        !data.success
-      ) {
-        throw new Error(
-          data.message ||
-            "Unable to load BOB applications."
-        );
-      }
-
-      const mappedApplications:
-        BOBApplication[] =
-        (data.applications || []).map(
-          (item: any) => ({
-            id: item.id,
-
-            fullName:
-              item.full_name || "",
-
-            mobile:
-              item.mobile || "",
-
-            email:
-              item.email || "",
-
-            dob:
-              item.dob || "",
-
-            address:
-              item.address || "",
-
-            status:
-              item.status,
-
-            submittedAt:
-              item.submitted_at,
-
-            accountNumber:
-              item.account_number || "",
-          })
-        );
-
-      setApplications(
-        mappedApplications
-      );
-    } catch (error) {
-      console.error(
-        "BOB applications load error:",
-        error
-      );
-
-      alert(
-        error instanceof Error
-          ? error.message
-          : "BOB applications load nahi ho paayi."
-      );
-
-      setApplications([]);
-    }
+  function activePrincipal(w: WalletRow) {
+    return (w.deposits || [])
+      .filter((d) => d.status === "ACTIVE")
+      .reduce((s, d) => s + Math.max(0, num(d.originalAmount) - num(d.usedAmount)), 0);
   }
 
-  /* =====================================================
-     OPEN APPLICATION
-  ===================================================== */
+  function pendingCount(w: WalletRow) {
+    return (w.deposits || []).filter((d) => d.status === "PENDING").length;
+  }
 
-  function openApplication(
-    application: BOBApplication
-  ) {
-    setSelected(application);
-
-    setAccountNumber(
-      application.accountNumber || ""
+  const filtered = wallets.filter((w) => {
+    const q = search.toLowerCase();
+    if (!q) return true;
+    const name = w.customerId?.fullName || "";
+    const mobile = w.customerId?.mobile || "";
+    return (
+      name.toLowerCase().includes(q) ||
+      mobile.includes(q) ||
+      w.accountNumber.toLowerCase().includes(q)
     );
-  }
+  });
 
-  /* =====================================================
-     APPROVE APPLICATION
-     
-     ADMIN ONLY ENTERS ACCOUNT NUMBER.
-  ===================================================== */
+  const totalDeposited = wallets.reduce(
+    (s, w) =>
+      s +
+      (w.deposits || [])
+        .filter((d) => d.status === "ACTIVE" || d.status === "USED")
+        .reduce((x, d) => x + num(d.originalAmount), 0),
+    0
+  );
+  const totalPromo = wallets.reduce((s, w) => s + num(w.promotionalBalance), 0);
+  const totalPendingAmount = wallets.reduce(
+    (s, w) =>
+      s +
+      (w.deposits || [])
+        .filter((d) => d.status === "PENDING")
+        .reduce((x, d) => x + num(d.originalAmount), 0),
+    0
+  );
 
-  async function approveApplication() {
-    if (!selected) {
+  async function submitCredit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!creditTarget) return;
+    const amount = Number(creditAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setCreditMsg({ ok: false, text: "Valid amount daalein." });
       return;
     }
-
-    if (
-      !accountNumber.trim()
-    ) {
-      alert(
-        "BOB Account Number enter karein."
-      );
-
+    const customerId = creditTarget.customerId?._id || creditTarget.customerId;
+    if (!customerId) {
+      setCreditMsg({ ok: false, text: "Customer info missing." });
       return;
     }
-
-    setLoading(true);
-
+    setCreditBusy(true);
+    setCreditMsg(null);
     try {
-      const apiBaseUrl =
-        process.env.NEXT_PUBLIC_API_URL ||
-        "http://localhost:5000";
-
-      const response = await fetch(
-        `${apiBaseUrl}/api/bob/applications/${encodeURIComponent(
-          selected.id
-        )}`,
-        {
-          method: "PATCH",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            action: "APPROVE",
-
-            accountNumber:
-              accountNumber.trim(),
-          }),
-        }
-      );
-
-      const text =
-        await response.text();
-
-      let data: any = {};
-
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error(
-          "Backend ne valid response nahi diya."
-        );
+      const res = await apiPost("/wallet/promotional", {
+        customerId,
+        amount,
+        description: creditDesc.trim() || "Promotional Credit",
+      });
+      if (res.ok) {
+        setCreditMsg({ ok: true, text: `✅ ₹${amount.toLocaleString("en-IN")} promotional balance credited.` });
+        setCreditAmount("");
+        setCreditDesc("");
+        setCreditTarget(null);
+        load();
+      } else {
+        setCreditMsg({ ok: false, text: res.message || "Credit failed" });
       }
-
-      if (
-        !response.ok ||
-        !data.success
-      ) {
-        throw new Error(
-          data.message ||
-            "BOB application approve nahi ho paayi."
-        );
-      }
-
-      const approvedApplication:
-        BOBApplication = {
-        ...selected,
-
-        status: "APPROVED",
-
-        accountNumber:
-          data.application
-            ?.account_number ||
-          accountNumber.trim(),
-      };
-
-      setApplications(
-        (current) =>
-          current.map(
-            (application) =>
-              application.id ===
-              selected.id
-                ? approvedApplication
-                : application
-          )
-      );
-
-      setSelected(
-        approvedApplication
-      );
-
-      alert(
-        data.message ||
-          "BOB account successfully approved."
-      );
-    } catch (error) {
-      console.error(
-        "BOB approval error:",
-        error
-      );
-
-      alert(
-        error instanceof Error
-          ? error.message
-          : "BOB application approve nahi ho paayi."
-      );
-    } finally {
-      setLoading(false);
+    } catch (err: any) {
+      setCreditMsg({ ok: false, text: err?.message || "Error occurred" });
     }
+    setCreditBusy(false);
   }
-
-  /* =====================================================
-     REJECT APPLICATION
-  ===================================================== */
-
-  async function rejectApplication() {
-    if (!selected) {
-      return;
-    }
-
-    const confirmReject =
-      window.confirm(
-        "Kya aap is application ko reject karna chahte hain?"
-      );
-
-    if (!confirmReject) {
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const apiBaseUrl =
-        process.env.NEXT_PUBLIC_API_URL ||
-        "http://localhost:5000";
-
-      const response = await fetch(
-        `${apiBaseUrl}/api/bob/applications/${encodeURIComponent(
-          selected.id
-        )}`,
-        {
-          method: "PATCH",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            action: "REJECT",
-          }),
-        }
-      );
-
-      const text =
-        await response.text();
-
-      let data: any = {};
-
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error(
-          "Backend ne valid response nahi diya."
-        );
-      }
-
-      if (
-        !response.ok ||
-        !data.success
-      ) {
-        throw new Error(
-          data.message ||
-            "Unable to reject BOB application."
-        );
-      }
-
-      setApplications(
-        (current) =>
-          current.map(
-            (application) =>
-              application.id ===
-              selected.id
-                ? {
-                    ...application,
-                    status:
-                      "REJECTED",
-                  }
-                : application
-          )
-      );
-
-      setSelected(null);
-
-      setAccountNumber("");
-
-      alert(
-        data.message ||
-          "BOB application rejected."
-      );
-    } catch (error) {
-      console.error(
-        "BOB rejection error:",
-        error
-      );
-
-      alert(
-        error instanceof Error
-          ? error.message
-          : "BOB application reject nahi ho paayi."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  /* =====================================================
-     COUNTS
-  ===================================================== */
-
-  const pendingCount =
-    applications.filter(
-      (item) =>
-        item.status === "PENDING"
-    ).length;
-
-  const approvedCount =
-    applications.filter(
-      (item) =>
-        item.status === "APPROVED"
-    ).length;
-
-  const rejectedCount =
-    applications.filter(
-      (item) =>
-        item.status === "REJECTED"
-    ).length;
-
-  /* =====================================================
-     PAGE
-  ===================================================== */
 
   return (
-    <main className="min-h-screen bg-gray-100">
-
-      {/* HEADER */}
-
-      <header className="bg-gray-950 px-6 py-5 text-white shadow-lg">
-
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-
-          <div>
-
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-pink-400">
-              QURUX ADMIN PANEL
-            </p>
-
-            <h1 className="mt-1 text-2xl font-bold">
-              BANK OF BEAUTY
-            </h1>
-
-          </div>
-
-          <Link
-            href="/"
-            className="rounded-full border border-white/30 px-5 py-2 text-sm font-semibold transition hover:bg-white hover:text-gray-950"
-          >
-            Website
-          </Link>
-
+    <AdminLayout
+      title="BOB Wallet"
+      subtitle="Manage customer BOB accounts — deposits, balances aur promotional credit."
+    >
+      <div className="grid gap-4 sm:grid-cols-4">
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <p className="text-sm font-semibold text-gray-500">TOTAL WALLETS</p>
+          <p className="mt-2 text-3xl font-black text-gray-900">{wallets.length}</p>
         </div>
-
-      </header>
-
-      {/* MAIN */}
-
-      <section className="mx-auto max-w-7xl px-6 py-10">
-
-        <div className="mb-8">
-
-          <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-600">
-            BOB MANAGEMENT
-          </p>
-
-          <h2 className="mt-2 text-4xl font-bold text-gray-900">
-            Account Applications
-          </h2>
-
-          <p className="mt-2 text-gray-500">
-            Customer applications yahan se manage karein.
-          </p>
-
+        <div className="rounded-2xl bg-pink-50 p-5 shadow-sm">
+          <p className="text-sm font-semibold text-pink-700">TOTAL DEPOSITED</p>
+          <p className="mt-2 text-3xl font-black text-pink-700">₹{totalDeposited.toLocaleString("en-IN")}</p>
         </div>
-
-        {/* STATS */}
-
-        <div className="mb-8 grid gap-5 md:grid-cols-3">
-
-          <div className="rounded-3xl bg-white p-6 shadow-sm">
-
-            <p className="text-sm font-semibold text-gray-500">
-              PENDING
-            </p>
-
-            <p className="mt-2 text-4xl font-bold text-orange-500">
-              {pendingCount}
-            </p>
-
-          </div>
-
-          <div className="rounded-3xl bg-white p-6 shadow-sm">
-
-            <p className="text-sm font-semibold text-gray-500">
-              APPROVED
-            </p>
-
-            <p className="mt-2 text-4xl font-bold text-green-600">
-              {approvedCount}
-            </p>
-
-          </div>
-
-          <div className="rounded-3xl bg-white p-6 shadow-sm">
-
-            <p className="text-sm font-semibold text-gray-500">
-              REJECTED
-            </p>
-
-            <p className="mt-2 text-4xl font-bold text-red-500">
-              {rejectedCount}
-            </p>
-
-          </div>
-
+        <div className="rounded-2xl bg-orange-50 p-5 shadow-sm">
+          <p className="text-sm font-semibold text-orange-700">PENDING APPROVAL</p>
+          <p className="mt-2 text-3xl font-black text-orange-700">₹{totalPendingAmount.toLocaleString("en-IN")}</p>
         </div>
-
-        {/* APPLICATION LIST */}
-
-        <div className="rounded-3xl bg-white p-6 shadow-sm">
-
-          <div className="flex items-center justify-between gap-4">
-
-            <div>
-
-              <h3 className="text-2xl font-bold text-gray-900">
-                BOB Applications
-              </h3>
-
-              <p className="mt-1 text-sm text-gray-500">
-                Latest customer applications.
-              </p>
-
-            </div>
-
-            <button
-              type="button"
-              onClick={
-                loadApplications
-              }
-              className="rounded-full border border-pink-600 px-5 py-2 text-sm font-bold text-pink-600 hover:bg-pink-600 hover:text-white"
-            >
-              REFRESH
-            </button>
-
-          </div>
-
-          <div className="mt-6 space-y-4">
-
-            {applications.length ===
-            0 ? (
-
-              <div className="rounded-2xl bg-gray-50 p-8 text-center text-gray-500">
-                No BOB applications found.
-              </div>
-
-            ) : (
-
-              applications.map(
-                (application) => (
-
-                  <button
-                    key={
-                      application.id
-                    }
-                    type="button"
-                    onClick={() =>
-                      openApplication(
-                        application
-                      )
-                    }
-                    className="w-full rounded-2xl border border-gray-100 bg-gray-50 p-5 text-left transition hover:border-pink-300 hover:bg-pink-50"
-                  >
-
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-
-                      <div>
-
-                        <p className="text-lg font-bold text-gray-900">
-                          {
-                            application.fullName
-                          }
-                        </p>
-
-                        <p className="mt-1 text-sm text-gray-500">
-                          {
-                            application.mobile
-                          }
-                        </p>
-
-                        <p className="mt-1 text-sm text-gray-500">
-                          {
-                            application.email
-                          }
-                        </p>
-
-                        <p className="mt-2 text-xs text-gray-400">
-                          Application ID:{" "}
-                          {
-                            application.id
-                          }
-                        </p>
-
-                      </div>
-
-                      <div className="text-left md:text-right">
-
-                        <span
-                          className={`inline-flex rounded-full px-4 py-2 text-xs font-bold ${
-                            application.status ===
-                            "PENDING"
-                              ? "bg-orange-100 text-orange-700"
-                              : application.status ===
-                                "APPROVED"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {
-                            application.status
-                          }
-                        </span>
-
-                        {application.accountNumber && (
-                          <p className="mt-2 text-sm font-bold text-pink-600">
-                            Account:{" "}
-                            {
-                              application.accountNumber
-                            }
-                          </p>
-                        )}
-
-                      </div>
-
-                    </div>
-
-                  </button>
-
-                )
-              )
-
-            )}
-
-          </div>
-
+        <div className="rounded-2xl bg-green-50 p-5 shadow-sm">
+          <p className="text-sm font-semibold text-green-700">PROMOTIONAL</p>
+          <p className="mt-2 text-3xl font-black text-green-700">₹{totalPromo.toLocaleString("en-IN")}</p>
         </div>
+      </div>
 
-      </section>
-
-      {/* APPLICATION MODAL */}
-
-      {selected && (
-
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[30px] bg-white p-7 shadow-2xl">
-
-            {/* MODAL HEADER */}
-
-            <div className="flex items-start justify-between gap-4">
-
-              <div>
-
-                <p className="text-sm font-bold uppercase tracking-[0.2em] text-pink-600">
-                  BOB APPLICATION
-                </p>
-
-                <h3 className="mt-2 text-3xl font-bold text-gray-900">
-                  {
-                    selected.fullName
-                  }
-                </h3>
-
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setSelected(null);
-                  setAccountNumber("");
-                }}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-xl font-bold text-gray-600 hover:bg-gray-200"
-              >
-                ×
-              </button>
-
-            </div>
-
-            {/* CUSTOMER DETAILS */}
-
-            <div className="mt-7 grid gap-4 md:grid-cols-2">
-
-              <div className="rounded-2xl bg-gray-50 p-4">
-
-                <p className="text-xs font-bold text-gray-400">
-                  FULL NAME
-                </p>
-
-                <p className="mt-1 font-bold text-gray-900">
-                  {
-                    selected.fullName
-                  }
-                </p>
-
-              </div>
-
-              <div className="rounded-2xl bg-gray-50 p-4">
-
-                <p className="text-xs font-bold text-gray-400">
-                  MOBILE
-                </p>
-
-                <p className="mt-1 font-bold text-gray-900">
-                  {
-                    selected.mobile
-                  }
-                </p>
-
-              </div>
-
-              <div className="rounded-2xl bg-gray-50 p-4">
-
-                <p className="text-xs font-bold text-gray-400">
-                  EMAIL
-                </p>
-
-                <p className="mt-1 break-all font-bold text-gray-900">
-                  {
-                    selected.email
-                  }
-                </p>
-
-              </div>
-
-              <div className="rounded-2xl bg-gray-50 p-4">
-
-                <p className="text-xs font-bold text-gray-400">
-                  DATE OF BIRTH
-                </p>
-
-                <p className="mt-1 font-bold text-gray-900">
-                  {
-                    selected.dob ||
-                    "-"
-                  }
-                </p>
-
-              </div>
-
-            </div>
-
-            {/* ADDRESS */}
-
-            <div className="mt-4 rounded-2xl bg-gray-50 p-4">
-
-              <p className="text-xs font-bold text-gray-400">
-                ADDRESS
-              </p>
-
-              <p className="mt-1 leading-6 text-gray-800">
-                {
-                  selected.address ||
-                  "-"
-                }
-              </p>
-
-            </div>
-
-            {/* ACCOUNT NUMBER */}
-
-            <div className="mt-6 rounded-3xl bg-pink-50 p-6">
-
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-pink-600">
-                BOB ACCOUNT
-              </p>
-
-              <h4 className="mt-2 text-xl font-bold text-gray-900">
-                Account Number
-              </h4>
-
-              <p className="mt-1 text-sm text-gray-500">
-                Admin sirf customer ka BOB Account Number dega.
-              </p>
-
-              <input
-                type="text"
-                value={
-                  accountNumber
-                }
-                onChange={(e) =>
-                  setAccountNumber(
-                    e.target.value
-                  )
-                }
-                disabled={
-                  selected.status !==
-                    "PENDING" ||
-                  loading
-                }
-                placeholder="Example: BOB100001"
-                className="mt-4 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-lg font-semibold outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 disabled:bg-gray-100"
-              />
-
-              <p className="mt-3 text-sm leading-6 text-gray-600">
-                Customer ne application ke time
-                jo password banaya tha, wahi uska
-                BOB login password rahega.
-              </p>
-
-            </div>
-
-            {/* ACTIONS */}
-
-            {selected.status ===
-            "PENDING" ? (
-
-              <div className="mt-6 flex flex-col gap-4 sm:flex-row">
-
-                <button
-                  type="button"
-                  onClick={
-                    approveApplication
-                  }
-                  disabled={
-                    loading
-                  }
-                  className="flex-1 rounded-full bg-green-600 px-6 py-3.5 font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loading
-                    ? "PROCESSING..."
-                    : "APPROVE ACCOUNT"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={
-                    rejectApplication
-                  }
-                  disabled={
-                    loading
-                  }
-                  className="flex-1 rounded-full bg-red-500 px-6 py-3.5 font-bold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  REJECT APPLICATION
-                </button>
-
-              </div>
-
-            ) : (
-
-              <div
-                className={`mt-6 rounded-2xl p-5 text-center font-bold ${
-                  selected.status ===
-                  "APPROVED"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
-                }`}
-              >
-                Application Status:{" "}
-                {
-                  selected.status
-                }
-
-                {selected.accountNumber && (
-                  <p className="mt-2">
-                    BOB Account Number:{" "}
-                    {
-                      selected.accountNumber
-                    }
-                  </p>
-                )}
-
-              </div>
-
-            )}
-
-          </div>
-
+      {loadError && (
+        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+          ❌ {loadError}
         </div>
-
       )}
 
-    </main>
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search customer, mobile, account..."
+          className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+        />
+        <button
+          onClick={load}
+          className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+        >
+          ↻ Refresh
+        </button>
+        <span className="text-xs text-gray-400">Deposit approvals admin/bob-payments page pe karein.</span>
+      </div>
+
+      <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-gray-100 bg-gray-50">
+              <tr>
+                <th className="px-5 py-3 font-bold text-gray-600">Customer</th>
+                <th className="px-5 py-3 font-bold text-gray-600">BOB Account</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Active Balance</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Promo</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Deposits</th>
+                <th className="px-5 py-3 font-bold text-gray-600">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-5 py-10 text-center text-gray-400">
+                    {loading ? "Loading..." : "No wallets found."}
+                  </td>
+                </tr>
+              )}
+              {filtered.map((w) => (
+                <tr key={w._id} className="border-b border-gray-50 hover:bg-gray-50/60">
+                  <td className="px-5 py-4">
+                    <p className="font-semibold text-gray-900">{w.customerId?.fullName || "Customer"}</p>
+                    <p className="text-xs text-gray-500">{w.customerId?.mobile || ""}</p>
+                  </td>
+                  <td className="px-5 py-4 font-mono text-xs text-gray-600">{w.accountNumber}</td>
+                  <td className="px-5 py-4 font-bold text-gray-900">₹{activePrincipal(w).toLocaleString("en-IN")}</td>
+                  <td className="px-5 py-4 font-semibold text-green-600">₹{num(w.promotionalBalance).toLocaleString("en-IN")}</td>
+                  <td className="px-5 py-4 text-xs text-gray-600">
+                    {(w.deposits || []).length} total
+                    {pendingCount(w) > 0 && (
+                      <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700">
+                        {pendingCount(w)} PENDING
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setSelected(w)}
+                        className="rounded-full border border-gray-200 px-4 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-50"
+                      >
+                        👁 View
+                      </button>
+                      <button
+                        onClick={() => {
+                          setCreditTarget(w);
+                          setCreditMsg(null);
+                          setCreditAmount("");
+                          setCreditDesc("");
+                        }}
+                        className="rounded-full bg-pink-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-pink-700"
+                      >
+                        🎁 Credit Promo
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Detail modal */}
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setSelected(null)}>
+          <div className="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-7 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-[0.2em] text-pink-600">BANK OF BEAUTY — BOB</p>
+                <h3 className="mt-1 text-2xl font-black text-gray-900">{selected.customerId?.fullName || "Customer"}</h3>
+                <p className="text-sm text-gray-500">{selected.customerId?.mobile || ""} · Account: <span className="font-mono">{selected.accountNumber}</span></p>
+              </div>
+              <button onClick={() => setSelected(null)} className="rounded-full bg-gray-100 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-200">✕</button>
+            </div>
+
+            <div className="mt-5 rounded-2xl bg-pink-50 p-5">
+              <p className="text-sm text-gray-600">Active Balance (principal) · Promo</p>
+              <p className="mt-1 text-3xl font-black text-gray-900">
+                ₹{activePrincipal(selected).toLocaleString("en-IN")}
+                <span className="ml-3 text-lg font-bold text-green-600">+ ₹{num(selected.promotionalBalance).toLocaleString("en-IN")}</span>
+              </p>
+            </div>
+
+            <h4 className="mt-6 font-bold text-gray-800">Deposits ({selected.deposits?.length || 0})</h4>
+            <div className="mt-2 space-y-2">
+              {selected.deposits?.length === 0 && <p className="text-sm text-gray-400">No deposits.</p>}
+              {selected.deposits?.map((d: any) => (
+                <div key={d._id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-100 p-4">
+                  <div>
+                    <p className="font-bold text-gray-900">₹{num(d.originalAmount).toLocaleString("en-IN")}</p>
+                    <p className="text-xs text-gray-500">
+                      {d.submittedAt ? new Date(d.submittedAt).toLocaleString("en-IN") : new Date(d.depositDate).toLocaleString("en-IN")}
+                      {d.reference ? ` · Ref: ${d.reference}` : ""}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${d.status === "ACTIVE" ? "bg-green-100 text-green-700" : d.status === "PENDING" ? "bg-orange-100 text-orange-700" : d.status === "REJECTED" ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-600"}`}>
+                      {d.status}
+                    </span>
+                    <p className="mt-1 text-xs text-gray-500">Used: ₹{num(d.usedAmount).toLocaleString("en-IN")}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {selected.usageHistory?.length > 0 && (
+              <>
+                <h4 className="mt-6 font-bold text-gray-800">BOB Usage (FIFO)</h4>
+                <div className="mt-2 space-y-2">
+                  {selected.usageHistory.map((u: any, i: number) => (
+                    <div key={i} className="flex justify-between rounded-xl border border-gray-100 p-3 text-sm">
+                      <span className="text-gray-700">{u.description || "Qurux Purchase"}</span>
+                      <span className="font-bold text-red-500">−₹{num(u.amount).toLocaleString("en-IN")}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {selected.promotionalHistory?.length > 0 && (
+              <>
+                <h4 className="mt-6 font-bold text-gray-800">Promotional History</h4>
+                <div className="mt-2 space-y-2">
+                  {selected.promotionalHistory.map((p: any, i: number) => (
+                    <div key={i} className="flex justify-between rounded-xl border border-gray-100 p-3 text-sm">
+                      <span className="text-gray-700">{p.description || "Promotional Credit"}</span>
+                      <span className="font-bold text-green-600">+₹{num(p.amount).toLocaleString("en-IN")}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Promo credit modal */}
+      {creditTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setCreditTarget(null)}>
+          <div className="w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-pink-600">PROMOTIONAL CREDIT</p>
+            <h3 className="mt-1 text-xl font-black text-gray-900">{creditTarget.customerId?.fullName || "Customer"}</h3>
+            <p className="text-xs text-gray-500">{creditTarget.accountNumber}</p>
+            <form onSubmit={submitCredit} className="mt-5 space-y-4">
+              <input
+                type="number"
+                min={1}
+                required
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(e.target.value)}
+                placeholder="Amount (₹)"
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-500"
+              />
+              <input
+                type="text"
+                value={creditDesc}
+                onChange={(e) => setCreditDesc(e.target.value)}
+                placeholder="Description (e.g. Birthday gift ₹500)"
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-500"
+              />
+              {creditMsg && (
+                <p className={`text-sm font-semibold ${creditMsg.ok ? "text-green-600" : "text-red-600"}`}>{creditMsg.text}</p>
+              )}
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setCreditTarget(null)} className="flex-1 rounded-full border border-gray-200 py-3 text-sm font-bold text-gray-600 hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button type="submit" disabled={creditBusy} className="flex-1 rounded-full bg-pink-600 py-3 text-sm font-bold text-white hover:bg-pink-700 disabled:opacity-50">
+                  {creditBusy ? "Crediting..." : "CREDIT"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </AdminLayout>
   );
 }

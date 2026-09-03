@@ -61,6 +61,17 @@ type WalletSummary = {
   promotionalBalance: number;
   totalBalance: number;
   depositDetails: DepositDetail[];
+  pendingDeposits?: Array<{
+    deposit: {
+      _id: string;
+      originalAmount: number;
+      depositDate: string;
+      submittedAt?: string;
+      status: string;
+      reference?: string;
+    };
+    benefit: any;
+  }>;
 };
 
 export default function BOBPage() {
@@ -82,6 +93,7 @@ export default function BOBPage() {
 
   // Deposit form
   const [depositAmount, setDepositAmount] = useState("");
+  const [depositUpiRef, setDepositUpiRef] = useState("");
   const [depositSuccess, setDepositSuccess] = useState("");
   const [depositing, setDepositing] = useState(false);
 
@@ -129,12 +141,13 @@ export default function BOBPage() {
     try {
       const res = await apiPost<any>("/wallet/deposit", {
         amount,
-        reference: `DEP-${Date.now()}`,
+        reference: depositUpiRef.trim() || `DEP-${Date.now()}`,
       });
       if (res.ok) {
         setDepositAmount("");
-        setDepositSuccess(`₹${amount.toLocaleString("en-IN")} deposited! Benefit will start after 30 days.`);
-        setTimeout(() => setDepositSuccess(""), 5000);
+        setDepositUpiRef("");
+        setDepositSuccess(`₹${amount.toLocaleString("en-IN")} deposit request bheja gaya. Admin verify karke approve karega — phir balance credit hoga (benefit 30 din baad start).`);
+        setTimeout(() => setDepositSuccess(""), 8000);
         loadWallet();
       } else {
         alert(res.message || "Deposit failed.");
@@ -307,17 +320,45 @@ export default function BOBPage() {
               {/* Deposit Form */}
               <div className="mt-6 rounded-2xl border border-pink-100 p-6">
                 <h4 className="font-bold text-gray-800">Make a Deposit</h4>
-                <form onSubmit={handleDeposit} className="mt-4 flex flex-col gap-4 sm:flex-row">
-                  <input type="number" min={10} value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)}
-                    placeholder="Enter amount (min ₹10)" required
-                    className="flex-1 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500" />
-                  <button type="submit" disabled={depositing}
-                    className="rounded-full bg-pink-600 px-8 py-3 font-bold text-white hover:bg-pink-700 disabled:opacity-50">
-                    {depositing ? "Depositing..." : "DEPOSIT"}
-                  </button>
+                <p className="mt-1 text-xs text-gray-500">UPI se pay karke transaction ID/UTR yahan daalein — admin verify karke approve karega.</p>
+                <form onSubmit={handleDeposit} className="mt-4 flex flex-col gap-3">
+                  <div className="flex flex-col gap-4 sm:flex-row">
+                    <input type="number" min={10} value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)}
+                      placeholder="Enter amount (min ₹10)" required
+                      className="flex-1 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500" />
+                    <button type="submit" disabled={depositing}
+                      className="rounded-full bg-pink-600 px-8 py-3 font-bold text-white hover:bg-pink-700 disabled:opacity-50">
+                      {depositing ? "Submitting..." : "SUBMIT DEPOSIT REQUEST"}
+                    </button>
+                  </div>
+                  <input type="text" value={depositUpiRef} onChange={(e) => setDepositUpiRef(e.target.value)}
+                    placeholder="UPI Transaction ID / UTR (optional)"
+                    className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-500" />
                 </form>
                 {depositSuccess && <p className="mt-3 text-sm font-semibold text-green-600">{depositSuccess}</p>}
               </div>
+
+              {/* Pending Deposits (awaiting admin approval) */}
+              {summary?.pendingDeposits && summary.pendingDeposits.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="font-bold text-gray-800">⏳ Pending Approval</h4>
+                  <p className="mt-1 text-sm text-gray-500">Ye deposit requests admin verification ka wait kar rahe hain.</p>
+                  <div className="mt-3 space-y-3">
+                    {summary.pendingDeposits.map((pd: any) => (
+                      <div key={pd.deposit._id} className="flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="font-bold text-gray-900">₹{pd.deposit.originalAmount.toLocaleString("en-IN")} Deposit Request</p>
+                          <p className="text-sm text-amber-700">
+                            Status: <span className="font-bold">PENDING</span>
+                            {pd.deposit.reference ? ` • Ref: ${pd.deposit.reference}` : ""}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-amber-200 px-4 py-1.5 text-xs font-bold text-amber-800">⏳ AWAITING ADMIN APPROVAL</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Individual Deposits */}
               <div className="mt-6">
