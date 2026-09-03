@@ -107,28 +107,36 @@ export default function Footer() {
           <div className="flex items-center gap-4">
 
             <a
-              href="#"
+              href="https://www.instagram.com/quruxmakeover?igsi=YTMzYnN6bndmeHQ1"
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-full bg-gradient-to-r from-pink-500 to-pink-700 p-3 transition hover:scale-110"
             >
               <FaInstagram size={22} />
             </a>
 
             <a
-              href="#"
+              href="https://www.facebook.com/share/1EpLVyWx4a/"
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-full bg-blue-600 p-3 transition hover:scale-110"
             >
               <FaFacebookF size={22} />
             </a>
 
             <a
-              href="#"
+              href="https://www.youtube.com/@quruxmakeover"
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-full bg-red-600 p-3 transition hover:scale-110"
             >
               <FaYoutube size={22} />
             </a>
 
             <a
-              href="#"
+              href="https://wa.me/919911227916"
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-full bg-green-600 p-3 transition hover:scale-110"
             >
               <FaWhatsapp size={22} />

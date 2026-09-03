@@ -11,7 +11,7 @@ export const services = [
     price: "₹15,999+",
     duration: "3–4 Hours",
     slug: "bridal-makeup",
-    image: "/service-images/bridalmakeup-services.jpg.png",
+    image: "/service-images/bridalmakeup-services.jpg.jpg",
     includes: [
       "Professional bridal makeup",
       "Base makeup",
@@ -30,7 +30,7 @@ export const services = [
     price: "₹18,999+",
     duration: "3–4 Hours",
     slug: "hd-bridal-makeup",
-    image: "/service-images/hdbridalmakeup-services.jpg.png",
+    image: "/service-images/hdbridalmakeup-services.jpg.jpg",
     includes: [
       "HD base makeup",
       "Eye makeup",
@@ -49,7 +49,7 @@ export const services = [
     price: "₹21,999+",
     duration: "3–4 Hours",
     slug: "airbrush-bridal-makeup",
-    image: "/service-images/airbrushbridalmakeup-services.jpg.png",
+    image: "/service-images/airbrushbridalmakeup-services.jpg.jpg",
     includes: [
       "Airbrush base",
       "Eye makeup",
@@ -68,7 +68,7 @@ export const services = [
     price: "₹24,999+",
     duration: "4–5 Hours",
     slug: "luxury-bridal-makeup",
-    image: "/service-images/luxurybridalmakeup-services.jpg..png",
+    image: "/service-images/luxurybridalmakeup-services.jpg.jpg",
     includes: [
       "Luxury makeup",
       "Premium base",
@@ -87,7 +87,7 @@ export const services = [
     price: "₹9,999+",
     duration: "2–3 Hours",
     slug: "engagement-makeup",
-    image: "/service-images/engagementmakeup-services.jpg.png",
+    image: "/service-images/engagementmakeup-services.jpg.jpg",
     includes: [
       "Professional makeup",
       "Base makeup",
@@ -106,7 +106,7 @@ export const services = [
     price: "₹4,999+",
     duration: "1.5–2 Hours",
     slug: "party-makeup",
-    image: "/service-images/partymakeup-services.jpg.png",
+    image: "/service-images/partymakeup-services.jpg.jpg",
     includes: [
       "Base makeup",
       "Eye makeup",
@@ -128,7 +128,7 @@ export const services = [
     price: "₹2,499",
     duration: "60–75 Minutes",
     slug: "bridal-facial",
-    image: "/service-images/bridalfacial-services.jpg.png",
+    image: "/service-images/bridalfacial-services.jpg.jpg",
     includes: [
       "Deep cleansing",
       "Exfoliation",
@@ -147,7 +147,7 @@ export const services = [
     price: "₹999",
     duration: "30–45 Minutes",
     slug: "clean-up",
-    image: "/service-images/cleanup-services.jpg.png",
+    image: "/service-images/cleanup-services.jpg.jpg",
     includes: [
       "Cleansing",
       "Exfoliation",
@@ -165,7 +165,7 @@ export const services = [
     price: "₹649",
     duration: "45–60 Minutes",
     slug: "spa-manicure",
-    image: "/service-images/spamanicure-services.jpg.png",
+    image: "/service-images/spamanicure-services.jpg.jpg",
     includes: [
       "Nail shaping",
       "Cuticle care",
@@ -183,7 +183,7 @@ export const services = [
     price: "₹749",
     duration: "50–70 Minutes",
     slug: "spa-pedicure",
-    image: "/service-images/spapedicure-services.jpg.png",
+    image: "/service-images/spapedicure-services.jpg.jpg",
     includes: [
       "Foot soak",
       "Exfoliation",
@@ -201,7 +201,7 @@ export const services = [
     price: "₹1,499",
     duration: "60–90 Minutes",
     slug: "keratin-hair-spa",
-    image: "/service-images/Keratinhairspa-services.jpg.png",
+    image: "/service-images/Keratinhairspa-services.jpg.jpg",
     includes: [
       "Hair cleansing",
       "Keratin hair treatment",
@@ -223,7 +223,7 @@ export const services = [
     price: "₹349+",
     duration: "30–60 Minutes",
     slug: "haircut",
-    image: "/service-images/haircut-services.jpg.png",
+    image: "/service-images/haircut-services.jpg.jpg",
     includes: [
       "Hair consultation",
       "Professional haircut",
@@ -240,7 +240,7 @@ export const services = [
     price: "₹299+",
     duration: "20–30 Minutes",
     slug: "hair-wash",
-    image: "/service-images/hairwash-services.jpg.png",
+    image: "/service-images/hairwash-services.jpg.jpg",
     includes: [
       "Hair cleansing",
       "Shampoo",
@@ -258,7 +258,7 @@ export const services = [
     price: "₹599+",
     duration: "45–60 Minutes",
     slug: "wash-blow-dry",
-    image: "/service-images/washblowdry-services.jpg.png",
+    image: "/service-images/washblowdry-services.jpg.jpg",
     includes: [
       "Hair wash",
       "Conditioning",
@@ -275,7 +275,7 @@ export const services = [
     price: "₹349+",
     duration: "30–45 Minutes",
     slug: "blow-dry",
-    image: "/service-images/blowdry-services.jpg.png",
+    image: "/service-images/blowdry-services.jpg.jpg",
     includes: [
       "Hair preparation",
       "Blow dry",
@@ -292,7 +292,7 @@ export const services = [
     price: "₹699+",
     duration: "45–90 Minutes",
     slug: "hair-styling",
-    image: "/service-images/hairstyling-services.jpg.png",
+    image: "/service-images/hairstyling-services.jpg.jpg",
     includes: [
       "Hair preparation",
       "Professional styling",
@@ -308,7 +308,7 @@ export const services = [
     price: "₹799+",
     duration: "60–90 Minutes",
     slug: "hair-do",
-    image: "/service-images/hairdo-services.jpg.png",
+    image: "/service-images/hairdo-services.jpg.jpg",
     includes: [
       "Hair preparation",
       "Hair styling",
@@ -325,7 +325,7 @@ export const services = [
     price: "₹999+",
     duration: "75–120 Minutes",
     slug: "advanced-hair-do",
-    image: "/service-images/advancedhairdo-services.jpg.png",
+    image: "/service-images/advancedhairdo-services.jpg.jpg",
     includes: [
       "Hair preparation",
       "Advanced styling",
@@ -342,7 +342,7 @@ export const services = [
     price: "₹499+",
     duration: "30–60 Minutes",
     slug: "hair-ironing",
-    image: "/service-images/hairironing-services.jpg.png",
+    image: "/service-images/hairironing-services.jpg.jpg",
     includes: [
       "Hair preparation",
       "Heat styling",
@@ -359,7 +359,7 @@ export const services = [
     price: "₹599+",
     duration: "45–75 Minutes",
     slug: "tong-curls",
-    image: "/service-images/tongcurls-services.jpg.png",
+    image: "/service-images/tongcurls-services.jpg.jpg",
     includes: [
       "Hair preparation",
       "Curl styling",
@@ -376,7 +376,7 @@ export const services = [
     price: "₹599+",
     duration: "45–75 Minutes",
     slug: "crimping",
-    image: "/service-images/crimping-services.jpg.png",
+    image: "/service-images/crimping-services.jpg.jpg",
     includes: [
       "Hair preparation",
       "Crimping",
@@ -393,7 +393,7 @@ export const services = [
     price: "₹699+",
     duration: "45–75 Minutes",
     slug: "open-styling",
-    image: "/service-images/openstyling-services.jpg.png",
+    image: "/service-images/openstyling-services.jpg.jpg",
     includes: [
       "Hair preparation",
       "Open hair styling",
@@ -410,7 +410,7 @@ export const services = [
     price: "₹2,999+",
     duration: "2–3 Hours",
     slug: "hair-colour",
-    image: "/service-images/haircolour-services.jpg.png",
+    image: "/service-images/haircolour-services.jpg.jpg",
     includes: [
       "Hair consultation",
       "Colour application",
@@ -428,7 +428,7 @@ export const services = [
     price: "₹999+",
     duration: "60–90 Minutes",
     slug: "hair-touch-up",
-    image: "/service-images/hairtouchup-services.jpg.png",
+    image: "/service-images/hairtouchup-services.jpg.jpg",
     includes: [
       "Colour consultation",
       "Root or selected-area touch-up",
@@ -446,7 +446,7 @@ export const services = [
     price: "₹3,999+",
     duration: "2–4 Hours",
     slug: "hair-smoothening",
-    image: "/service-images/hairsmoothening-services.jpg.png",
+    image: "/service-images/hairsmoothening-services.jpg.jpg",
     includes: [
       "Hair consultation",
       "Hair preparation",
@@ -464,7 +464,7 @@ export const services = [
     price: "₹3,999+",
     duration: "2–4 Hours",
     slug: "keratin-treatment",
-    image: "/service-images/keratintreatment-services.jpg.png",
+    image: "/service-images/keratintreatment-services.jpg.jpg",
     includes: [
       "Hair consultation",
       "Hair preparation",
@@ -482,7 +482,7 @@ export const services = [
     price: "₹999+",
     duration: "45–60 Minutes",
     slug: "hair-spa",
-    image: "/service-images/hairspa-services.jpg.png",
+    image: "/service-images/hairspa-services.jpg.jpg",
     includes: [
       "Hair cleansing",
       "Hair treatment",
@@ -499,8 +499,8 @@ export const services = [
       "Hair spa treatment focused on nourishment and smoother-looking hair.",
     price: "₹1,499+",
     duration: "60–90 Minutes",
-    slug: "keratin-hair-spa",
-    image: "/service-images/Keratinhairspa-services.jpg.png",
+    slug: "keratin-hair-spa-treatment",
+    image: "/service-images/Keratinhairspa-services.jpg.jpg",
     includes: [
       "Hair cleansing",
       "Keratin hair treatment",
@@ -518,7 +518,7 @@ export const services = [
     price: "₹599+",
     duration: "30–45 Minutes",
     slug: "scalp-scrub",
-    image: "/service-images/scalpscrub-services.jpg.png",
+    image: "/service-images/scalpscrub-services.jpg.jpg",
     includes: [
       "Scalp preparation",
       "Scalp scrub",
@@ -536,7 +536,7 @@ export const services = [
     price: "₹499+",
     duration: "30 Minutes",
     slug: "head-massage",
-    image: "/service-images/headmassage-services.jpg.png",
+    image: "/service-images/headmassage-services.jpg.jpg",
     includes: [
       "Scalp massage",
       "Head massage",
@@ -556,7 +556,7 @@ export const services = [
     price: "₹2,499",
     duration: "60–90 Minutes",
     slug: "korean-glow-facial",
-    image: "/service-images/koreanglowfacial-services.jpg.png",
+    image: "/service-images/koreanglowfacial-services.jpg.jpg",
     includes: [
       "Skin cleansing",
       "Exfoliation",
@@ -575,7 +575,7 @@ export const services = [
     price: "₹2,499+",
     duration: "60–90 Minutes",
     slug: "korean-glass-skin-treatment",
-    image: "/service-images/koreanglassskin-services.jpg.png",
+    image: "/service-images/koreanglassskin-services.jpg.jpg",
     includes: [
       "Cleansing",
       "Exfoliation",
@@ -594,7 +594,7 @@ export const services = [
     price: "₹1,799",
     duration: "45–60 Minutes",
     slug: "fruit-facial",
-    image: "/service-images/fruitfacial-services.jpg.png",
+    image: "/service-images/fruitfacial-services.jpg.jpg",
     includes: [
       "Cleansing",
       "Exfoliation",
@@ -613,7 +613,7 @@ export const services = [
     price: "₹1,799",
     duration: "60 Minutes",
     slug: "gold-facial",
-    image: "/service-images/goldfacial-services.jpg.png",
+    image: "/service-images/goldfacial-services.jpg.jpg",
     includes: [
       "Cleansing",
       "Exfoliation",
@@ -631,8 +631,8 @@ export const services = [
       "Premium facial preparation for brides and special occasions.",
     price: "₹2,499",
     duration: "60–75 Minutes",
-    slug: "bridal-facial",
-    image: "/service-images/bridalfacial-services.jpg.png",
+    slug: "bridal-facial-care",
+    image: "/service-images/bridalfacial-services.jpg.jpg",
     includes: [
       "Deep cleansing",
       "Exfoliation",
@@ -651,7 +651,7 @@ export const services = [
     price: "₹699+",
     duration: "30–45 Minutes",
     slug: "clean-up",
-    image: "/service-images/cleanup-services.jpg.png",
+    image: "/service-images/cleanup-services.jpg.jpg",
     includes: [
       "Cleansing",
       "Exfoliation",
@@ -669,7 +669,7 @@ export const services = [
     price: "₹799+",
     duration: "30–45 Minutes",
     slug: "face-de-tan",
-    image: "/service-images/facedetan-services.jpg.png",
+    image: "/service-images/facedetan-services.jpg.jpg",
     includes: [
       "Cleansing",
       "De-tan treatment",
@@ -687,7 +687,7 @@ export const services = [
     price: "₹499+",
     duration: "20–30 Minutes",
     slug: "face-mask",
-    image: "/service-images/facemask-services.jpg.png",
+    image: "/service-images/facemask-services.jpg.jpg",
     includes: [
       "Skin preparation",
       "Face mask",
@@ -704,7 +704,7 @@ export const services = [
     price: "₹499+",
     duration: "20–30 Minutes",
     slug: "face-bleach",
-    image: "/service-images/facebleach-services.jpg.png",
+    image: "/service-images/facebleach-services.jpg.jpg",
     includes: [
       "Skin preparation",
       "Bleach application",
@@ -721,7 +721,7 @@ export const services = [
     price: "₹2,499+",
     duration: "60–90 Minutes",
     slug: "advanced-facial",
-    image: "/service-images/advancedfacial-services.jpg.png",
+    image: "/service-images/advancedfacial-services.jpg.jpg",
     includes: [
       "Skin consultation",
       "Cleansing",
@@ -740,7 +740,7 @@ export const services = [
     price: "₹2,499+",
     duration: "60–90 Minutes",
     slug: "anti-ageing-facial",
-    image: "/service-images/antiageingfacial-services.jpg.png",
+    image: "/service-images/antiageingfacial-services.jpg.jpg",
     includes: [
       "Skin consultation",
       "Cleansing",
@@ -759,7 +759,7 @@ export const services = [
     price: "₹2,499+",
     duration: "60–90 Minutes",
     slug: "acne-care-facial",
-    image: "/service-images/acnecarefacial-services.jpg.png",
+    image: "/service-images/acnecarefacial-services.jpg.jpg",
     includes: [
       "Skin consultation",
       "Cleansing",
@@ -778,7 +778,7 @@ export const services = [
     price: "₹2,999+",
     duration: "45–60 Minutes",
     slug: "led-face-treatment",
-    image: "/service-images/ledfacetreatment-services.jpg.png",
+    image: "/service-images/ledfacetreatment-services.jpg.jpg",
     includes: [
       "Skin preparation",
       "LED treatment",
@@ -796,7 +796,7 @@ export const services = [
     price: "₹3,999+",
     duration: "60–90 Minutes",
     slug: "hydraglo-facial",
-    image: "/service-images/hydraglofacial-services.jpg.png",
+    image: "/service-images/hydraglofacial-services.jpg.jpg",
     includes: [
       "Skin consultation",
       "Cleansing",
@@ -818,7 +818,7 @@ export const services = [
     price: "₹399+",
     duration: "30–45 Minutes",
     slug: "classic-manicure",
-    image: "/service-images/classicmanicure-services.jpg.png",
+    image: "/service-images/classicmanicure-services.jpg.jpg",
     includes: [
       "Nail shaping",
       "Cuticle care",
@@ -836,7 +836,7 @@ export const services = [
     price: "₹649",
     duration: "45–60 Minutes",
     slug: "spa-manicure",
-    image: "/service-images/spamanicure-services.jpg.png",
+    image: "/service-images/spamanicure-services.jpg.jpg",
     includes: [
       "Nail shaping",
       "Cuticle care",
@@ -854,7 +854,7 @@ export const services = [
     price: "₹799+",
     duration: "45–60 Minutes",
     slug: "korean-manicure",
-    image: "/service-images/koreanmanicure-services.jpg.png",
+    image: "/service-images/koreanmanicure-services.jpg.jpg",
     includes: [
       "Nail shaping",
       "Cuticle care",
@@ -871,7 +871,7 @@ export const services = [
     price: "₹499+",
     duration: "40–50 Minutes",
     slug: "classic-pedicure",
-    image: "/service-images/classicpedicure-services.jpg.png",
+    image: "/service-images/classicpedicure-services.jpg.jpg",
     includes: [
       "Foot soak",
       "Nail shaping",
@@ -889,7 +889,7 @@ export const services = [
     price: "₹749",
     duration: "50–70 Minutes",
     slug: "spa-pedicure",
-    image: "/service-images/spapedicure-services.jpg.png",
+    image: "/service-images/spapedicure-services.jpg.jpg",
     includes: [
       "Foot soak",
       "Exfoliation",
@@ -907,7 +907,7 @@ export const services = [
     price: "₹299+",
     duration: "30–60 Minutes",
     slug: "nail-art",
-    image: "/service-images/nailart-services.jpg.png",
+    image: "/service-images/nailart-services.jpg.jpg",
     includes: [
       "Nail preparation",
       "Design selection",
@@ -924,7 +924,7 @@ export const services = [
     price: "₹699+",
     duration: "45–60 Minutes",
     slug: "gel-polish",
-    image: "/service-images/gelpolish-services.jpg.png",
+    image: "/service-images/gelpolish-services.jpg.jpg",
     includes: [
       "Nail preparation",
       "Gel polish application",
@@ -941,7 +941,7 @@ export const services = [
     price: "₹1,499+",
     duration: "90–150 Minutes",
     slug: "nail-extension",
-    image: "/service-images/nailextension-services.jpg.png",
+    image: "/service-images/nailextension-services.jpg.jpg",
     includes: [
       "Nail preparation",
       "Extension application",
@@ -958,7 +958,7 @@ export const services = [
     price: "₹499+",
     duration: "30–45 Minutes",
     slug: "extension-removal",
-    image: "/service-images/extensionremoval-services.jpg.png",
+    image: "/service-images/extensionremoval-services.jpg.jpg",
     includes: [
       "Nail preparation",
       "Extension removal",
@@ -975,7 +975,7 @@ export const services = [
     price: "₹299+",
     duration: "20–30 Minutes",
     slug: "gel-removal",
-    image: "/service-images/gelremoval-services.jpg.png",
+    image: "/service-images/gelremoval-services.jpg.jpg",
     includes: [
       "Gel removal",
       "Nail cleaning",
@@ -996,7 +996,7 @@ export const services = [
     price: "₹49",
     duration: "10–15 Minutes",
     slug: "eyebrows",
-    image: "/service-images/eyebrows-services.jpg.png",
+    image: "/service-images/eyebrows-services.jpg.jpg",
     includes: [
       "Eyebrow shaping",
       "Threading",
@@ -1012,7 +1012,7 @@ export const services = [
     price: "₹49",
     duration: "5–10 Minutes",
     slug: "upper-lips",
-    image: "/service-images/upperlips-services.jpg.png",
+    image: "/service-images/upperlips-services.jpg.jpg",
     includes: [
       "Threading",
       "Hair removal",
@@ -1028,7 +1028,7 @@ export const services = [
     price: "₹49",
     duration: "5–10 Minutes",
     slug: "lower-lips",
-    image: "/service-images/lowerlips-services.jpg.png",
+    image: "/service-images/lowerlips-services.jpg.jpg",
     includes: [
       "Threading",
       "Hair removal",
@@ -1044,7 +1044,7 @@ export const services = [
     price: "₹49",
     duration: "5–10 Minutes",
     slug: "chin-threading",
-    image: "/service-images/chinthreadding-services.jpg.png",
+    image: "/service-images/chinthreadding-services.jpg.jpg",
     includes: [
       "Chin threading",
       "Hair removal",
@@ -1060,7 +1060,7 @@ export const services = [
     price: "₹49",
     duration: "5–10 Minutes",
     slug: "forehead-threading",
-    image: "/service-images/foreheadthreading-services.jpg.png",
+    image: "/service-images/foreheadthreading-services.jpg.jpg",
     includes: [
       "Forehead threading",
       "Hair removal",
@@ -1076,7 +1076,7 @@ export const services = [
     price: "₹49",
     duration: "5–10 Minutes",
     slug: "nose-threading",
-    image: "/service-images/nosethreading-services.jpg.png",
+    image: "/service-images/nosethreading-services.jpg.jpg",
     includes: [
       "Threading",
       "Hair removal",
@@ -1092,7 +1092,7 @@ export const services = [
     price: "₹99",
     duration: "10–15 Minutes",
     slug: "side-locks-threading",
-    image: "/service-images/sidelocksthreading-services.jpg.png",
+    image: "/service-images/sidelocksthreading-services.jpg.jpg",
     includes: [
       "Side-lock threading",
       "Hair removal",
@@ -1108,7 +1108,7 @@ export const services = [
     price: "₹199",
     duration: "20–30 Minutes",
     slug: "full-face-threading",
-    image: "/service-images/fullfacethreading-services.jpg.png",
+    image: "/service-images/fullfacethreading-services.jpg.jpg",
     includes: [
       "Eyebrow threading",
       "Upper-lip threading",
@@ -1126,7 +1126,7 @@ export const services = [
     price: "₹499",
     duration: "20–30 Minutes",
     slug: "full-arms-waxing",
-    image: "/service-images/fullarmswaxing-services.jpg.png",
+    image: "/service-images/fullarmswaxing-services.jpg.jpg",
     includes: [
       "Skin preparation",
       "Wax application",
@@ -1143,7 +1143,7 @@ export const services = [
     price: "₹299+",
     duration: "15–25 Minutes",
     slug: "half-arms-waxing",
-    image: "/service-images/halfarmswaxing-services.jpg.png",
+    image: "/service-images/halfarmswaxing-services.jpg.jpg",
     includes: [
       "Skin preparation",
       "Wax application",
@@ -1160,7 +1160,7 @@ export const services = [
     price: "₹549",
     duration: "30–45 Minutes",
     slug: "full-legs-waxing",
-    image: "/service-images/fulllegswaxing-services.jpg.png",
+    image: "/service-images/fulllegswaxing-services.jpg.jpg",
     includes: [
       "Skin preparation",
       "Wax application",
@@ -1177,7 +1177,7 @@ export const services = [
     price: "₹249+",
     duration: "10–15 Minutes",
     slug: "underarms-waxing",
-    image: "/service-images/underarmswaxing-services.jpg.png",
+    image: "/service-images/underarmswaxing-services.jpg.jpg",
     includes: [
       "Skin preparation",
       "Wax application",
@@ -1194,7 +1194,7 @@ export const services = [
     price: "₹599+",
     duration: "30–45 Minutes",
     slug: "back-waxing",
-    image: "/service-images/backwaxing-services.jpg.png",
+    image: "/service-images/backwaxing-services.jpg.jpg",
     includes: [
       "Skin preparation",
       "Wax application",
@@ -1211,7 +1211,7 @@ export const services = [
     price: "₹499+",
     duration: "20–30 Minutes",
     slug: "stomach-waxing",
-    image: "/service-images/stomachwaxing-services.jpg.png",
+    image: "/service-images/stomachwaxing-services.jpg.jpg",
     includes: [
       "Skin preparation",
       "Wax application",
@@ -1228,7 +1228,7 @@ export const services = [
     price: "₹699+",
     duration: "20–30 Minutes",
     slug: "bikini-waxing",
-    image: "/service-images/bikiniwaxing-services.jpg.png",
+    image: "/service-images/bikiniwaxing-services.jpg.jpg",
     includes: [
       "Skin preparation",
       "Wax application",
@@ -1245,7 +1245,7 @@ export const services = [
     price: "₹1,599+",
     duration: "90–150 Minutes",
     slug: "full-body-wax",
-    image: "/service-images/fullbodywax-services.jpg.png",
+    image: "/service-images/fullbodywax-services.jpg.jpg",
     includes: [
       "Skin preparation",
       "Professional waxing",
@@ -1266,7 +1266,7 @@ export const services = [
     price: "₹1,999 / 60 min",
     duration: "60 Minutes",
     slug: "swedish-massage",
-    image: "/service-images/swedishmassage-services.jpg.png",
+    image: "/service-images/swedishmassage-services.jpg.jpg",
     includes: [
       "Body consultation",
       "Massage session",
@@ -1283,7 +1283,7 @@ export const services = [
     price: "₹1,999 / 60 min",
     duration: "60 Minutes",
     slug: "deep-tissue-massage",
-    image: "/service-images/deeptissuemassage-services.jpg.png",
+    image: "/service-images/deeptissuemassage-services.jpg.jpg",
     includes: [
       "Body consultation",
       "Deep tissue massage",
@@ -1300,7 +1300,7 @@ export const services = [
     price: "₹1,999 / 60 min",
     duration: "60 Minutes",
     slug: "aroma-massage",
-    image: "/service-images/aromamassage-services.jpg.png",
+    image: "/service-images/aromamassage-services.jpg.jpg",
     includes: [
       "Body consultation",
       "Aroma massage",
@@ -1317,7 +1317,7 @@ export const services = [
     price: "₹1,499+",
     duration: "45–60 Minutes",
     slug: "body-scrub",
-    image: "/service-images/bodyscrub-services.jpg.png",
+    image: "/service-images/bodyscrub-services.jpg.jpg",
     includes: [
       "Skin preparation",
       "Body exfoliation",
@@ -1334,7 +1334,7 @@ export const services = [
     price: "₹1,999+",
     duration: "60–90 Minutes",
     slug: "body-polishing",
-    image: "/service-images/bodypolishing-services.jpg.png",
+    image: "/service-images/bodypolishing-services.jpg.jpg",
     includes: [
       "Body cleansing",
       "Exfoliation",
@@ -1352,7 +1352,7 @@ export const services = [
     price: "₹999+",
     duration: "30 Minutes",
     slug: "steam-bath",
-    image: "/service-images/steambath-services.jpg.png",
+    image: "/service-images/steambath-services.jpg.jpg",
     includes: [
       "Steam session",
       "Relaxation",
@@ -1368,7 +1368,7 @@ export const services = [
     price: "₹799+",
     duration: "30 Minutes",
     slug: "head-shoulder-massage",
-    image: "/service-images/headshouldermassage-services.jpg.png",
+    image: "/service-images/headshouldermassage-services.jpg.jpg",
     includes: [
       "Head massage",
       "Shoulder massage",

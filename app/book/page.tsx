@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { services as staticServices } from "@/components/book/services";
 
 type ServiceItem = {
@@ -31,6 +32,18 @@ const categories = [
 
 export default function BookPage() {
   const services = staticServices as ServiceItem[];
+  const [search, setSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState("All");
+
+  const filteredServices = services.filter((s) => {
+    const matchCategory = activeCategory === "All" || s.category === activeCategory;
+    const matchSearch =
+      search === "" ||
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.category.toLowerCase().includes(search.toLowerCase()) ||
+      s.description.toLowerCase().includes(search.toLowerCase());
+    return matchCategory && matchSearch;
+  });
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-white via-pink-50 to-white py-14">
@@ -62,239 +75,189 @@ export default function BookPage() {
           </Link>
         </div>
 
+        {/* SEARCH BAR */}
+        <div className="mx-auto mt-8 max-w-2xl">
+          <div className="relative">
+            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search services... (e.g. bridal, facial, waxing, haircut)"
+              className="w-full rounded-full border border-pink-200 bg-white py-4 pl-14 pr-6 text-gray-800 shadow-md outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-pink-600"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* QUICK CATEGORIES */}
-        <section className="mt-8 flex flex-wrap justify-center gap-3">
+        <section className="mt-6 flex flex-wrap justify-center gap-3">
           {categories.map((category) => (
-            <a
+            <button
               key={category}
-              href={
-                category === "All"
-                  ? "#services"
-                  : `#${category.toLowerCase().replace(/\s+/g, "-")}`
-              }
-              className="rounded-full border border-pink-200 bg-white px-5 py-2.5 text-sm font-semibold text-pink-600 shadow-sm transition hover:bg-pink-600 hover:text-white"
+              type="button"
+              onClick={() => {
+                setActiveCategory(category);
+                setSearch("");
+              }}
+              className={`rounded-full border px-5 py-2.5 text-sm font-semibold shadow-sm transition ${
+                activeCategory === category
+                  ? "border-pink-600 bg-pink-600 text-white"
+                  : "border-pink-200 bg-white text-pink-600 hover:bg-pink-600 hover:text-white"
+              }`}
             >
               {category}
-            </a>
+            </button>
           ))}
         </section>
 
-        {/* SERVICES */}
+        {/* SERVICES GRID */}
         <section id="services" className="mt-12">
 
-          {categories
-            .filter((category) => category !== "All")
-            .map((category) => {
-              const categoryServices = services.filter(
-                (service) =>
-                  service.category.toLowerCase() === category.toLowerCase()
-              );
-
-              if (categoryServices.length === 0) {
-                return null;
-              }
-
-              return (
-                <div
-                  key={category}
-                  id={category.toLowerCase().replace(/\s+/g, "-")}
-                  className="mb-14 scroll-mt-24"
-                >
-                  <div className="mb-6">
-                    <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-600">
-                      OUR SERVICES
-                    </p>
-
-                    <h2 className="mt-2 text-3xl font-bold text-gray-900">
-                      {category}
-                    </h2>
+          {activeCategory === "All" && !search ? (
+            /* Show grouped by category when All is selected and no search */
+            categories
+              .filter((category) => category !== "All")
+              .map((category) => {
+                const categoryServices = filteredServices.filter(
+                  (service) => service.category === category
+                );
+                if (categoryServices.length === 0) return null;
+                return (
+                  <div
+                    key={category}
+                    id={category.toLowerCase().replace(/\s+/g, "-")}
+                    className="mb-14 scroll-mt-24"
+                  >
+                    <div className="mb-6">
+                      <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-600">
+                        OUR SERVICES
+                      </p>
+                      <h2 className="mt-2 text-3xl font-bold text-gray-900">
+                        {category}
+                      </h2>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {categoryServices.length} service{categoryServices.length !== 1 ? "s" : ""} available
+                      </p>
+                    </div>
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                      {categoryServices.map(renderServiceCard)}
+                    </div>
                   </div>
-
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-
-                    {categoryServices.map((service) => (
-                      <article
-                        key={service.slug}
-                        className="overflow-hidden rounded-[25px] bg-white shadow-lg ring-1 ring-pink-100 transition hover:-translate-y-1 hover:shadow-xl"
-                      >
-
-                        {/* IMAGE */}
-                        <div className="relative h-64 w-full overflow-hidden bg-pink-100">
-                          <Image
-                            src={service.image}
-                            alt={service.name}
-                            fill
-                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                            className="object-cover transition duration-500 hover:scale-105"
-                          />
-                        </div>
-
-                        {/* DETAILS */}
-                        <div className="p-6">
-
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-xs font-bold uppercase tracking-wider text-pink-600">
-                                {service.category}
-                              </p>
-
-                              <h3 className="mt-2 text-xl font-bold text-gray-900">
-                                {service.name}
-                              </h3>
-                            </div>
-
-                            <span className="text-2xl">
-                              ✨
-                            </span>
-                          </div>
-
-                          <p className="mt-3 line-clamp-3 text-sm leading-6 text-gray-600">
-                            {service.description}
-                          </p>
-
-                          <div className="mt-5 grid grid-cols-2 gap-3">
-
-                            <div className="rounded-xl bg-pink-50 p-3">
-                              <p className="text-xs text-gray-500">
-                                Starting Price
-                              </p>
-
-                              <p className="mt-1 font-bold text-pink-600">
-                                {service.price}
-                              </p>
-                            </div>
-
-                            <div className="rounded-xl bg-gray-50 p-3">
-                              <p className="text-xs text-gray-500">
-                                Duration
-                              </p>
-
-                              <p className="mt-1 font-bold text-gray-900">
-                                {service.duration}
-                              </p>
-                            </div>
-
-                          </div>
-
-                          {/* SERVICE DETAILS */}
-                          <Link
-                            href={`/makeup/${service.slug}`}
-                            className="mt-5 block w-full rounded-full border-2 border-pink-600 px-5 py-3 text-center font-bold text-pink-600 transition hover:bg-pink-600 hover:text-white"
-                          >
-                            VIEW DETAILS
-                          </Link>
-
-                          {/* BOOK NOW */}
-                          <Link
-                            href={`/booking?service=${service.slug}`}
-                            className="mt-3 block w-full rounded-full bg-pink-600 px-5 py-3 text-center font-bold text-white transition hover:bg-pink-700"
-                          >
-                            BOOK NOW →
-                          </Link>
-
-                        </div>
-                      </article>
-                    ))}
-
-                  </div>
-                </div>
-              );
-            })}
-
-          {/* SERVICES NOT MATCHING THE PRESET CATEGORIES */}
-          {services.some(
-            (service) =>
-              !categories
-                .slice(1)
-                .some(
-                  (category) =>
-                    category.toLowerCase() ===
-                    service.category.toLowerCase()
-                )
-          ) && (
-            <div className="mb-14 scroll-mt-24">
-              <div className="mb-6">
-                <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-600">
-                  MORE SERVICES
+                );
+              })
+          ) : (
+            /* Flat grid when searching or specific category */
+            <div>
+              {search && (
+                <p className="mb-6 text-center text-sm text-gray-500">
+                  {filteredServices.length} result{filteredServices.length !== 1 ? "s" : ""} for &ldquo;{search}&rdquo;
                 </p>
-
-                <h2 className="mt-2 text-3xl font-bold text-gray-900">
-                  Other Beauty Services
-                </h2>
-              </div>
-
+              )}
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {services
-                  .filter(
-                    (service) =>
-                      !categories
-                        .slice(1)
-                        .some(
-                          (category) =>
-                            category.toLowerCase() ===
-                            service.category.toLowerCase()
-                        )
-                  )
-                  .map((service) => (
-                    <article
-                      key={service.slug}
-                      className="overflow-hidden rounded-[25px] bg-white shadow-lg ring-1 ring-pink-100"
-                    >
-                      <div className="relative h-64 w-full overflow-hidden bg-pink-100">
-                        <Image
-                          src={service.image}
-                          alt={service.name}
-                          fill
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                          className="object-cover"
-                        />
-                      </div>
-
-                      <div className="p-6">
-                        <p className="text-xs font-bold uppercase tracking-wider text-pink-600">
-                          {service.category}
-                        </p>
-
-                        <h3 className="mt-2 text-xl font-bold text-gray-900">
-                          {service.name}
-                        </h3>
-
-                        <p className="mt-3 text-sm leading-6 text-gray-600">
-                          {service.description}
-                        </p>
-
-                        <Link
-                          href={`/makeup/${service.slug}`}
-                          className="mt-5 block w-full rounded-full bg-pink-600 px-5 py-3 text-center font-bold text-white transition hover:bg-pink-700"
-                        >
-                          VIEW SERVICE →
-                        </Link>
-                      </div>
-                    </article>
-                  ))}
+                {filteredServices.map(renderServiceCard)}
               </div>
+            </div>
+          )}
+
+          {filteredServices.length === 0 && (
+            <div className="mt-12 rounded-3xl bg-white p-12 text-center shadow-md">
+              <div className="text-6xl">🔍</div>
+              <h2 className="mt-5 text-2xl font-bold text-gray-900">No services found</h2>
+              <p className="mt-2 text-gray-600">Try a different search term or category.</p>
+              <button
+                type="button"
+                onClick={() => { setSearch(""); setActiveCategory("All"); }}
+                className="mt-4 rounded-full bg-pink-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-pink-700"
+              >
+                Show All Services
+              </button>
             </div>
           )}
 
         </section>
 
-        {/* BOTTOM */}
-        <section className="mt-12 rounded-[30px] bg-gradient-to-r from-pink-600 to-pink-500 p-10 text-center text-white shadow-xl">
-          <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-100">
-            READY TO BOOK?
-          </p>
-
-          <h2 className="mt-3 text-3xl font-bold">
-            Choose Your Service
-          </h2>
-
-          <p className="mx-auto mt-3 max-w-2xl leading-7 text-white/90">
-            Select a service above to see complete details and continue
-            to the booking page.
-          </p>
-        </section>
+        {/* BOTTOM CTA */}
+        {filteredServices.length > 0 && (
+          <section className="mt-12 rounded-[30px] bg-gradient-to-r from-pink-600 to-pink-500 p-10 text-center text-white shadow-xl">
+            <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-100">
+              READY TO BOOK?
+            </p>
+            <h2 className="mt-3 text-3xl font-bold">
+              Choose Your Service
+            </h2>
+            <p className="mx-auto mt-3 max-w-2xl leading-7 text-white/90">
+              Select a service above to see complete details and continue to the booking page.
+            </p>
+          </section>
+        )}
 
       </div>
     </main>
+  );
+}
+
+function renderServiceCard(service: ServiceItem) {
+  return (
+    <article
+      key={service.slug}
+      className="overflow-hidden rounded-[25px] bg-white shadow-lg ring-1 ring-pink-100 transition hover:-translate-y-1 hover:shadow-xl"
+    >
+      <div className="relative h-64 w-full overflow-hidden bg-pink-100">
+        <Image
+          src={service.image}
+          alt={service.name}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          className="object-cover transition duration-500 hover:scale-105"
+        />
+      </div>
+      <div className="p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-pink-600">
+              {service.category}
+            </p>
+            <h3 className="mt-2 text-xl font-bold text-gray-900">
+              {service.name}
+            </h3>
+          </div>
+          <span className="text-2xl">✨</span>
+        </div>
+        <p className="mt-3 line-clamp-3 text-sm leading-6 text-gray-600">
+          {service.description}
+        </p>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="rounded-xl bg-pink-50 p-3">
+            <p className="text-xs text-gray-500">Starting Price</p>
+            <p className="mt-1 font-bold text-pink-600">{service.price}</p>
+          </div>
+          <div className="rounded-xl bg-gray-50 p-3">
+            <p className="text-xs text-gray-500">Duration</p>
+            <p className="mt-1 font-bold text-gray-900">{service.duration}</p>
+          </div>
+        </div>
+        <Link
+          href={`/makeup/${service.slug}`}
+          className="mt-5 block w-full rounded-full border-2 border-pink-600 px-5 py-3 text-center font-bold text-pink-600 transition hover:bg-pink-600 hover:text-white"
+        >
+          VIEW DETAILS
+        </Link>
+        <Link
+          href={`/booking?service=${service.slug}`}
+          className="mt-3 block w-full rounded-full bg-pink-600 px-5 py-3 text-center font-bold text-white transition hover:bg-pink-700"
+        >
+          BOOK NOW →
+        </Link>
+      </div>
+    </article>
   );
 }
