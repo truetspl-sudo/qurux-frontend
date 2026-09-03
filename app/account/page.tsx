@@ -216,6 +216,15 @@ export default function AuthPage() {
               </div>
             )}
 
+            {existingUser.role === "ADMIN" && (
+              <Link
+                href="/admin"
+                className="mt-5 block w-full rounded-xl bg-slate-900 py-3.5 text-center text-sm font-bold text-white shadow-md hover:bg-slate-800"
+              >
+                🛠️ Open Admin Panel →
+              </Link>
+            )}
+
             <div className="mt-6 grid grid-cols-2 gap-3">
               <Link
                 href="/account/dashboard"
