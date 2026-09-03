@@ -266,7 +266,14 @@ export default function AdminClosuresPage() {
     }, 500);
   }
 
-  async function closeClosure(id: string, adminRemarks: string, customerRemarks: string, rating: number) {
+  async function closeClosure(
+    id: string,
+    adminRemarks: string,
+    customerRemarks: string,
+    rating: number,
+    payStatus: string,
+    cashCollectedAmt: number
+  ) {
     if (!adminRemarks.trim()) {
       alert("Admin remarks are required to close the service.");
       return;
@@ -281,6 +288,8 @@ export default function AdminClosuresPage() {
       adminRemarks,
       customerRemarks,
       rating,
+      paymentStatus: payStatus,
+      cashAmount: cashCollectedAmt,
     });
     setBusy(false);
     if (!res.ok) {
@@ -456,8 +465,8 @@ export default function AdminClosuresPage() {
           onClose={() => setSelected(null)}
           onChecklist={(key) => updateChecklist(selected.id, key)}
           onVerify={() => verifyClosure(selected.id)}
-          onClosures={(adminRemarks, customerRemarks, rating) =>
-            closeClosure(selected.id, adminRemarks, customerRemarks, rating)
+          onClosures={(adminRemarks, customerRemarks, rating, payStatus, cashCollectedAmt) =>
+            closeClosure(selected.id, adminRemarks, customerRemarks, rating, payStatus, cashCollectedAmt)
           }
         />
       )}
@@ -475,7 +484,7 @@ type ClosureModalProps = {
   onClose: () => void;
   onChecklist: (key: keyof BookingClosure["verificationChecklist"]) => void;
   onVerify: () => void;
-  onClosures: (adminRemarks: string, customerRemarks: string, rating: number) => void;
+  onClosures: (adminRemarks: string, customerRemarks: string, rating: number, payStatus: string, cashCollectedAmt: number) => void;
 };
 
 function ClosureModal({
@@ -490,6 +499,8 @@ function ClosureModal({
   const [customerRemarks, setCustomerRemarks] = useState(closure.customerRemarks);
   const [rating, setRating] = useState(closure.rating);
   const [hover, setHover] = useState(0);
+  const [payStatus, setPayStatus] = useState("PAID");
+  const [cashCollectedAmt, setCashCollectedAmt] = useState(String(closure.cashCollected || 0));
 
   const cl = closure.verificationChecklist;
   const allChecked = cl.serviceDelivered && cl.customerPresent && cl.qualityConfirmed && cl.paymentConfirmed;
@@ -708,10 +719,44 @@ function ClosureModal({
               />
             </div>
 
+            {/* Payment Update — RULE: admin closure ke waqt payment update karta hai */}
+            <div className="rounded-2xl border border-green-200 bg-green-50/50 p-5">
+              <p className="text-sm font-bold uppercase tracking-[0.2em] text-green-700">
+                💳 PAYMENT UPDATE (AFTER SERVICE)
+              </p>
+              <p className="mt-1 text-sm text-gray-600">
+                Customer ne service ke baad payment kar di hai? Status update karein.
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">PAYMENT STATUS</label>
+                  <select
+                    value={payStatus}
+                    onChange={(e) => setPayStatus(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-green-500"
+                  >
+                    <option value="PAID">✓ PAID</option>
+                    <option value="PARTIAL">PARTIAL</option>
+                    <option value="PENDING">PENDING</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">AMOUNT COLLECTED (₹)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={cashCollectedAmt}
+                    onChange={(e) => setCashCollectedAmt(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-green-500"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Close Button */}
             <button
               type="button"
-              onClick={() => onClosures(adminRemarks, customerRemarks, rating)}
+              onClick={() => onClosures(adminRemarks, customerRemarks, rating, payStatus, Number(cashCollectedAmt) || 0)}
               disabled={busy || !adminRemarks.trim() || rating === 0}
               className={`w-full rounded-full px-6 py-3.5 font-bold text-white transition ${
                 adminRemarks.trim() && rating > 0
@@ -719,7 +764,7 @@ function ClosureModal({
                   : "bg-gray-300 cursor-not-allowed"
               }`}
             >
-              {busy ? "PROCESSING..." : "🔒 CLOSE SERVICE & SUBMIT RATING"}
+              {busy ? "PROCESSING..." : "🔒 CLOSE SERVICE & UPDATE PAYMENT"}
             </button>
           </div>
         )}
@@ -729,6 +774,7 @@ function ClosureModal({
           <div className="mt-5 rounded-2xl bg-green-50 p-6 text-center">
             <div className="text-4xl">🔒</div>
             <p className="mt-3 text-xl font-black text-green-700">SERVICE CLOSED</p>
+            <p className="mt-2 text-sm font-bold text-green-700">💳 Payment updated by admin — booking PAID</p>
             {closure.rating > 0 && (
               <p className="mt-2 text-2xl">{"⭐".repeat(closure.rating)}</p>
             )}
