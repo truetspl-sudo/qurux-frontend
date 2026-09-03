@@ -23,6 +23,7 @@ type Order = {
   paymentStatus: string;
   status: string;
   deliveryAddress: string;
+  cashAmount?: number;
   createdAt: string;
 };
 
@@ -65,6 +66,14 @@ export default function AdminOrdersPage() {
     await apiPatch(`/orders/${id}/status`, { status });
     setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, status } : o)));
     if (selected?._id === id) setSelected((prev) => (prev ? { ...prev, status } : null));
+  }
+
+  // Manual model: admin WhatsApp pe payment verify karke yahan update karta hai
+  // (jaise service bookings closure pe admin payment update karta hai).
+  async function updatePayment(id: string, paymentStatus: string, cashAmount?: number) {
+    await apiPatch(`/orders/${id}/pay`, { paymentStatus, cashAmount });
+    setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, paymentStatus, cashAmount: cashAmount ?? o.cashAmount } : o)));
+    if (selected?._id === id) setSelected((prev) => (prev ? { ...prev, paymentStatus, cashAmount: cashAmount ?? prev.cashAmount } : null));
   }
 
   const filtered = orders.filter((o) => filterStatus === "All" || o.status === filterStatus);
@@ -188,6 +197,37 @@ export default function AdminOrdersPage() {
               <div className="rounded-2xl bg-gray-50 p-4 sm:col-span-2">
                 <p className="text-xs font-bold text-gray-400">DELIVERY ADDRESS</p>
                 <p className="mt-1 text-sm font-bold text-gray-900">{selected.deliveryAddress || "Not provided"}</p>
+              </div>
+            </div>
+
+            {/* Payment update — manual model (admin WhatsApp pe verify karke fill karta hai) */}
+            <div className="mt-4 rounded-2xl border border-green-200 bg-green-50/50 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.15em] text-green-700">💳 PAYMENT UPDATE (MANUAL)</p>
+              <p className="mt-1 text-xs text-gray-600">
+                Customer ne payment WhatsApp/UPI pe kar di hai? Yahan status + amount update karein.
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <select
+                  value={selected.paymentStatus}
+                  onChange={(e) => updatePayment(selected._id, e.target.value)}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-green-500"
+                >
+                  <option value="PENDING">PENDING</option>
+                  <option value="PARTIAL">PARTIAL</option>
+                  <option value="PAID">✓ PAID</option>
+                  <option value="REFUNDED">REFUNDED</option>
+                </select>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-500">₹</span>
+                  <input
+                    type="number"
+                    min={0}
+                    defaultValue={selected.cashAmount || 0}
+                    onBlur={(e) => updatePayment(selected._id, selected.paymentStatus, Number(e.target.value) || 0)}
+                    placeholder="Amount collected"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-green-500"
+                  />
+                </div>
               </div>
             </div>
 

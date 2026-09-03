@@ -365,7 +365,7 @@ export default function BOBPage() {
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-pink-600">SCAN & PAY — QURUX UPI</p>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src="/payment/quruxbarcode.jpg"
+                      src="/payment/quruxbarcode.png"
                       alt="Qurux UPI barcode"
                       className="mx-auto mt-3 h-48 w-48 rounded-xl bg-white object-contain shadow-sm ring-1 ring-pink-100"
                     />
@@ -627,12 +627,12 @@ export default function BOBPage() {
                         {emiPayAmount && Number(emiPayAmount) >= 10 && (
                           <div className="mt-4 rounded-2xl border border-gray-100 p-5 text-center">
                             <p className="text-sm font-bold text-gray-700">Scan & Pay — ₹{Number(emiPayAmount).toLocaleString("en-IN")}</p>
-                            <div className="mx-auto mt-3 flex h-40 w-40 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-100 to-pink-50">
-                              <div className="text-center">
-                                <p className="text-2xl font-bold text-pink-600">₹{Number(emiPayAmount).toLocaleString("en-IN")}</p>
-                                <p className="mt-1 text-xs text-gray-500">qurux@upi</p>
-                              </div>
-                            </div>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src="/payment/quruxbarcode.png"
+                              alt="Qurux UPI barcode"
+                              className="mx-auto mt-3 h-48 w-48 rounded-xl bg-white object-contain shadow-sm ring-1 ring-pink-100"
+                            />
                             <p className="mt-2 text-xs text-gray-400">UPI ID: qurux@upi</p>
                           </div>
                         )}

@@ -4,7 +4,6 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { services } from "@/components/book/services";
 import { apiPost, getLoggedInUser } from "@/lib/api";
-import { createBOBEMIPlan } from "@/lib/bob-emi";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
 
 export default function BookingPage() {
@@ -44,787 +43,88 @@ function BookingContent() {
   const [selectedSalon, setSelectedSalon] = useState("");
 
   const [submitted, setSubmitted] = useState(false);
-  const [bobBalance, setBobBalance] = useState(0);
-  const [bobSavingBalance, setBobSavingBalance] = useState(0);
-  const [beautyBenefitBalance, setBeautyBenefitBalance] = useState(0);
-  const [bobError, setBobError] = useState("");
-  const [bobRemainingPayment, setBobRemainingPayment] =
-    useState("Full Payment");
+  const [bookingId, setBookingId] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const loggedInUser = getLoggedInUser();
+
+  // Prefill from website login (user id/password wale account se)
+  useEffect(() => {
+    const user = getLoggedInUser();
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        name: prev.name || user.fullName || "",
+        phone: prev.phone || user.mobile || "",
+      }));
+    }
+  }, []);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) {
     const { name, value } = e.target;
-
-    setFormData((previous) => ({
-      ...previous,
-      [name]: value,
-    }));
-
-    if (name === "payment") {
-      setBobError("");
-    }
+    setFormData((previous) => ({ ...previous, [name]: value }));
+    if (name === "payment") setError("");
   }
 
-
-  const getBobCustomer = () => {
-    // Use website login (qurux_user) to identify the customer
-    const websiteUserRaw = localStorage.getItem("qurux_user");
-    const savedApplications = localStorage.getItem("bobApplications");
-
-    if (!websiteUserRaw || !savedApplications) return null;
-
-    try {
-      const websiteUser = JSON.parse(websiteUserRaw);
-      if (!websiteUser || !websiteUser.id) return null;
-
-      const applications = JSON.parse(savedApplications);
-      const bobApp = applications.find(
-        (item: any) =>
-          String(item.customerId) === String(websiteUser.id) &&
-          item.status === "APPROVED"
-      );
-
-      if (bobApp) {
-        // Return customer info merged from website login + BOB app
-        return {
-          id: websiteUser.id,
-          fullName: websiteUser.fullName,
-          mobile: websiteUser.mobile,
-          email: websiteUser.email,
-          accountNumber: bobApp.accountNumber,
-        };
-      }
-
-      return null;
-    } catch {
-      return null;
-    }
-  };
-
-  const daysBetween = (from: string) => {
-    const start = new Date(from).getTime();
-    const end = Date.now();
-
-    if (!Number.isFinite(start)) return 0;
-
-    return Math.max(
-      0,
-      Math.floor(
-        (end - start) / (1000 * 60 * 60 * 24)
-      )
-    );
-  };
-
-  const getDepositBenefit = (deposit: any) => {
-    if (!deposit.benefitEnabled) {
-      return 0;
-    }
-
-    const ageDays =
-      daysBetween(
-        deposit.depositDate
-      );
-
-    if (ageDays < 30) {
-      return 0;
-    }
-
-    const completedMonths =
-      Math.floor(
-        ageDays / 30
-      );
-
-    const milestone =
-      Math.min(
-        100,
-        20 +
-          Math.max(
-            0,
-            completedMonths - 1
-          ) *
-            10
-      );
-
-    return Math.round(
-      Number(
-        deposit.originalAmount || 0
-      ) *
-        milestone /
-        100
-    );
-  };
-
-  const getBOBValueBreakdown = (
-    customerId: string
-  ) => {
-    try {
-      const paymentsData =
-        localStorage.getItem(
-          "bobPayments"
-        );
-
-      const depositsData =
-        localStorage.getItem(
-          "bobDeposits"
-        );
-
-      const payments =
-        paymentsData
-          ? JSON.parse(
-              paymentsData
-            )
-          : [];
-
-      const deposits =
-        depositsData
-          ? JSON.parse(
-              depositsData
-            )
-          : [];
-
-      const customerPayments =
-        payments.filter(
-          (payment: any) =>
-            payment.customerId ===
-              customerId &&
-            payment.status ===
-              "APPROVED"
-        );
-
-      let changed = false;
-
-      customerPayments.forEach(
-        (payment: any) => {
-          const exists =
-            deposits.some(
-              (deposit: any) =>
-                deposit.sourcePaymentId ===
-                payment.id
-            );
-
-          if (!exists) {
-            deposits.push({
-              id:
-                `DEP-${payment.id}`,
-
-              customerId,
-
-              sourcePaymentId:
-                payment.id,
-
-              originalAmount:
-                Number(
-                  payment.amount
-                ) || 0,
-
-              depositDate:
-                payment.submittedAt ||
-                new Date().toISOString(),
-
-              usedAmount: 0,
-
-              usedBenefitAmount: 0,
-
-              benefitEnabled:
-                true,
-            });
-
-            changed = true;
-          }
-        }
-      );
-
-      if (changed) {
-        localStorage.setItem(
-          "bobDeposits",
-          JSON.stringify(
-            deposits
-          )
-        );
-      }
-
-      const customerDeposits =
-        deposits
-          .filter(
-            (deposit: any) =>
-              deposit.customerId ===
-              customerId
-          )
-          .sort(
-            (a: any, b: any) =>
-              new Date(
-                a.depositDate
-              ).getTime() -
-              new Date(
-                b.depositDate
-              ).getTime()
-          );
-
-      const saving =
-        customerDeposits.reduce(
-          (
-            total: number,
-            deposit: any
-          ) => {
-            return (
-              total +
-              Math.max(
-                0,
-                Number(
-                  deposit.originalAmount ||
-                  0
-                ) -
-                  Number(
-                    deposit.usedAmount ||
-                    0
-                  )
-              )
-            );
-          },
-          0
-        );
-
-      const benefit =
-        customerDeposits.reduce(
-          (
-            total: number,
-            deposit: any
-          ) => {
-            const earned =
-              getDepositBenefit(
-                deposit
-              );
-
-            const used =
-              Number(
-                deposit.usedBenefitAmount ||
-                0
-              );
-
-            return (
-              total +
-              Math.max(
-                0,
-                earned - used
-              )
-            );
-          },
-          0
-        );
-
-      return {
-        saving,
-        benefit,
-        total:
-          saving + benefit,
-        deposits,
-      };
-    } catch (error) {
-      console.error(
-        "BOB balance breakdown error:",
-        error
-      );
-
-      return {
-        saving: 0,
-        benefit: 0,
-        total: 0,
-        deposits: [],
-      };
-    }
-  };
-
-  const getBobBalance = (
-    customerId: string
-  ) => {
-    return getBOBValueBreakdown(
-      customerId
-    ).total;
-  };
-
-  useEffect(() => {
-    const customer =
-      getBobCustomer();
-
-    if (!customer) {
-      setBobBalance(0);
-      setBobSavingBalance(0);
-      setBeautyBenefitBalance(0);
-      return;
-    }
-
-    const breakdown =
-      getBOBValueBreakdown(
-        customer.id
-      );
-
-    setBobSavingBalance(
-      breakdown.saving
-    );
-
-    setBeautyBenefitBalance(
-      breakdown.benefit
-    );
-
-    setBobBalance(
-      breakdown.total
-    );
-  }, []);
+  const paymentMethod = (() => {
+    if (formData.payment === "Pay from BOB") return "BOB";
+    if (formData.payment === "No Cost EMI") return "EMI";
+    return "FULL";
+  })();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError("");
 
-    setBobError("");
-
-    if (
-      !selectedService &&
-      formData.payment === "Pay from BOB"
-    ) {
-      setBobError("Please select a service before paying from BOB.");
+    if (!selectedService) {
+      setError("Pehle ek service select karein.");
       return;
     }
 
-    /* =========================
-       FULL NO COST EMI
-       BOB customer EMI plan
-    ========================= */
-
-    if (formData.payment === "No Cost EMI") {
-      const customer = getBobCustomer();
-
-      if (customer && selectedService) {
-        const amount = Number(
-          String(selectedService.price).replace(
-            /[^0-9.]/g,
-            ""
-          )
-        );
-
-        if (amount > 0) {
-          createBOBEMIPlan({
-            customerId: customer.id,
-            purchaseType: "SERVICE",
-            purchaseName: selectedService.name,
-            totalAmount: amount,
-            bobPaidAmount: 0,
-            paidAmount: 0,
-            pendingAmount: amount,
-            serviceSlug: selectedService.slug,
-          });
-        }
-      }
-
-      setSubmitted(true);
-      return;
-    }
-
-    if (formData.payment === "Pay from BOB") {
-      const customer =
-        getBobCustomer();
-
-      if (!customer) {
-        setBobError(
-          "Pay from BOB use karne ke liye pehle BOB account me login karein."
-        );
-        return;
-      }
-
-      const priceText =
-        selectedService?.price ||
-        "0";
-
-      const amount =
-        Number(
-          String(
-            priceText
-          ).replace(
-            /[^0-9.]/g,
-            ""
-          )
-        );
-
-      if (
-        !amount ||
-        amount <= 0
-      ) {
-        setBobError(
-          "Is service ka valid payable amount available nahi hai."
-        );
-        return;
-      }
-
-      const breakdown =
-        getBOBValueBreakdown(
-          customer.id
-        );
-
-      setBobSavingBalance(
-        breakdown.saving
-      );
-
-      setBeautyBenefitBalance(
-        breakdown.benefit
-      );
-
-      setBobBalance(
-        breakdown.total
-      );
-
-      // BOB balance kam hone par booking ko block nahi karna hai.
-      // Available BOB value pehle use hogi aur baaki amount
-      // customer Full Payment ya No Cost EMI se complete karega.
-      const bobPayableAmount = Math.min(
-        amount,
-        breakdown.total
-      );
-
-      const remainingAmount = Math.max(
-        0,
-        amount - breakdown.total
-      );
-
-      try {
-        const depositsData =
-          localStorage.getItem(
-            "bobDeposits"
-          );
-
-        const deposits =
-          depositsData
-            ? JSON.parse(
-                depositsData
-              )
-            : [];
-
-        const customerDeposits =
-          deposits
-            .filter(
-              (deposit: any) =>
-                deposit.customerId ===
-                customer.id
-            )
-            .sort(
-              (a: any, b: any) =>
-                new Date(
-                  a.depositDate
-                ).getTime() -
-                new Date(
-                  b.depositDate
-                ).getTime()
-            );
-
-        /*
-         * FIFO:
-         * Pehle actual Saving use hogi.
-         * Agar Saving khatam hone ke baad amount bacha,
-         * tab Beauty Benefit use hoga.
-         */
-
-        let remaining =
-          bobPayableAmount;
-
-        const allocation: any[] =
-          [];
-
-        let actualSavingUsed =
-          0;
-
-        let benefitUsed =
-          0;
-
-        const updatedDeposits =
-          customerDeposits.map(
-            (deposit: any) => {
-              if (
-                remaining <= 0
-              ) {
-                return deposit;
-              }
-
-              const savingAvailable =
-                Math.max(
-                  0,
-                  Number(
-                    deposit.originalAmount ||
-                    0
-                  ) -
-                    Number(
-                      deposit.usedAmount ||
-                      0
-                    )
-                );
-
-              const useFromSaving =
-                Math.min(
-                  remaining,
-                  savingAvailable
-                );
-
-              if (
-                useFromSaving > 0
-              ) {
-                remaining -=
-                  useFromSaving;
-
-                actualSavingUsed +=
-                  useFromSaving;
-
-                allocation.push({
-                  depositId:
-                    deposit.id,
-
-                  source:
-                    "SAVING",
-
-                  amount:
-                    useFromSaving,
-                });
-
-                deposit = {
-                  ...deposit,
-
-                  usedAmount:
-                    Number(
-                      deposit.usedAmount ||
-                      0
-                    ) +
-                    useFromSaving,
-                };
-              }
-
-              if (
-                remaining <= 0
-              ) {
-                return deposit;
-              }
-
-              const earnedBenefit =
-                getDepositBenefit(
-                  deposit
-                );
-
-              const alreadyUsedBenefit =
-                Number(
-                  deposit.usedBenefitAmount ||
-                  0
-                );
-
-              const benefitAvailable =
-                Math.max(
-                  0,
-                  earnedBenefit -
-                    alreadyUsedBenefit
-                );
-
-              const useFromBenefit =
-                Math.min(
-                  remaining,
-                  benefitAvailable
-                );
-
-              if (
-                useFromBenefit > 0
-              ) {
-                remaining -=
-                  useFromBenefit;
-
-                benefitUsed +=
-                  useFromBenefit;
-
-                allocation.push({
-                  depositId:
-                    deposit.id,
-
-                  source:
-                    "BEAUTY_BENEFIT",
-
-                  amount:
-                    useFromBenefit,
-                });
-
-                return {
-                  ...deposit,
-
-                  usedBenefitAmount:
-                    alreadyUsedBenefit +
-                    useFromBenefit,
-                };
-              }
-
-              return deposit;
-            }
-          );
-
-        if (
-          remaining > 0
-        ) {
-          setBobError(
-            "BOB payment complete nahi ho paaya."
-          );
-          return;
-        }
-
-        const updatedMap =
-          new Map(
-            updatedDeposits.map(
-              (deposit: any) => [
-                deposit.id,
-                deposit,
-              ]
-            )
-          );
-
-        const finalDeposits =
-          deposits.map(
-            (deposit: any) =>
-              updatedMap.get(
-                deposit.id
-              ) ||
-              deposit
-          );
-
-        localStorage.setItem(
-          "bobDeposits",
-          JSON.stringify(
-            finalDeposits
-          )
-        );
-
-        /*
-         * Statement me sirf actual Saving use DEBIT hoga.
-         * Beauty Benefit use statement me nahi aayega.
-         */
-
-        const usageData =
-          localStorage.getItem(
-            "bobUsage"
-          );
-
-        const usage =
-          usageData
-            ? JSON.parse(
-                usageData
-              )
-            : [];
-
-        usage.push({
-          id:
-            `BOB-USE-${Date.now()}`,
-
-          customerId:
-            customer.id,
-
-          description:
-            selectedService?.name ||
-            "Qurux Service",
-
-          amount:
-            actualSavingUsed +
-            benefitUsed,
-
-          savingUsedAmount:
-            actualSavingUsed,
-
-          benefitUsedAmount:
-            benefitUsed,
-
-          date:
-            new Date().toISOString(),
-
-          allocation,
-
-          serviceSlug:
-            selectedService?.slug ||
-            "",
-
-          type:
-            "SERVICE",
-        });
-
-        localStorage.setItem(
-          "bobUsage",
-          JSON.stringify(
-            usage
-          )
-        );
-
-        const after =
-          getBOBValueBreakdown(
-            customer.id
-          );
-
-        setBobSavingBalance(
-          after.saving
-        );
-
-        setBeautyBenefitBalance(
-          after.benefit
-        );
-
-        setBobBalance(
-          after.total
-        );
-
-        if (
-          remainingAmount > 0 &&
-          bobRemainingPayment === "No Cost EMI"
-        ) {
-          createBOBEMIPlan({
-            customerId: customer.id,
-            purchaseType: "SERVICE",
-            purchaseName:
-              selectedService?.name ||
-              "Qurux Service",
-            totalAmount: amount,
-            bobPaidAmount: bobPayableAmount,
-            paidAmount: 0,
-            pendingAmount: remainingAmount,
-            serviceSlug:
-              selectedService?.slug ||
-              "",
-          });
-        }
-      } catch (error) {
-        console.error(
-          "BOB booking payment error:",
-          error
-        );
-
-        setBobError(
-          "BOB payment process nahi ho paaya."
-        );
-        return;
-      }
-    }
-
-    // Save booking to backend API
-    let createdBookingId = "";
+    const priceText = selectedService.price || "0";
+    const amount = Number(String(priceText).replace(/[^0-9.]/g, ""));
+    const locationType = formData.location === "Home Service" ? "HOME" : "SALON";
+
+    // RULE (master note): booking ke waqt KOI payment step/payment nahi
+    // mangte. FULL / EMI / BOB — teeno options me booking PENDING create
+    // hoti hai. Payment customer service hone ke BAAD karta hai aur admin
+    // booking close karte waqt payment update karta hai (manual fill).
+    // BOB ka koi alag login/password nahi — website login hi BOB login hai.
+    setSaving(true);
     try {
-      const priceText = selectedService?.price || "0";
-      const amount = Number(String(priceText).replace(/[^0-9.]/g, ""));
-      const locationType = formData.location === "Home Service" ? "HOME" : "SALON";
-      const paymentMethod = formData.payment === "Pay from BOB" ? "BOB" : formData.payment === "No Cost EMI" ? "EMI" : "FULL";
-
       const res = await apiPost("/bookings", {
-        serviceName: selectedService?.name || "",
-        serviceCategory: selectedService?.category || "",
+        serviceName: selectedService.name,
+        serviceCategory: selectedService.category || "",
         serviceLocation: locationType,
         address: locationType === "HOME" ? address : "",
         salonName: locationType === "SALON" ? selectedSalon : "",
         date: formData.date || "",
         timeSlot: timeSlot || "",
-        amount: amount,
-        paymentMethod: paymentMethod,
+        amount,
+        paymentMethod,
       });
-      createdBookingId = (res.data as any)?.booking?.bookingId || (res.data as any)?.booking?._id || "";
-    } catch (err) {
-      console.error("Booking API error:", err);
-    }
 
-    // RULE: FULL payment = service ke BAAD payment. Booking ke time koi
-    // payment nahi — admin service close karte waqt payment update karega.
-    setSubmitted(true);
+      if (!res.ok) {
+        const msg =
+          res.status === 401 || res.status === 403
+            ? "Booking karne ke liye pehle website par login karein (/account). Admin approved customer hi book kar sakta hai."
+            : (res as any)?.data?.message || res.message || "Booking create nahi ho payi. Backend offline?";
+        setError(msg);
+        return;
+      }
+
+      const booking = (res.data as any)?.booking;
+      setBookingId(booking?.bookingId || booking?._id || "");
+      setSubmitted(true);
+    } catch (err: any) {
+      console.error("Booking API error:", err);
+      setError(err?.message || "Booking create nahi ho payi. Backend offline?");
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (submitted) {
@@ -839,25 +139,37 @@ function BookingContent() {
             Booking Request Received
           </h1>
 
+          {bookingId && (
+            <p className="mt-3 rounded-2xl bg-gray-50 p-3 text-sm font-bold text-gray-700">
+              Booking ID: <span className="text-pink-600">{bookingId}</span>
+            </p>
+          )}
+
           <p className="mt-4 leading-7 text-gray-600">
-            Thank you for choosing QURUX MAKEOVER & ACADEMY.
-            Our team will contact you shortly to confirm your booking.
+            Thank you for choosing QURUX MAKEOVER &amp; ACADEMY.
+            Aapki booking <strong>PENDING</strong> hai — QURUX team
+            aapko WhatsApp par confirm karega.
           </p>
 
-          {formData.payment === "Full Payment" && (
-            <div className="mt-6 rounded-2xl bg-yellow-50 p-5 text-left">
-              <p className="text-sm font-bold text-yellow-800">💳 FULL PAYMENT — SERVICE KE BAAD</p>
-              <p className="mt-1 text-sm leading-6 text-yellow-700">
-                Aapne Full Payment option chuna hai. Booking ke waqt koi payment nahi karni hai —
-                <strong> service hone ke baad</strong> payment karein (UPI/Cash).
-                Admin service complete karte waqt payment update karega.
-              </p>
-            </div>
-          )}
+          <div className="mt-6 rounded-2xl bg-yellow-50 p-5 text-left">
+            <p className="text-sm font-bold text-yellow-800">💳 PAYMENT — SERVICE KE BAAD</p>
+            <p className="mt-1 text-sm leading-6 text-yellow-700">
+              Aapne <strong>{formData.payment}</strong> option chuna hai.
+              Booking ke waqt koi payment nahi karni hai — <strong>service
+              hone ke baad</strong> payment karein (UPI/Cash).
+              Admin service complete karte waqt payment update karega.
+              {formData.payment === "Pay from BOB" &&
+                " BOB balance se payment bhi service ke baad hogi — alag se BOB login ki zaroorat nahi hai."}
+            </p>
+          </div>
 
           <button
             type="button"
-            onClick={() => setSubmitted(false)}
+            onClick={() => {
+              setSubmitted(false);
+              setBookingId("");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
             className="mt-8 rounded-full bg-pink-600 px-8 py-3 font-semibold text-white hover:bg-pink-700"
           >
             Make Another Booking
@@ -874,7 +186,7 @@ function BookingContent() {
         {/* Heading */}
         <div className="mb-10 text-center">
           <p className="text-sm font-bold uppercase tracking-[0.3em] text-pink-600">
-            QURUX MAKEOVER & ACADEMY
+            QURUX MAKEOVER &amp; ACADEMY
           </p>
 
           <h1 className="mt-4 text-4xl font-bold text-gray-900 md:text-5xl">
@@ -893,19 +205,13 @@ function BookingContent() {
             <>
               {/* SERVICE IMAGE */}
               <div className="relative h-[220px] w-full overflow-hidden bg-pink-100">
-
-                {/* Background image - fills the complete area */}
                 <div
                   className="absolute inset-0 scale-110 bg-cover bg-center blur-2xl"
                   style={{
                     backgroundImage: `url("${selectedService.image}")`,
                   }}
                 />
-
-                {/* Background overlay */}
                 <div className="absolute inset-0 bg-white/30" />
-
-                {/* Original image */}
                 <div className="relative z-10 flex h-full w-full items-center justify-center">
                   <img
                     src={selectedService.image}
@@ -920,18 +226,13 @@ function BookingContent() {
                 <p className="text-sm font-semibold uppercase tracking-wider text-pink-600">
                   Selected Service
                 </p>
-
                 <div className="mt-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900">
                       {selectedService.name}
                     </h2>
-
-                    <p className="mt-2 text-gray-600">
-                      {selectedService.duration}
-                    </p>
+                    <p className="mt-2 text-gray-600">{selectedService.duration}</p>
                   </div>
-
                   <div className="text-xl font-bold text-pink-600">
                     {selectedService.price}
                   </div>
@@ -943,11 +244,9 @@ function BookingContent() {
               <p className="text-sm font-semibold uppercase tracking-wider text-pink-600">
                 Selected Service
               </p>
-
               <h2 className="mt-4 text-xl font-bold text-gray-900">
                 Service Selection
               </h2>
-
               <p className="mt-2 text-gray-600">
                 Please select a service before booking.
               </p>
@@ -957,6 +256,22 @@ function BookingContent() {
 
         {/* Booking Form */}
         <section className="rounded-[30px] bg-white p-6 shadow-xl md:p-10">
+          {!loggedInUser && (
+            <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-5">
+              <p className="text-sm font-bold text-blue-800">🔐 LOGIN REQUIRED</p>
+              <p className="mt-1 text-sm leading-6 text-blue-700">
+                Booking karne ke liye pehle website par login karein
+                (User ID + Password se). Agar aapke paas User ID nahi hai to
+                pehle sign up karein — admin approve karke User ID dega.
+              </p>
+              <a
+                href="/account"
+                className="mt-3 inline-block rounded-full bg-blue-600 px-6 py-2 text-sm font-bold text-white hover:bg-blue-700"
+              >
+                Login / Sign Up →
+              </a>
+            </div>
+          )}
 
           <h2 className="text-3xl font-bold text-gray-900">
             Booking Details
@@ -970,13 +285,9 @@ function BookingContent() {
 
             {/* Name */}
             <div>
-              <label
-                htmlFor="name"
-                className="mb-2 block font-semibold text-gray-800"
-              >
+              <label htmlFor="name" className="mb-2 block font-semibold text-gray-800">
                 Full Name
               </label>
-
               <input
                 id="name"
                 name="name"
@@ -991,13 +302,9 @@ function BookingContent() {
 
             {/* Phone */}
             <div>
-              <label
-                htmlFor="phone"
-                className="mb-2 block font-semibold text-gray-800"
-              >
+              <label htmlFor="phone" className="mb-2 block font-semibold text-gray-800">
                 Mobile Number
               </label>
-
               <input
                 id="phone"
                 name="phone"
@@ -1010,7 +317,6 @@ function BookingContent() {
                 placeholder="Enter 10 digit mobile number"
                 className="w-full rounded-xl border border-gray-200 px-4 py-3.5 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
               />
-
               <p className="mt-2 text-xs text-gray-500">
                 Please enter a valid 10 digit mobile number.
               </p>
@@ -1018,13 +324,9 @@ function BookingContent() {
 
             {/* Date */}
             <div>
-              <label
-                htmlFor="date"
-                className="mb-2 block font-semibold text-gray-800"
-              >
+              <label htmlFor="date" className="mb-2 block font-semibold text-gray-800">
                 Preferred Date
               </label>
-
               <input
                 id="date"
                 name="date"
@@ -1042,7 +344,6 @@ function BookingContent() {
               <p className="mb-3 font-semibold text-gray-800">
                 Choose Service Location
               </p>
-
               <div className="grid gap-4 md:grid-cols-2">
                 <label
                   className={`cursor-pointer rounded-2xl border p-5 transition ${
@@ -1166,20 +467,15 @@ function BookingContent() {
                       name="payment"
                       value="Full Payment"
                       required
-                      checked={
-                        formData.payment === "Full Payment"
-                      }
+                      checked={formData.payment === "Full Payment"}
                       onChange={handleChange}
                       className="mt-1 h-4 w-4 accent-pink-600"
                     />
-
                     <div>
-                      <p className="font-bold text-gray-900">
-                        Full Payment
-                      </p>
-
+                      <p className="font-bold text-gray-900">Full Payment</p>
                       <p className="mt-1 text-sm text-gray-600">
-                        Pay the complete booking amount.
+                        Pay the complete booking amount
+                        <strong> after the service</strong> (UPI/Cash).
                       </p>
                     </div>
                   </div>
@@ -1199,21 +495,15 @@ function BookingContent() {
                       name="payment"
                       value="No Cost EMI"
                       required
-                      checked={
-                        formData.payment === "No Cost EMI"
-                      }
+                      checked={formData.payment === "No Cost EMI"}
                       onChange={handleChange}
                       className="mt-1 h-4 w-4 accent-pink-600"
                     />
-
                     <div>
-                      <p className="font-bold text-gray-900">
-                        No Cost EMI
-                      </p>
-
+                      <p className="font-bold text-gray-900">No Cost EMI</p>
                       <p className="mt-1 text-sm text-gray-600">
-                        Available subject to applicable terms
-                        and eligibility.
+                        Split into easy installments. Booking ke waqt koi
+                        payment nahi — admin approval ke baad plan banega.
                       </p>
                     </div>
                   </div>
@@ -1233,203 +523,41 @@ function BookingContent() {
                       name="payment"
                       value="Pay from BOB"
                       required
-                      checked={
-                        formData.payment === "Pay from BOB"
-                      }
+                      checked={formData.payment === "Pay from BOB"}
                       onChange={handleChange}
                       className="mt-1 h-4 w-4 accent-green-600"
                     />
-
                     <div className="w-full">
-                      <p className="font-bold text-gray-900">
-                        Pay from BOB
-                      </p>
-
+                      <p className="font-bold text-gray-900">Pay from BOB</p>
                       <p className="mt-1 text-sm text-gray-600">
-                        Use your Bank of Beauty value.
+                        Use your Bank of Beauty value. BOB ka koi alag login
+                        nahi — website login hi BOB login hai. Service ke baad
+                        admin BOB balance se payment update karega.
                       </p>
-
-                      {formData.payment === "Pay from BOB" && (
-                        <div className="mt-3 space-y-3 rounded-xl bg-white p-3">
-
-                          <div className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
-                            <span className="text-xs font-semibold text-gray-500">
-                              SAVING AVAILABLE
-                            </span>
-
-                            <span className="font-bold text-gray-900">
-                              ₹{bobSavingBalance.toLocaleString("en-IN")}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center justify-between rounded-xl bg-pink-50 p-3">
-                            <span className="text-xs font-semibold text-pink-600">
-                              BEAUTY BENEFITS AVAILABLE
-                            </span>
-
-                            <span className="font-bold text-pink-600">
-                              ₹{beautyBenefitBalance.toLocaleString("en-IN")}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center justify-between rounded-xl bg-green-50 p-3">
-                            <span className="text-xs font-bold text-green-700">
-                              TOTAL BOB VALUE
-                            </span>
-
-                            <span className="text-xl font-bold text-green-700">
-                              ₹{bobBalance.toLocaleString("en-IN")}
-                            </span>
-                          </div>
-
-                          {selectedService && (
-                            <>
-                              <p className="pt-1 text-xs font-semibold text-gray-500">
-                                REGULAR SERVICE PRICE
-                              </p>
-
-                              <p className="font-bold text-gray-900">
-                                {selectedService.price}
-                              </p>
-
-                              <p className="pt-2 text-xs font-semibold text-gray-500">
-                                AMOUNT PAYABLE FROM BOB
-                              </p>
-
-                              <p className="text-lg font-bold text-green-700">
-                                ₹{Math.min(
-                                  bobBalance,
-                                  Number(
-                                    String(selectedService.price).replace(
-                                      /[^0-9.]/g,
-                                      ""
-                                    )
-                                  )
-                                ).toLocaleString("en-IN")}
-                              </p>
-                            </>
-                          )}
-
-                        </div>
-                      )}
                     </div>
                   </div>
                 </label>
-
               </div>
-
-              {bobError && (
-                <div className="mt-4 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-600">
-                  {bobError}
-                </div>
-              )}
-
-              {formData.payment === "Pay from BOB" &&
-                selectedService && (
-                  <div className="mt-4 rounded-2xl bg-green-50 p-4">
-                    <p className="text-sm text-gray-600">
-                      After Purchase Balance
-                    </p>
-
-                    <p className="mt-1 text-2xl font-bold text-green-700">
-                      ₹
-                      {Math.max(
-                        0,
-                        bobBalance -
-                          Math.min(
-                            bobBalance,
-                            Number(
-                              String(
-                                selectedService.price
-                              ).replace(
-                                /[^0-9.]/g,
-                                ""
-                              )
-                            )
-                          )
-                      ).toLocaleString("en-IN")}
-                    </p>
-
-                    {(() => {
-                      const serviceAmount = Number(
-                        String(selectedService.price).replace(
-                          /[^0-9.]/g,
-                          ""
-                        )
-                      );
-
-                      const availableBOB = Math.max(0, bobBalance);
-                      const bobPayable = Math.min(serviceAmount, availableBOB);
-                      const remaining = Math.max(0, serviceAmount - availableBOB);
-
-                      return remaining > 0 ? (
-                        <div className="mt-4 rounded-2xl bg-amber-50 p-4">
-                          <p className="text-xs font-bold uppercase tracking-[0.15em] text-amber-700">
-                            REMAINING AMOUNT
-                          </p>
-
-                          <p className="mt-1 text-xl font-bold text-gray-900">
-                            ₹{remaining.toLocaleString("en-IN")}
-                          </p>
-
-                          <p className="mt-2 text-sm leading-6 text-gray-600">
-                            BOB balance ₹{bobPayable.toLocaleString("en-IN")} pehle use hoga.
-                            Baaki amount ke liye payment option choose karein.
-                          </p>
-
-                          <div className="mt-4 grid gap-2">
-                            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 bg-white p-3">
-                              <input
-                                type="radio"
-                                name="bobRemainingPayment"
-                                value="Full Payment"
-                                checked={bobRemainingPayment === "Full Payment"}
-                                onChange={(e) => setBobRemainingPayment(e.target.value)}
-                                className="h-4 w-4 accent-pink-600"
-                              />
-                              <span className="font-semibold text-gray-900">
-                                Full Payment — ₹{remaining.toLocaleString("en-IN")}
-                              </span>
-                            </label>
-
-                            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 bg-white p-3">
-                              <input
-                                type="radio"
-                                name="bobRemainingPayment"
-                                value="No Cost EMI"
-                                checked={bobRemainingPayment === "No Cost EMI"}
-                                onChange={(e) => setBobRemainingPayment(e.target.value)}
-                                className="h-4 w-4 accent-pink-600"
-                              />
-                              <span className="font-semibold text-gray-900">
-                                No Cost EMI — ₹{remaining.toLocaleString("en-IN")}
-                              </span>
-                            </label>
-                          </div>
-                        </div>
-                      ) : null;
-                    })()}
-
-                    <p className="mt-2 text-xs text-gray-500">
-                      FIFO: oldest Saving is used first. Beauty Benefit is used only when required.
-                      Statement me Beauty Benefit credit/debit nahi dikhega.
-                    </p>
-                  </div>
-                )}
-
             </div>
+
+            {error && (
+              <div className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-600">
+                {error}
+              </div>
+            )}
 
             {/* Submit */}
             <button
               type="submit"
-              className="w-full rounded-full bg-pink-600 px-8 py-4 text-lg font-bold text-white shadow-lg hover:bg-pink-700"
+              disabled={saving || !selectedService}
+              className="w-full rounded-full bg-pink-600 px-8 py-4 text-lg font-bold text-white shadow-lg hover:bg-pink-700 disabled:opacity-50"
             >
-              SUBMIT BOOKING
+              {saving ? "SUBMITTING..." : "SUBMIT BOOKING"}
             </button>
 
             <p className="text-center text-xs leading-5 text-gray-500">
-              Your booking request will be confirmed by the
-              QURUX team after checking availability.
+              Booking ke waqt koi payment nahi leni hai — payment service hone
+              ke baad hoti hai aur admin booking close karte waqt update karta hai.
             </p>
 
           </form>

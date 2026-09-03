@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import PaymentForm from "@/components/PaymentForm";
 import { apiPost } from "@/lib/api";
 
 type CartItem = {
@@ -84,7 +83,12 @@ export default function CheckoutPage() {
 
       if (res.ok && res.data?.order?.orderId) {
         setOrderId(res.data.order.orderId);
-        setStep("payment");
+        // RULE: koi payment gateway nahi — order submit hote hi PENDING.
+        // Payment/dispatch admin WhatsApp pe manually confirm karta hai,
+        // bilkul jaise admin service bookings closure pe update karta hai.
+        setPaymentDone(true);
+        setStep("confirmation");
+        localStorage.removeItem("qurux_cart");
       } else {
         setSaveError(
           res.status === 401 || res.status === 403
@@ -98,12 +102,8 @@ export default function CheckoutPage() {
     setOrderSaving(false);
   }
 
-  // Payment proof submitted (real /payments record) → confirmation
-  async function handlePaymentSuccess() {
-    setPaymentDone(true);
-    setStep("confirmation");
-    localStorage.removeItem("qurux_cart");
-  }
+  // (Manual model) Payment proof is not collected at order time — admin
+  // confirms payment on WhatsApp and updates the order paymentStatus.
 
   // ── Empty Cart ──
   if (cart.length === 0 && !paymentDone) {
@@ -149,18 +149,19 @@ export default function CheckoutPage() {
             </div>
           )}
           <p className="mt-4 text-sm text-gray-600">
-            Thank you, <strong>{name}</strong>! Your payment is submitted and awaiting admin verification.
+            Thank you, <strong>{name}</strong>! Your order request is submitted.
+            Payment &amp; delivery ko admin WhatsApp pe manually confirm karega.
           </p>
           <div className="mt-4 rounded-2xl bg-green-50 p-4">
             <p className="text-xs font-bold text-green-700">📱 WHATSAPP DISPATCH</p>
             <p className="mt-1 text-sm text-green-700">
-              After admin verification, your order details will be sent via WhatsApp for fulfillment.
+              Admin aapko WhatsApp pe payment &amp; delivery ke liye contact karega.
             </p>
           </div>
           <div className="mt-4 rounded-2xl bg-yellow-50 p-4">
-            <p className="text-xs font-bold text-yellow-700">⏳ PAYMENT STATUS</p>
+            <p className="text-xs font-bold text-yellow-700">⏳ ORDER STATUS</p>
             <p className="mt-1 text-sm text-yellow-700">
-              PENDING VERIFICATION — Admin will verify your UPI transaction and approve.
+              PENDING — Payment verify hone ke baad admin order status update karega.
             </p>
           </div>
           <div className="mt-8 grid grid-cols-2 gap-3">
@@ -192,29 +193,8 @@ export default function CheckoutPage() {
             CHECKOUT
           </p>
           <h1 className="mt-4 text-4xl font-black text-gray-900">
-            {step === "details" ? "Complete Your Order" : "Make Payment"}
+            Complete Your Order
           </h1>
-        </div>
-
-        {/* Step Indicator */}
-        <div className="mx-auto mb-10 flex max-w-md items-center justify-center gap-2">
-          {(["details", "payment"] as CheckoutStep[]).map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
-                  step === s || (step === "payment" && i === 0)
-                    ? "bg-pink-600 text-white"
-                    : "bg-gray-200 text-gray-500"
-                }`}
-              >
-                {i + 1}
-              </div>
-              <span className={`text-xs font-bold ${step === s ? "text-pink-600" : "text-gray-400"}`}>
-                {i === 0 ? "Details" : "Payment"}
-              </span>
-              {i === 0 && <div className="mx-2 h-px w-12 bg-gray-300" />}
-            </div>
-          ))}
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
@@ -338,31 +318,11 @@ export default function CheckoutPage() {
                   disabled={cart.length === 0 || orderSaving}
                   className="w-full rounded-full bg-pink-600 px-8 py-4 text-lg font-bold text-white shadow-lg hover:bg-pink-700 disabled:opacity-50"
                 >
-                  {orderSaving ? "CREATING ORDER..." : "PROCEED TO PAYMENT →"}
+                  {orderSaving ? "CREATING ORDER..." : "SUBMIT ORDER →"}
                 </button>
               </form>
             )}
 
-            {/* Step 2: Payment (UPI QR → Transaction ID → Screenshot) */}
-            {step === "payment" && (
-              <div className="space-y-6">
-                <button
-                  type="button"
-                  onClick={() => setStep("details")}
-                  className="text-sm font-semibold text-pink-600 hover:underline"
-                >
-                  ← Back to Details
-                </button>
-                <PaymentForm
-                  amount={total}
-                  referenceType="ORDER"
-                  referenceName={cart.map((c) => c.name).join(", ")}
-                  referenceId={orderId || undefined}
-                  onSuccess={handlePaymentSuccess}
-                  onCancel={() => setStep("details")}
-                />
-              </div>
-            )}
           </div>
 
           {/* ── RIGHT: Order Summary ── */}

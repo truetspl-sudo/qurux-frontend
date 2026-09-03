@@ -20,6 +20,8 @@ type BookingClosure = {
   emiPending: number;
   cashCollected: number;
   status: "PARTNER_COMPLETED" | "ADMIN_VERIFIED" | "CLOSED";
+  paymentStatus?: string;
+  paidVia?: string;
   partnerRemarks: string;
   adminRemarks: string;
   rating: number;
@@ -185,6 +187,8 @@ export default function AdminClosuresPage() {
             emiPending: Number(b.emiAmount || 0),
             cashCollected: Number(b.cashAmount || 0),
             status: b.status === "COMPLETED" ? "CLOSED" : "PARTNER_COMPLETED",
+            paymentStatus: b.paymentStatus || (b.status === "COMPLETED" ? "PAID" : "PENDING"),
+            paidVia: b.paidVia || "",
             partnerRemarks: "",
             adminRemarks: b.adminRemarks || "",
             rating: Number(b.rating || 0),
@@ -272,7 +276,8 @@ export default function AdminClosuresPage() {
     customerRemarks: string,
     rating: number,
     payStatus: string,
-    cashCollectedAmt: number
+    cashCollectedAmt: number,
+    paidVia: string
   ) {
     if (!adminRemarks.trim()) {
       alert("Admin remarks are required to close the service.");
@@ -290,6 +295,7 @@ export default function AdminClosuresPage() {
       rating,
       paymentStatus: payStatus,
       cashAmount: cashCollectedAmt,
+      paidVia,
     });
     setBusy(false);
     if (!res.ok) {
@@ -302,6 +308,8 @@ export default function AdminClosuresPage() {
           ? {
               ...c,
               status: "CLOSED" as const,
+              paymentStatus: payStatus,
+              paidVia,
               adminRemarks,
               customerRemarks,
               rating,
@@ -314,6 +322,8 @@ export default function AdminClosuresPage() {
         ? {
             ...prev,
             status: "CLOSED",
+            paymentStatus: payStatus,
+            paidVia,
             adminRemarks,
             customerRemarks,
             rating,
@@ -465,8 +475,8 @@ export default function AdminClosuresPage() {
           onClose={() => setSelected(null)}
           onChecklist={(key) => updateChecklist(selected.id, key)}
           onVerify={() => verifyClosure(selected.id)}
-          onClosures={(adminRemarks, customerRemarks, rating, payStatus, cashCollectedAmt) =>
-            closeClosure(selected.id, adminRemarks, customerRemarks, rating, payStatus, cashCollectedAmt)
+          onClosures={(adminRemarks, customerRemarks, rating, payStatus, cashCollectedAmt, paidVia) =>
+            closeClosure(selected.id, adminRemarks, customerRemarks, rating, payStatus, cashCollectedAmt, paidVia)
           }
         />
       )}
@@ -484,7 +494,7 @@ type ClosureModalProps = {
   onClose: () => void;
   onChecklist: (key: keyof BookingClosure["verificationChecklist"]) => void;
   onVerify: () => void;
-  onClosures: (adminRemarks: string, customerRemarks: string, rating: number, payStatus: string, cashCollectedAmt: number) => void;
+  onClosures: (adminRemarks: string, customerRemarks: string, rating: number, payStatus: string, cashCollectedAmt: number, paidVia: string) => void;
 };
 
 function ClosureModal({
@@ -500,6 +510,7 @@ function ClosureModal({
   const [rating, setRating] = useState(closure.rating);
   const [hover, setHover] = useState(0);
   const [payStatus, setPayStatus] = useState("PAID");
+  const [paidVia, setPaidVia] = useState(closure.paidVia || "CASH");
   const [cashCollectedAmt, setCashCollectedAmt] = useState(String(closure.cashCollected || 0));
 
   const cl = closure.verificationChecklist;
@@ -727,7 +738,20 @@ function ClosureModal({
               <p className="mt-1 text-sm text-gray-600">
                 Customer ne service ke baad payment kar di hai? Status update karein.
               </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">PAID VIA (MODE)</label>
+                  <select
+                    value={paidVia}
+                    onChange={(e) => setPaidVia(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-green-500"
+                  >
+                    <option value="CASH">💵 Cash</option>
+                    <option value="UPI">📱 UPI</option>
+                    <option value="BOB">🏦 BOB Wallet</option>
+                    <option value="EMI">📊 EMI</option>
+                  </select>
+                </div>
                 <div>
                   <label className="mb-1 block text-xs font-bold text-gray-600">PAYMENT STATUS</label>
                   <select
@@ -756,7 +780,7 @@ function ClosureModal({
             {/* Close Button */}
             <button
               type="button"
-              onClick={() => onClosures(adminRemarks, customerRemarks, rating, payStatus, Number(cashCollectedAmt) || 0)}
+              onClick={() => onClosures(adminRemarks, customerRemarks, rating, payStatus, Number(cashCollectedAmt) || 0, paidVia)}
               disabled={busy || !adminRemarks.trim() || rating === 0}
               className={`w-full rounded-full px-6 py-3.5 font-bold text-white transition ${
                 adminRemarks.trim() && rating > 0
@@ -774,7 +798,7 @@ function ClosureModal({
           <div className="mt-5 rounded-2xl bg-green-50 p-6 text-center">
             <div className="text-4xl">🔒</div>
             <p className="mt-3 text-xl font-black text-green-700">SERVICE CLOSED</p>
-            <p className="mt-2 text-sm font-bold text-green-700">💳 Payment updated by admin — booking PAID</p>
+            <p className="mt-2 text-sm font-bold text-green-700">💳 Payment updated by admin — {closure.paymentStatus === "PAID" ? "PAID" : closure.paymentStatus} via {closure.paidVia || "CASH"}</p>
             {closure.rating > 0 && (
               <p className="mt-2 text-2xl">{"⭐".repeat(closure.rating)}</p>
             )}

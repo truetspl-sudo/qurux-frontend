@@ -126,14 +126,12 @@ export default function PaymentForm({
         {/* QR Code */}
         <div className="mt-6 flex flex-col items-center">
           <div className="rounded-3xl border-2 border-dashed border-pink-200 bg-pink-50 p-8 text-center">
-            <div className="mx-auto flex h-48 w-48 items-center justify-center rounded-2xl bg-white shadow-inner">
-              {/* Simple QR placeholder — in production use a QR library */}
-              <div className="text-center">
-                <div className="text-6xl">📱</div>
-                <p className="mt-2 text-xs font-bold text-gray-600">UPI QR CODE</p>
-                <p className="mt-1 text-[10px] text-gray-400">Scan to pay</p>
-              </div>
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/payment/quruxbarcode.png"
+              alt="Qurux UPI barcode — scan to pay"
+              className="mx-auto h-56 w-56 rounded-2xl bg-white object-contain shadow-inner"
+            />
           </div>
 
           {/* UPI ID */}
