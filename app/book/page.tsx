@@ -99,7 +99,7 @@ export default function BookPage() {
             >
               <span className="flex items-center gap-3">
                 <span className="text-lg">📋</span>
-                <span>{menuOpen ? "Choose a Service" : "Browse All Services ▼"}</span>
+                <span>{menuOpen ? "Choose a Service" : "Browse All Services"}</span>
               </span>
               <span className={`transition-transform ${menuOpen ? "rotate-180" : ""}`}>▼</span>
             </button>

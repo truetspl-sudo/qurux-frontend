@@ -314,7 +314,7 @@ export default function ShopPage() {
             >
               <span className="flex items-center gap-3">
                 <span className="text-lg">🛍️</span>
-                <span>{menuOpen ? "Choose a Product" : "Browse All Products ▼"}</span>
+                <span>{menuOpen ? "Choose a Product" : "Browse All Products"}</span>
               </span>
               <span className={`transition-transform ${menuOpen ? "rotate-180" : ""}`}>▼</span>
             </button>
