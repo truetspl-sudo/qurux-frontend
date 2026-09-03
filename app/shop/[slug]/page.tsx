@@ -41,13 +41,13 @@ export default function ProductDetailPage() {
   }
 
   function handleAddToCart() {
-    // Store in localStorage for now
+    // Store in localStorage for now — use slug so orders resolve against the catalog
     const cart = JSON.parse(localStorage.getItem("qurux_cart") || "[]");
-    const existing = cart.find((c: any) => c.id === product!.id);
+    const existing = cart.find((c: any) => c.id === product!.slug);
     if (existing) {
       existing.qty += qty;
     } else {
-      cart.push({ id: product!.id, name: product!.name, price: product!.priceNum, priceLabel: product!.price, image: product!.image, qty });
+      cart.push({ id: product!.slug, name: product!.name, price: product!.priceNum, priceLabel: product!.price, image: product!.image, qty });
     }
     localStorage.setItem("qurux_cart", JSON.stringify(cart));
     setAddedMsg(true);
