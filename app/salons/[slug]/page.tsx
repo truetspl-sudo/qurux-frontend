@@ -282,27 +282,7 @@ export default function SalonDetailPage() {
             ← All Salons
           </Link>
 
-          {/* Book Now CTA */}
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-pink-600 p-6 text-white shadow-lg">
-            <div>
-              <p className="text-lg font-black">Is salon me book karein</p>
-              <p className="text-sm text-pink-100">
-                {services.length} services available — service choose karke booking request submit karein (manual approval).
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setBookOpen(true);
-                document.getElementById("salon-book")?.scrollIntoView({ behavior: "smooth" });
-              }}
-              className="rounded-full bg-white px-8 py-3 font-bold text-pink-600 hover:bg-pink-50"
-            >
-              BOOK NOW →
-            </button>
-          </div>
-
-          <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_360px]">
+          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
             {/* LEFT: details */}
             <div className="space-y-8">
               {/* Gallery */}
@@ -370,21 +350,17 @@ export default function SalonDetailPage() {
                 </div>
               </section>
 
-              {/* Reviews */}
-              <section className="rounded-3xl bg-white p-6 shadow-sm">
-                <h2 className="text-xl font-black text-gray-900">
-                  Customer Reviews{" "}
-                  {salon.rating?.count ? (
-                    <span className="text-sm font-bold text-pink-600">
-                      ({Number(stars).toFixed(1)} ★ • {salon.rating.count})
-                    </span>
-                  ) : null}
-                </h2>
-                {reviews.length === 0 ? (
-                  <p className="mt-4 rounded-2xl bg-gray-50 p-5 text-sm text-gray-500">
-                    Abhi tak koi review nahi — is salon se service lene ke baad aapka review yahan dikhega.
-                  </p>
-                ) : (
+              {/* Reviews — sirf tab dikhao jab reviews hon */}
+              {reviews.length > 0 && (
+                <section className="rounded-3xl bg-white p-6 shadow-sm">
+                  <h2 className="text-xl font-black text-gray-900">
+                    Customer Reviews{" "}
+                    {salon.rating?.count ? (
+                      <span className="text-sm font-bold text-pink-600">
+                        ({Number(stars).toFixed(1)} ★ • {salon.rating.count})
+                      </span>
+                    ) : null}
+                  </h2>
                   <div className="mt-4 space-y-4">
                     {reviews.map((r) => (
                       <div key={r._id} className="rounded-2xl border border-gray-100 p-4">
@@ -399,8 +375,8 @@ export default function SalonDetailPage() {
                       </div>
                     ))}
                   </div>
-                )}
-              </section>
+                </section>
+              )}
             </div>
 
             {/* RIGHT: services card */}
