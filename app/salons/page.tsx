@@ -118,8 +118,7 @@ export default function SalonsListPage() {
                 Abhi koi partner salon nahi
               </h2>
               <p className="mt-2 text-gray-500">
-                Jald hi QURUX partner salons yahan list honge. Tab tak Book Now
-                se services book karein.
+                Jald hi QURUX partner salons yahan list honge.
               </p>
               <Link
                 href="/book"
