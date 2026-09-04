@@ -351,8 +351,10 @@ export default function BOBPage() {
 
                     {/* Bottom brand strip */}
                     <div className="relative mt-6 flex items-center justify-between gap-3 border-t border-rose-200/70 pt-4">
-                      <p className="text-[11px] font-black uppercase tracking-[0.28em] text-rose-700">
-                        Save Today ✦ Beauty Tomorrow
+                      <p className="text-[9px] font-black uppercase leading-relaxed tracking-[0.16em] text-rose-700">
+                        Save Today for Future Occasion
+                        <span className="mx-1 text-amber-600">✦</span>Festive
+                        <span className="mx-1 text-amber-600">✦</span>Event
                       </p>
                       <div className="flex items-center gap-2">
                         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-xs font-black text-white shadow">₹</span>
