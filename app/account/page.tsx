@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   apiPost,
-  apiPut,
   getLoggedInUser,
   logout as apiLogout,
 } from "../../lib/api";
@@ -54,12 +53,19 @@ export default function AuthPage() {
   const [loginUserId, setLoginUserId] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
-  // Change password fields
-  const [pwCurrent, setPwCurrent] = useState("");
+  // Password reset fields (RULE: current/pura password NAHI mangte —
+  // sirf naya password → admin dashboard approve karega)
   const [pwNew, setPwNew] = useState("");
   const [pwConfirm, setPwConfirm] = useState("");
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pwBusy, setPwBusy] = useState(false);
+
+  // Forgot-password form (login screen)
+  const [showForgot, setShowForgot] = useState(false);
+  const [fgUserId, setFgUserId] = useState("");
+  const [fgNew, setFgNew] = useState("");
+  const [fgConfirm, setFgConfirm] = useState("");
+  const [fgBusy, setFgBusy] = useState(false);
 
   useEffect(() => {
     const user = getLoggedInUser();
@@ -159,10 +165,12 @@ export default function AuthPage() {
     setLoginPassword("");
   }
 
-  async function handleChangePassword() {
-    setPwMsg(null);
-    if (!pwCurrent || !pwNew || !pwConfirm) {
-      setPwMsg({ ok: false, text: "Saare fields bharo — current password, naya password aur confirm password." });
+  // Password reset request — RULE: current password NAHI chahiye. User ID +
+  // naya password → admin dashboard (/admin/password-resets) approve karta hai.
+  async function submitResetRequest(userIdArg: string) {
+    const userId = (userIdArg || "").trim().toUpperCase();
+    if (!userId) {
+      setPwMsg({ ok: false, text: "User ID chahiye." });
       return;
     }
     if (pwNew.length < 6) {
@@ -174,18 +182,52 @@ export default function AuthPage() {
       return;
     }
     setPwBusy(true);
-    const res = await apiPut<any>("/auth/change-password", {
-      currentPassword: pwCurrent,
+    const res = await apiPost<any>("/auth/forgot-password", {
+      userId,
       newPassword: pwNew,
     });
     setPwBusy(false);
     if (res.ok) {
-      setPwMsg({ ok: true, text: "Password update ho gaya! Agli baar naye password se login karein." });
-      setPwCurrent("");
+      setPwMsg({
+        ok: true,
+        text: "Password reset request bhej di gayi! Admin dashboard pe request dikhegi — admin approve karega, phir naye password se login karein.",
+      });
       setPwNew("");
       setPwConfirm("");
     } else {
-      setPwMsg({ ok: false, text: res.message || "Password change failed." });
+      setPwMsg({ ok: false, text: res.message || "Request fail hui." });
+    }
+  }
+
+  async function handleForgotSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorMsg("");
+    if (!fgUserId.trim()) {
+      setErrorMsg("User ID likho.");
+      return;
+    }
+    if (fgNew.length < 6) {
+      setErrorMsg("Naya password kam se kam 6 characters ka hona chahiye.");
+      return;
+    }
+    if (fgNew !== fgConfirm) {
+      setErrorMsg("Naya password aur confirm password match nahi kar rahe.");
+      return;
+    }
+    setFgBusy(true);
+    const res = await apiPost<any>("/auth/forgot-password", {
+      userId: fgUserId.trim().toUpperCase(),
+      newPassword: fgNew,
+    });
+    setFgBusy(false);
+    if (res.ok) {
+      setMessage(res.message || "Password reset request bhej di gayi!");
+      setShowForgot(false);
+      setFgUserId("");
+      setFgNew("");
+      setFgConfirm("");
+    } else {
+      setErrorMsg(res.message || "Request fail hui.");
     }
   }
 
@@ -291,9 +333,11 @@ export default function AuthPage() {
             </div>
 
             <div className="mt-6 rounded-2xl border border-gray-100 bg-gray-50/60 p-5">
-              <p className="text-sm font-bold text-gray-800">🔒 Change Password</p>
+              <p className="text-sm font-bold text-gray-800">🔑 Password Reset</p>
               <p className="mt-0.5 text-xs text-gray-500">
-                Current password verify karke naya password set karein.
+                Current password dene ki zaroorat nahi — sirf naya password daalo.
+                Request admin ke paas jayegi; admin approve karega, phir naye
+                password se login karein.
               </p>
 
               {pwMsg && (
@@ -303,13 +347,12 @@ export default function AuthPage() {
               )}
 
               <div className="mt-4 space-y-3">
-                <input type="password" placeholder="Current Password *" value={pwCurrent} onChange={(e) => { setPwCurrent(e.target.value); setPwMsg(null); }} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-pink-400 focus:outline-none" />
                 <div className="grid grid-cols-2 gap-3">
                   <input type="password" placeholder="New Password *" value={pwNew} onChange={(e) => { setPwNew(e.target.value); setPwMsg(null); }} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-pink-400 focus:outline-none" />
                   <input type="password" placeholder="Confirm *" value={pwConfirm} onChange={(e) => { setPwConfirm(e.target.value); setPwMsg(null); }} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-pink-400 focus:outline-none" />
                 </div>
-                <button onClick={handleChangePassword} disabled={pwBusy} className="w-full rounded-xl bg-slate-900 py-2.5 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50">
-                  {pwBusy ? "Updating..." : "CHANGE PASSWORD"}
+                <button onClick={() => submitResetRequest(existingUser.userId || "")} disabled={pwBusy} className="w-full rounded-xl bg-slate-900 py-2.5 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50">
+                  {pwBusy ? "Submitting..." : "🔑 SUBMIT PASSWORD RESET REQUEST"}
                 </button>
               </div>
             </div>
@@ -343,7 +386,7 @@ export default function AuthPage() {
           {/* Tab Switcher */}
           <div className="mb-6 flex rounded-xl bg-gray-100 p-1">
             <button
-              onClick={() => { setMode("login"); setMessage(""); setErrorMsg(""); }}
+              onClick={() => { setMode("login"); setShowForgot(false); setMessage(""); setErrorMsg(""); }}
               className={`flex-1 rounded-lg py-2 text-sm font-bold transition ${
                 mode === "login" ? "bg-white text-pink-600 shadow" : "text-gray-500"
               }`}
@@ -351,7 +394,7 @@ export default function AuthPage() {
               Login
             </button>
             <button
-              onClick={() => { setMode("signup"); setMessage(""); setErrorMsg(""); }}
+              onClick={() => { setMode("signup"); setShowForgot(false); setMessage(""); setErrorMsg(""); }}
               className={`flex-1 rounded-lg py-2 text-sm font-bold transition ${
                 mode === "signup" ? "bg-white text-pink-600 shadow" : "text-gray-500"
               }`}
@@ -373,7 +416,11 @@ export default function AuthPage() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            onSubmit={showForgot ? handleForgotSubmit : handleSubmit}
+            className="space-y-4"
+          >
+            {/* ── SIGNUP FIELDS ── */}
             {mode === "signup" && (
               <input
                 name="fullName"
@@ -393,16 +440,6 @@ export default function AuthPage() {
                 value={form.phone}
                 onChange={handleChange}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-pink-400 focus:outline-none"
-              />
-            )}
-
-            {mode === "login" && (
-              <input
-                type="text"
-                placeholder="User ID (e.g. QUR-12345) *"
-                value={loginUserId}
-                onChange={(e) => { setLoginUserId(e.target.value); setErrorMsg(""); }}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm uppercase focus:border-pink-400 focus:outline-none"
               />
             )}
 
@@ -428,7 +465,18 @@ export default function AuthPage() {
               />
             )}
 
-            {mode === "login" && (
+            {/* ── LOGIN FIELDS ── */}
+            {mode === "login" && !showForgot && (
+              <input
+                type="text"
+                placeholder="User ID (e.g. QUR-12345) *"
+                value={loginUserId}
+                onChange={(e) => { setLoginUserId(e.target.value); setErrorMsg(""); }}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm uppercase focus:border-pink-400 focus:outline-none"
+              />
+            )}
+
+            {mode === "login" && !showForgot && (
               <input
                 type="password"
                 placeholder="Password *"
@@ -438,18 +486,89 @@ export default function AuthPage() {
               />
             )}
 
-            <button
-              type="submit"
-              disabled={busy}
-              className="w-full rounded-xl bg-pink-600 py-3 text-sm font-bold text-white hover:bg-pink-700 disabled:opacity-50"
-            >
-              {busy
-                ? "Please wait..."
-                : mode === "login"
-                ? "Login"
-                : "Create Account"}
-            </button>
+            {/* ── FORGOT PASSWORD (reset request — current password NAHI chahiye) ── */}
+            {mode === "login" && showForgot && (
+              <>
+                <div className="rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-700">
+                  🔑 Password bhool gaye? Apna <strong>User ID</strong> aur
+                  <strong> naya password</strong> daalo — request admin ke paas
+                  jayegi. Admin approve karega, phir naye password se login
+                  karein. (Current password ki zaroorat nahi)
+                </div>
+                <input
+                  type="text"
+                  placeholder="User ID (e.g. QUR-12345) *"
+                  value={fgUserId}
+                  onChange={(e) => { setFgUserId(e.target.value); setErrorMsg(""); }}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm uppercase focus:border-pink-400 focus:outline-none"
+                />
+                <input
+                  type="password"
+                  placeholder="New Password *"
+                  value={fgNew}
+                  onChange={(e) => { setFgNew(e.target.value); setErrorMsg(""); }}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-pink-400 focus:outline-none"
+                />
+                <input
+                  type="password"
+                  placeholder="Confirm New Password *"
+                  value={fgConfirm}
+                  onChange={(e) => { setFgConfirm(e.target.value); setErrorMsg(""); }}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-pink-400 focus:outline-none"
+                />
+              </>
+            )}
+
+            {mode === "signup" && (
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full rounded-xl bg-pink-600 py-3 text-sm font-bold text-white hover:bg-pink-700 disabled:opacity-50"
+              >
+                {busy ? "Please wait..." : "Create Account"}
+              </button>
+            )}
+
+            {mode === "login" && !showForgot && (
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full rounded-xl bg-pink-600 py-3 text-sm font-bold text-white hover:bg-pink-700 disabled:opacity-50"
+              >
+                {busy ? "Please wait..." : "Login"}
+              </button>
+            )}
+
+            {mode === "login" && showForgot && (
+              <button
+                type="submit"
+                disabled={fgBusy}
+                className="w-full rounded-xl bg-pink-600 py-3 text-sm font-bold text-white hover:bg-pink-700 disabled:opacity-50"
+              >
+                {fgBusy ? "Submitting..." : "🔑 SUBMIT RESET REQUEST"}
+              </button>
+            )}
           </form>
+
+          {/* Forgot password link (login tab) */}
+          {mode === "login" && !showForgot && (
+            <button
+              type="button"
+              onClick={() => { setShowForgot(true); setErrorMsg(""); setMessage(""); }}
+              className="mt-3 block w-full text-center text-xs font-bold text-pink-600 hover:underline"
+            >
+              Forgot Password?
+            </button>
+          )}
+          {mode === "login" && showForgot && (
+            <button
+              type="button"
+              onClick={() => setShowForgot(false)}
+              className="mt-3 block w-full text-center text-xs font-bold text-gray-500 hover:underline"
+            >
+              ← Back to Login
+            </button>
+          )}
 
           {/* Guest browse */}
           <div className="mt-4 border-t border-gray-100 pt-4 text-center text-xs text-gray-400">

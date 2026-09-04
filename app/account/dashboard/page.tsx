@@ -228,7 +228,7 @@ export default function DashboardPage() {
               </Link>
             )}
             <Link href="/account" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-bold hover:bg-slate-50">
-              Change Password
+              🔑 Password Reset
             </Link>
             <button
               type="button"
