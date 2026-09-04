@@ -4,8 +4,10 @@
  */
 
 // NEXT_PUBLIC_API_URL is the server root (e.g. https://api.example.com).
-// All backend routes live under /api, so append it here.
-const API_BASE = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api`;
+// All backend routes live under /api, so append it here. If the env value
+// already ends with /api (older convention), don't double it.
+const API_ROOT = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/+$/, "");
+const API_BASE = API_ROOT.endsWith("/api") ? API_ROOT : `${API_ROOT}/api`;
 
 // ── Token helpers ──────────────────────────
 export function getToken(): string | null {

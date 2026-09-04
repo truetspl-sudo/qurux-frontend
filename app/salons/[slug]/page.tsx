@@ -8,6 +8,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
 import QuruxLogo from "@/components/QuruxLogo";
+import { services as catalogServices } from "@/components/book/services";
 
 type ServiceItem = {
   _id: string;
@@ -39,6 +40,23 @@ type ReviewItem = { _id: string; customerName: string; stars: number; customerRe
 
 function fmtPrice(n?: number) {
   return n ? `₹${Number(n).toLocaleString("en-IN")}` : "";
+}
+
+// Service image — DB image, warna static catalog se naam se match, warna emoji tile
+const catEmoji: Record<string, string> = {
+  Bridal: "👰", Makeup: "💄", Party: "🎉", Facial: "✨", Skin: "✨",
+  Manicure: "💅", Pedicure: "💅", Nail: "💅", Hair: "💇", Massage: "🌸", Bleach: "✨", Detan: "✨",
+};
+function serviceThumb(s: ServiceItem) {
+  if (s.image && s.image.trim()) return s.image;
+  const hit = catalogServices.find((c) => (c as any).name === s.name);
+  if (hit && (hit as any).image) return (hit as any).image;
+  return "";
+}
+function catEmojiFor(s: ServiceItem): string {
+  const cat = s.category || "";
+  const em = Object.keys(catEmoji).find((k) => cat.toLowerCase().includes(k.toLowerCase()));
+  return em ? catEmoji[em] : "💆";
 }
 
 export default function SalonDetailPage() {
@@ -390,25 +408,44 @@ export default function SalonDetailPage() {
               <h2 className="text-xl font-black text-gray-900">Available Services</h2>
               <p className="mt-1 text-xs text-gray-500">Is salon me ye services milti hain.</p>
               <div className="mt-4 max-h-96 space-y-2 overflow-y-auto pr-1">
-                {services.map((s) => (
-                  <button
-                    key={s._id}
-                    type="button"
-                    onClick={() => {
-                      setSelService(s);
-                      setBookOpen(true);
-                      document.getElementById("salon-book")?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                    className="w-full rounded-2xl border border-gray-100 p-3 text-left transition hover:border-pink-300 hover:bg-pink-50"
-                  >
-                    <p className="font-bold text-gray-900">{s.name}</p>
-                    <p className="mt-0.5 text-xs text-gray-500">
-                      {s.category ? `${s.category} • ` : ""}
-                      {s.duration || ""}
-                    </p>
-                    <p className="mt-1 font-bold text-pink-600">{fmtPrice(s.price)}</p>
-                  </button>
-                ))}
+                {services.length === 0 ? (
+                  <div className="rounded-2xl bg-amber-50 p-4 text-xs leading-5 text-amber-800">
+                    Is salon ki service list admin approval ke waqt assign ki jaati hai — abhi koi service assign nahi hui.
+                  </div>
+                ) : (
+                  services.map((s) => {
+                    const thumb = serviceThumb(s);
+                    return (
+                      <button
+                        key={s._id}
+                        type="button"
+                        onClick={() => {
+                          setSelService(s);
+                          setBookOpen(true);
+                          document.getElementById("salon-book")?.scrollIntoView({ behavior: "smooth" });
+                        }}
+                        className="flex w-full items-center gap-3 rounded-2xl border border-gray-100 p-3 text-left transition hover:border-pink-300 hover:bg-pink-50"
+                      >
+                        {thumb ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={thumb} alt={s.name} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
+                        ) : (
+                          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pink-100 to-rose-100 text-2xl">
+                            {catEmojiFor(s)}
+                          </span>
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-bold text-gray-900">{s.name}</span>
+                          <span className="mt-0.5 block text-xs text-gray-500">
+                            {s.category ? `${s.category} • ` : ""}
+                            {s.duration || ""}
+                          </span>
+                          <span className="mt-1 block font-bold text-pink-600">{fmtPrice(s.price)}</span>
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
               </div>
               <p className="mt-3 rounded-xl bg-yellow-50 p-3 text-[11px] leading-5 text-yellow-800">
                 Service select karke BOOK NOW dabayein — booking request admin approve
@@ -424,11 +461,61 @@ export default function SalonDetailPage() {
                 <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-600">BOOK AT {salon.name.toUpperCase()}</p>
                 <h2 className="mt-2 text-3xl font-black text-gray-900">Book a Service</h2>
 
+                {/* 1. Service select — pehle service chuno (login ke baad aage badho) */}
+                <div className="mt-8">
+                  <p className="mb-3 font-semibold text-gray-800">1. Service Choose Karein *</p>
+                  {services.length === 0 ? (
+                    <p className="rounded-2xl bg-gray-50 p-5 text-sm text-gray-500">
+                      Is salon ki service list admin approval ke waqt assign ho rahi hai — abhi koi service available nahi.
+                    </p>
+                  ) : (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {services.map((s) => {
+                        const thumb = serviceThumb(s);
+                        return (
+                          <label
+                            key={s._id}
+                            className={`cursor-pointer rounded-2xl border p-3 transition ${
+                              selService?._id === s._id ? "border-pink-500 bg-pink-50" : "border-gray-200 hover:border-pink-300"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              {thumb ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={thumb} alt={s.name} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
+                              ) : (
+                                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pink-100 to-rose-100 text-2xl">
+                                  {catEmojiFor(s)}
+                                </span>
+                              )}
+                              <input
+                                type="radio"
+                                name="service"
+                                checked={selService?._id === s._id}
+                                onChange={() => setSelService(s)}
+                                className="h-4 w-4 shrink-0 accent-pink-600"
+                              />
+                              <span className="min-w-0 flex-1">
+                                <span className="block font-bold text-gray-900">{s.name}</span>
+                                <span className="mt-0.5 block text-xs text-gray-500">
+                                  {s.category ? `${s.category} • ` : ""}
+                                  {s.duration || ""}
+                                </span>
+                                <span className="mt-1 block font-bold text-pink-600">{fmtPrice(s.price)}</span>
+                              </span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 {!user && (
-                  <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-5">
+                  <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 p-5">
                     <p className="text-sm font-bold text-blue-800">🔐 LOGIN REQUIRED</p>
                     <p className="mt-1 text-sm leading-6 text-blue-700">
-                      Booking karne ke liye pehle website par login karein (User ID + Password). Nahi hai to sign up karein.
+                      Service select karke booking karne ke liye website par login karein (User ID + Password). Nahi hai to sign up karein.
                     </p>
                     <Link href="/account" className="mt-3 inline-block rounded-full bg-blue-600 px-6 py-2 text-sm font-bold text-white hover:bg-blue-700">
                       Login / Sign Up →
@@ -436,135 +523,110 @@ export default function SalonDetailPage() {
                   </div>
                 )}
 
-                {user && (
+                {user && selService && (
                   <form onSubmit={submitBooking} className="mt-8 space-y-7">
-                    {/* Service select */}
+                    {/* Payment option */}
                     <div>
-                      <p className="mb-3 font-semibold text-gray-800">1. Service Choose Karein *</p>
-                      {services.length === 0 ? (
-                        <p className="rounded-2xl bg-gray-50 p-5 text-sm text-gray-500">
-                          Is salon ki service list abhi update ho rahi hai — thodi der baad try karein.
-                        </p>
-                      ) : (
-                        <div className="grid gap-3 md:grid-cols-2">
-                          {services.map((s) => (
-                            <label
-                              key={s._id}
-                              className={`cursor-pointer rounded-2xl border p-4 transition ${
-                                selService?._id === s._id ? "border-pink-500 bg-pink-50" : "border-gray-200 hover:border-pink-300"
-                              }`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <input
-                                  type="radio"
-                                  name="service"
-                                  checked={selService?._id === s._id}
-                                  onChange={() => setSelService(s)}
-                                  className="mt-1 h-4 w-4 accent-pink-600"
-                                />
-                                <div className="flex-1">
-                                  <p className="font-bold text-gray-900">{s.name}</p>
-                                  <p className="mt-0.5 text-xs text-gray-500">
-                                    {s.category ? `${s.category} • ` : ""}
-                                    {s.duration || ""}
-                                  </p>
-                                  <p className="mt-1 font-bold text-pink-600">{fmtPrice(s.price)}</p>
-                                </div>
-                              </div>
-                            </label>
-                          ))}
-                        </div>
-                      )}
+                      <p className="mb-3 font-semibold text-gray-800">2. Payment Option *</p>
+                      <div className="grid gap-3 md:grid-cols-3">
+                        {["Full Payment", "No Cost EMI", "Pay from BOB"].map((opt) => (
+                          <label
+                            key={opt}
+                            className={`cursor-pointer rounded-2xl border p-4 transition ${
+                              payOption === opt ? "border-pink-500 bg-pink-50" : "border-gray-200"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="pay"
+                              checked={payOption === opt}
+                              onChange={() => setPayOption(opt)}
+                              className="mr-2 h-4 w-4 accent-pink-600"
+                            />
+                            <span className="font-bold text-gray-900">{opt}</span>
+                            {opt === "No Cost EMI" && (
+                              <p className="mt-1 text-xs text-gray-500">25% down + 75% flexible EMI</p>
+                            )}
+                          </label>
+                        ))}
+                      </div>
                     </div>
 
-                    {selService && (
-                      <>
-                        {/* Payment option */}
-                        <div>
-                          <p className="mb-3 font-semibold text-gray-800">2. Payment Option *</p>
-                          <div className="grid gap-3 md:grid-cols-3">
-                            {["Full Payment", "No Cost EMI", "Pay from BOB"].map((opt) => (
-                              <label
-                                key={opt}
-                                className={`cursor-pointer rounded-2xl border p-4 transition ${
-                                  payOption === opt ? "border-pink-500 bg-pink-50" : "border-gray-200"
-                                }`}
-                              >
-                                <input
-                                  type="radio"
-                                  name="pay"
-                                  checked={payOption === opt}
-                                  onChange={() => setPayOption(opt)}
-                                  className="mr-2 h-4 w-4 accent-pink-600"
-                                />
-                                <span className="font-bold text-gray-900">{opt}</span>
-                                {opt === "No Cost EMI" && (
-                                  <p className="mt-1 text-xs text-gray-500">25% down + 75% flexible EMI</p>
-                                )}
-                              </label>
-                            ))}
-                          </div>
-                        </div>
+                    {/* Contact */}
+                    <div>
+                      <p className="mb-3 font-semibold text-gray-800">3. Aapki Details</p>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <input
+                          type="text"
+                          placeholder="Full Name *"
+                          value={bkName}
+                          onChange={(e) => setBkName(e.target.value)}
+                          className="rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500"
+                        />
+                        <input
+                          type="tel"
+                          placeholder="Mobile Number *"
+                          pattern="[0-9]{10}"
+                          maxLength={10}
+                          value={bkPhone}
+                          onChange={(e) => setBkPhone(e.target.value)}
+                          className="rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500"
+                        />
+                      </div>
+                    </div>
 
-                        {/* Contact */}
-                        <div>
-                          <p className="mb-3 font-semibold text-gray-800">3. Aapki Details</p>
-                          <div className="grid gap-4 md:grid-cols-2">
-                            <input
-                              type="text"
-                              placeholder="Full Name *"
-                              value={bkName}
-                              onChange={(e) => setBkName(e.target.value)}
-                              className="rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500"
-                            />
-                            <input
-                              type="tel"
-                              placeholder="Mobile Number *"
-                              pattern="[0-9]{10}"
-                              maxLength={10}
-                              value={bkPhone}
-                              onChange={(e) => setBkPhone(e.target.value)}
-                              className="rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500"
-                            />
-                          </div>
-                        </div>
+                    {/* Date */}
+                    <div>
+                      <p className="mb-3 font-semibold text-gray-800">4. Date & Time Slot</p>
+                      <input
+                        type="date"
+                        required
+                        min={new Date().toISOString().split("T")[0]}
+                        value={bkDate}
+                        onChange={(e) => setBkDate(e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500 md:w-64"
+                      />
+                      <div className="mt-4">
+                        <TimeSlotPicker value={timeSlot} onChange={setTimeSlot} />
+                      </div>
+                    </div>
 
-                        {/* Date */}
-                        <div>
-                          <p className="mb-3 font-semibold text-gray-800">4. Date & Time Slot</p>
-                          <input
-                            type="date"
-                            required
-                            min={new Date().toISOString().split("T")[0]}
-                            value={bkDate}
-                            onChange={(e) => setBkDate(e.target.value)}
-                            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500 md:w-64"
-                          />
-                          <div className="mt-4">
-                            <TimeSlotPicker value={timeSlot} onChange={setTimeSlot} />
-                          </div>
-                        </div>
-
-                        {bkError && (
-                          <div className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-600">❌ {bkError}</div>
-                        )}
-
-                        <button
-                          type="submit"
-                          disabled={bkSaving}
-                          className="w-full rounded-full bg-pink-600 px-8 py-4 text-lg font-bold text-white shadow-lg hover:bg-pink-700 disabled:opacity-50"
-                        >
-                          {bkSaving ? "SUBMITTING..." : `SUBMIT BOOKING REQUEST — ${fmtPrice(selService.price)}`}
-                        </button>
-                        <p className="text-center text-xs text-gray-500">
-                          Booking request admin WhatsApp pe confirm karega — manual approval process.
-                        </p>
-                      </>
+                    {bkError && (
+                      <div className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-600">❌ {bkError}</div>
                     )}
+
+                    <button
+                      type="submit"
+                      disabled={bkSaving}
+                      className="w-full rounded-full bg-pink-600 px-8 py-4 text-lg font-bold text-white shadow-lg hover:bg-pink-700 disabled:opacity-50"
+                    >
+                      {bkSaving ? "SUBMITTING..." : `SUBMIT BOOKING REQUEST — ${fmtPrice(selService.price)}`}
+                    </button>
+                    <p className="text-center text-xs text-gray-500">
+                      Booking request admin WhatsApp pe confirm karega — manual approval process.
+                    </p>
                   </form>
                 )}
               </section>
             )}
+          </div>
+
+          {/* Bottom Book CTA — sabse neeche Book Now option */}
+          <div className="mt-8 rounded-3xl bg-gradient-to-r from-rose-900 via-pink-700 to-pink-600 p-7 text-center text-white shadow-xl">
+            <p className="text-xl font-black md:text-2xl">Is salon me appointment book karein</p>
+            <p className="mt-1 text-sm text-pink-100">
+              Neeche diye services me se koi service chuno — booking request admin approve karke vendor ko assign karega.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setBookOpen(true);
+                document.getElementById("salon-book")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="mt-5 rounded-full bg-white px-10 py-3 font-black text-rose-900 shadow-lg hover:bg-pink-50"
+            >
+              BOOK NOW — {salon.name} →
+            </button>
           </div>
         </div>
       </main>
