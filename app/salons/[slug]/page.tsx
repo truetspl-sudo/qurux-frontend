@@ -112,6 +112,7 @@ export default function SalonDetailPage() {
     }
   }, [user]);
 
+  const reviewCount = salon?.rating?.count || 0;
   const stars = salon?.rating?.stars || 0;
   const galleryImgs = [salon?.image, ...(salon?.images || [])].filter(
     (x): x is string => !!x && x.trim() !== ""
@@ -263,13 +264,13 @@ export default function SalonDetailPage() {
                   {"★".repeat(Math.round(stars))}
                   {"☆".repeat(5 - Math.round(stars))}
                 </span>
-                <span className="font-bold">
-                  {salon.rating?.count ? Number(stars).toFixed(1) : "New"}
-                </span>
-                {salon.rating?.count ? (
-                  <span>({salon.rating.count} reviews)</span>
+                {reviewCount < 5 ? (
+                  <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-200 ring-1 ring-white/30">New</span>
                 ) : (
-                  <span>(abhi tak koi review nahi — pehli service ke baad milega)</span>
+                  <>
+                    <span className="font-bold">{Number(stars).toFixed(1)}</span>
+                    <span>({reviewCount} reviews)</span>
+                  </>
                 )}
                 <span>• 📍 {salon.address}, {salon.city}</span>
               </p>

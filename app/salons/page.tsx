@@ -21,20 +21,23 @@ type Salon = {
 };
 
 function Stars({ rating }: { rating?: { stars: number; count: number } }) {
-  const stars = Math.round((rating?.stars || 0) * 2) / 2;
+  const count = rating?.count || 0;
+  // "New" tab 5 reviews ke baad apne aap hata diya jata hai
+  const isNew = count < 5;
+  const starsShown = Math.round((rating?.stars || 0) * 2) / 2;
   return (
     <div className="flex items-center gap-2">
       <span className="text-amber-400 text-lg tracking-tight">
-        {"★".repeat(Math.round(stars))}
-        {"☆".repeat(5 - Math.round(stars))}
+        {"★".repeat(Math.round(starsShown))}
+        {"☆".repeat(5 - Math.round(starsShown))}
       </span>
-      <span className="text-sm font-bold text-gray-800">
-        {rating?.count ? Number(rating.stars).toFixed(1) : "New"}
-      </span>
-      {rating?.count ? (
-        <span className="text-xs text-gray-400">({rating.count} reviews)</span>
+      {isNew ? (
+        <span className="rounded-full bg-pink-100 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-pink-600">New</span>
       ) : (
-        <span className="text-xs text-gray-400">(abhi tak koi review nahi)</span>
+        <>
+          <span className="text-sm font-bold text-gray-800">{Number(rating?.stars).toFixed(1)}</span>
+          <span className="text-xs text-gray-400">({count} reviews)</span>
+        </>
       )}
     </div>
   );
