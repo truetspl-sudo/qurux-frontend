@@ -79,6 +79,8 @@ export default function BOBPage() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [userName, setUserName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
+  const [issueDate, setIssueDate] = useState(""); // Card issue date = signup day
+  const [availableValue, setAvailableValue] = useState(0);
 
   const [activeTab, setActiveTab] = useState<DashboardTab>("SAVING");
   const [summary, setSummary] = useState<WalletSummary | null>(null);
@@ -106,6 +108,10 @@ export default function BOBPage() {
       try {
         const user = JSON.parse(raw);
         setUserName(user.fullName || "Customer");
+        const joined = user.createdAt || user.approvedAt || "";
+        if (joined) {
+          setIssueDate(new Date(joined).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }));
+        }
         setLoggedIn(true);
         loadWallet();
       } catch {}
@@ -122,6 +128,10 @@ export default function BOBPage() {
         setSummary(res.data.summary);
         setStatement(res.data.statement || []);
         setAccountNumber(res.data.wallet?.accountNumber || "");
+        setAvailableValue(Number(res.data.summary?.totalBalance || 0));
+        if (!issueDate && res.data.wallet?.createdAt) {
+          setIssueDate(new Date(res.data.wallet.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }));
+        }
       }
     } catch {}
     // Load EMI plans
@@ -267,20 +277,79 @@ export default function BOBPage() {
 
       {/* Hero Banner */}
       <section className="px-6 py-10">
-        <div className="mx-auto max-w-7xl overflow-hidden rounded-[35px] bg-gradient-to-r from-pink-600 to-pink-500 shadow-2xl">
+        <div className="mx-auto max-w-7xl overflow-hidden rounded-[35px] bg-gradient-to-r from-rose-900 via-pink-700 to-pink-500 shadow-2xl">
           <div className="grid items-center md:grid-cols-2">
+            {/* Left copy */}
             <div className="px-8 py-14 text-white md:px-14">
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-pink-100">QURUX MAKEOVER & ACADEMY</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-200">QURUX MAKEOVER & ACADEMY</p>
               <h1 className="mt-4 text-5xl font-bold md:text-6xl">BANK OF BEAUTY</h1>
-              <p className="mt-3 text-3xl font-bold tracking-widest">BOB</p>
+              <p className="mt-3 text-3xl font-bold tracking-widest text-amber-300">BOB</p>
               <p className="mt-5 max-w-xl text-lg leading-8 text-white/90">Your Beauty Saving account for Qurux services, products and courses.</p>
+              <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-5 py-2 text-sm font-bold backdrop-blur">
+                💳 <span>Available BOB Value: ₹{availableValue.toLocaleString("en-IN")}</span>
+              </div>
             </div>
+
+            {/* Right: real BOB bank card */}
             <div className="flex justify-center px-8 py-12">
-              <div className="flex h-72 w-72 items-center justify-center rounded-full border-8 border-pink-200/70 bg-pink-500/30 shadow-2xl">
-                <div className="text-center text-white">
-                  <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-2xl bg-white/20 text-7xl font-bold">₹</div>
-                  <h2 className="mt-5 text-3xl font-bold tracking-[0.2em]">BOB</h2>
-                  <p className="mt-2 text-lg">BANK OF BEAUTY</p>
+              <div className="relative w-full max-w-[420px] -rotate-2 transition-transform duration-500 hover:rotate-0">
+                {/* Card glow */}
+                <div className="absolute -inset-3 rounded-[28px] bg-gradient-to-br from-amber-400/40 via-pink-400/30 to-rose-500/40 blur-2xl" />
+
+                {/* Card body — dark rose-black premium like BOB imagery */}
+                <div className="relative aspect-[8/5] w-full overflow-hidden rounded-[24px] bg-gradient-to-br from-[#1c0712] via-[#3d0d20] to-[#7a1033] p-6 shadow-2xl ring-1 ring-amber-300/40">
+                  {/* decorative circles */}
+                  <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full border-[14px] border-rose-500/15" />
+                  <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full border-[18px] border-amber-400/10" />
+
+                  {/* Top row: brand + chip */}
+                  <div className="relative flex items-start justify-between">
+                    <div>
+                      <p className="text-lg font-black italic tracking-wide text-white">QURUX</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-amber-200">Makeover & Academy</p>
+                    </div>
+                    {/* Gold EMV chip */}
+                    <div className="flex flex-col items-center">
+                      <div className="h-8 w-11 rounded-md bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-600 p-[3px]">
+                        <div className="h-full w-full rounded-sm bg-gradient-to-br from-amber-300 to-amber-500 opacity-90">
+                          <div className="mx-auto mt-1 h-px w-8 bg-amber-700/50" />
+                          <div className="mx-auto mt-1 h-px w-8 bg-amber-700/50" />
+                          <div className="mx-auto mt-1 h-px w-8 bg-amber-700/50" />
+                        </div>
+                      </div>
+                      <p className="mt-1 text-[9px] font-bold tracking-widest text-amber-200">BANK OF BEAUTY</p>
+                    </div>
+                  </div>
+
+                  {/* Account number */}
+                  <p className="relative mt-6 font-mono text-lg font-bold tracking-[0.18em] text-white/90 md:text-xl">
+                    {accountNumber ? accountNumber.replace(/(.{4})/g, "$1 ").trim() : "BOB-•••• •••• ••••"}
+                  </p>
+
+                  {/* Bottom row: holder + issue date */}
+                  <div className="relative mt-6 flex items-end justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.25em] text-white/50">Card Holder</p>
+                      <p className="mt-1 truncate text-base font-black uppercase tracking-wider text-white">
+                        {userName || "QURUX CUSTOMER"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.25em] text-white/50">Issue Date</p>
+                      <p className="mt-1 text-base font-black text-amber-300">{issueDate || "Member since signup"}</p>
+                    </div>
+                  </div>
+
+                  {/* Bottom brand strip */}
+                  <div className="relative mt-5 flex items-center justify-between border-t border-white/10 pt-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-amber-200">
+                      Save Today ✦ Beauty Tomorrow
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-rose-600 text-xs font-black text-white">₹</span>
+                      <span className="text-[10px] font-bold tracking-[0.2em] text-white/70">BOB</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
