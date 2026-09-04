@@ -17,6 +17,7 @@ type Salon = {
   city: string;
   pincode?: string;
   about?: string;
+  servicesCount?: number;
   rating?: { stars: number; count: number };
 };
 
@@ -137,20 +138,32 @@ export default function SalonsListPage() {
                   href={`/salons/${s.slug || s._id}`}
                   className="group overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:border-pink-200 hover:shadow-lg"
                 >
-                  {s.image || s.images?.[0] ? (
-                    <div className="relative h-48 w-full overflow-hidden bg-pink-100">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={s.image || s.images?.[0]}
-                        alt={s.name}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                      />
+                  <div className="relative">
+                    {s.image || s.images?.[0] ? (
+                      <div className="relative h-48 w-full overflow-hidden bg-pink-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={s.image || s.images?.[0]}
+                          alt={s.name}
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-48 w-full items-center justify-center bg-gradient-to-br from-pink-100 via-pink-50 to-rose-100">
+                        <span className="text-6xl">💈</span>
+                      </div>
+                    )}
+                    <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+                      {s.rating && s.rating.count >= 5 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-amber-950 shadow">
+                          ⭐ Top Rated
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-pink-700 shadow backdrop-blur">
+                        💄 {s.servicesCount ?? 0} Service{(s.servicesCount ?? 0) !== 1 ? "s" : ""}
+                      </span>
                     </div>
-                  ) : (
-                    <div className="flex h-48 w-full items-center justify-center bg-gradient-to-br from-pink-100 via-pink-50 to-rose-100">
-                      <span className="text-6xl">💈</span>
-                    </div>
-                  )}
+                  </div>
                   <div className="p-5">
                     <Stars rating={s.rating} />
                     <h3 className="mt-2 text-xl font-black text-gray-900">
