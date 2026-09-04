@@ -86,20 +86,6 @@ export default function ServiceCollageMarquee() {
       <div className="pointer-events-none absolute -left-20 top-0 h-52 w-52 rounded-full bg-pink-500/20 blur-3xl" />
       <div className="pointer-events-none absolute -right-20 bottom-0 h-52 w-52 rounded-full bg-amber-400/15 blur-3xl" />
 
-      <div className="relative mx-auto max-w-7xl px-6">
-        <div className="mb-7 text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-white/5 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.3em] text-amber-200 backdrop-blur">
-            ✦ Live Services Gallery ✦
-          </span>
-          <h3 className="mt-3 text-2xl font-black text-white md:text-3xl">
-            Our Beauty Services — In Motion
-          </h3>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-pink-100/70">
-            Bridal, Hair, Skin, Nails &amp; more — deposit karein aur in sabhi services ko BOB se pay karein.
-          </p>
-        </div>
-      </div>
-
       {/* Marquee rows */}
       <div className="relative space-y-4 py-2 [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
         <div className="qx-marquee-track qx-row-a">
@@ -114,9 +100,6 @@ export default function ServiceCollageMarquee() {
         </div>
       </div>
 
-      <p className="mt-6 text-center text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-200/70">
-        ✨ Slide ✦ Blink ✦ Glow — Beauty in Motion ✨
-      </p>
     </section>
   );
 }

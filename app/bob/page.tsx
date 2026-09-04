@@ -298,64 +298,66 @@ export default function BOBPage() {
               </div>
             </div>
 
-            {/* Right: real BOB bank card */}
-            <div className="flex justify-center px-8 py-12">
-              <div className="relative w-full max-w-[420px] -rotate-2 transition-transform duration-500 hover:rotate-0">
-                {/* Card glow */}
-                <div className="absolute -inset-3 rounded-[28px] bg-gradient-to-br from-amber-400/40 via-pink-400/30 to-rose-500/40 blur-2xl" />
+            {/* Right: premium BOB bank card */}
+            <div className="flex justify-center px-6 py-12 md:px-10">
+              <div className="relative w-full max-w-[440px]">
+                {/* Soft glow */}
+                <div className="absolute -inset-2 rounded-[32px] bg-gradient-to-br from-amber-300/60 via-pink-300/50 to-rose-400/60 blur-2xl" />
 
-                {/* Card body — dark rose-black premium like BOB imagery */}
-                <div className="relative aspect-[8/5] w-full overflow-hidden rounded-[24px] bg-gradient-to-br from-[#1c0712] via-[#3d0d20] to-[#7a1033] p-6 shadow-2xl ring-1 ring-amber-300/40">
-                  {/* decorative circles */}
-                  <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full border-[14px] border-rose-500/15" />
-                  <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full border-[18px] border-amber-400/10" />
+                {/* Rose-gold gradient frame */}
+                <div className="relative rounded-[30px] bg-gradient-to-br from-amber-200 via-rose-300 to-rose-600 p-[2px] shadow-2xl">
+                  <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#fff9f2] via-[#ffeef1] to-[#ffdde4] px-6 py-7 md:px-8 md:py-8">
+                    {/* decorative circles */}
+                    <div className="pointer-events-none absolute -right-14 -top-14 h-44 w-44 rounded-full border-[12px] border-rose-200/70" />
+                    <div className="pointer-events-none absolute -bottom-16 -left-12 h-48 w-48 rounded-full border-[16px] border-amber-200/60" />
+                    <div className="pointer-events-none absolute bottom-6 right-8 text-6xl opacity-[0.07]">₹</div>
 
-                  {/* Top row: brand + chip */}
-                  <div className="relative flex items-start justify-between">
-                    <div>
-                      <QuruxLogo heightClass="h-8 w-auto brightness-0 invert" />
-                      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-amber-200">Makeover &amp; Academy</p>
-                    </div>
-                    {/* Gold EMV chip */}
-                    <div className="flex flex-col items-center">
-                      <div className="h-8 w-11 rounded-md bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-600 p-[3px]">
-                        <div className="h-full w-full rounded-sm bg-gradient-to-br from-amber-300 to-amber-500 opacity-90">
-                          <div className="mx-auto mt-1 h-px w-8 bg-amber-700/50" />
-                          <div className="mx-auto mt-1 h-px w-8 bg-amber-700/50" />
-                          <div className="mx-auto mt-1 h-px w-8 bg-amber-700/50" />
-                        </div>
+                    {/* Top row: brand + chip */}
+                    <div className="relative flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <QuruxLogo heightClass="h-9 w-auto" />
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.3em] text-rose-700/80">Makeover &amp; Academy</p>
                       </div>
-                      <p className="mt-1 text-[9px] font-bold tracking-widest text-amber-200">BANK OF BEAUTY</p>
+                      <div className="flex flex-col items-center">
+                        <div className="h-9 w-12 rounded-md bg-gradient-to-br from-amber-300 via-yellow-500 to-amber-700 p-[3px] shadow-inner">
+                          <div className="h-full w-full rounded-sm bg-gradient-to-br from-amber-200 to-amber-400">
+                            <div className="mx-auto mt-1 h-px w-9 bg-amber-700/40" />
+                            <div className="mx-auto mt-1 h-px w-9 bg-amber-700/40" />
+                            <div className="mx-auto mt-1 h-px w-9 bg-amber-700/40" />
+                          </div>
+                        </div>
+                        <p className="mt-1.5 text-[9px] font-black tracking-widest text-rose-800">BANK OF BEAUTY</p>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Account number */}
-                  <p className="relative mt-6 font-mono text-lg font-bold tracking-[0.18em] text-white/90 md:text-xl">
-                    {accountNumber ? accountNumber.replace(/(.{4})/g, "$1 ").trim() : "BOB-•••• •••• ••••"}
-                  </p>
-
-                  {/* Bottom row: holder + issue date */}
-                  <div className="relative mt-6 flex items-end justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-[9px] font-semibold uppercase tracking-[0.25em] text-white/50">Card Holder</p>
-                      <p className="mt-1 truncate text-base font-black uppercase tracking-wider text-white">
-                        {userName || "QURUX CUSTOMER"}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[9px] font-semibold uppercase tracking-[0.25em] text-white/50">Issue Date</p>
-                      <p className="mt-1 text-base font-black text-amber-300">{issueDate || "Member since signup"}</p>
-                    </div>
-                  </div>
-
-                  {/* Bottom brand strip */}
-                  <div className="relative mt-5 flex items-center justify-between border-t border-white/10 pt-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-amber-200">
-                      Save Today ✦ Beauty Tomorrow
+                    {/* Account number */}
+                    <p className="relative mt-5 font-mono text-lg font-bold tracking-[0.16em] text-rose-950 md:text-xl">
+                      {accountNumber ? accountNumber.replace(/(.{4})/g, "$1 ").trim() : "BOB-•••• •••• ••••"}
                     </p>
-                    <div className="flex items-center gap-1.5">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-rose-600 text-xs font-black text-white">₹</span>
-                      <span className="text-[10px] font-bold tracking-[0.2em] text-white/70">BOB</span>
+
+                    {/* Bottom row: holder + issue date */}
+                    <div className="relative mt-6 flex items-end justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-rose-400">Card Holder</p>
+                        <p className="mt-1 break-words text-lg font-black uppercase leading-snug tracking-wide text-rose-950 md:text-xl">
+                          {userName || "QURUX CUSTOMER"}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-rose-400">Issue Date</p>
+                        <p className="mt-1 text-base font-black text-amber-600 md:text-lg">{issueDate || "Member since signup"}</p>
+                      </div>
+                    </div>
+
+                    {/* Bottom brand strip */}
+                    <div className="relative mt-6 flex items-center justify-between gap-3 border-t border-rose-200/70 pt-4">
+                      <p className="text-[11px] font-black uppercase tracking-[0.28em] text-rose-700">
+                        Save Today ✦ Beauty Tomorrow
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-xs font-black text-white shadow">₹</span>
+                        <span className="text-xs font-black tracking-[0.18em] text-rose-800">BOB</span>
+                      </div>
                     </div>
                   </div>
                 </div>
