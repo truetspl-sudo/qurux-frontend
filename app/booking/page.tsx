@@ -262,9 +262,9 @@ function BookingContent() {
             <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-5">
               <p className="text-sm font-bold text-blue-800">🔐 LOGIN REQUIRED</p>
               <p className="mt-1 text-sm leading-6 text-blue-700">
-                Booking karne ke liye pehle website par login karein
+                Booking karne ke liye website par login karein
                 (User ID + Password se). Agar aapke paas User ID nahi hai to
-                pehle sign up karein — admin approve karke User ID dega.
+                pehle sign up karein.
               </p>
               <a
                 href="/account"
@@ -534,8 +534,7 @@ function BookingContent() {
                       <p className="font-bold text-gray-900">Pay from BOB</p>
                       <p className="mt-1 text-sm text-gray-600">
                         Use your Bank of Beauty value. BOB ka koi alag login
-                        nahi — website login hi BOB login hai. Service ke baad
-                        admin BOB balance se payment update karega.
+                        nahi — website login hi BOB login hai.
                       </p>
                     </div>
                   </div>

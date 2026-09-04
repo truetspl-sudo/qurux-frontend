@@ -387,7 +387,7 @@ export default function SalonDetailPage() {
               <div className="mt-4 max-h-96 space-y-2 overflow-y-auto pr-1">
                 {services.length === 0 ? (
                   <div className="rounded-2xl bg-amber-50 p-4 text-xs leading-5 text-amber-800">
-                    Is salon ki service list admin approval ke waqt assign ki jaati hai — abhi koi service assign nahi hui.
+                    Abhi koi service available nahi hai.
                   </div>
                 ) : (
                   services.map((s) => {
@@ -440,7 +440,7 @@ export default function SalonDetailPage() {
                   <p className="mb-3 font-semibold text-gray-800">1. Service Choose Karein *</p>
                   {services.length === 0 ? (
                     <p className="rounded-2xl bg-gray-50 p-5 text-sm text-gray-500">
-                      Is salon ki service list admin approval ke waqt assign ho rahi hai — abhi koi service available nahi.
+                      Abhi koi service available nahi hai.
                     </p>
                   ) : (
                     <div className="grid gap-3 md:grid-cols-2">
@@ -489,7 +489,7 @@ export default function SalonDetailPage() {
                   <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 p-5">
                     <p className="text-sm font-bold text-blue-800">🔐 LOGIN REQUIRED</p>
                     <p className="mt-1 text-sm leading-6 text-blue-700">
-                      Service select karke booking karne ke liye website par login karein (User ID + Password). Nahi hai to sign up karein.
+                      Booking karne ke liye website par login karein (User ID + Password se). Nahi hai to sign up karein.
                     </p>
                     <Link href="/account" className="mt-3 inline-block rounded-full bg-blue-600 px-6 py-2 text-sm font-bold text-white hover:bg-blue-700">
                       Login / Sign Up →

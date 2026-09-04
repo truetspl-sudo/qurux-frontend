@@ -83,9 +83,7 @@ export default function SalonsListPage() {
               Our Partner Salons
             </h1>
             <p className="mx-auto mt-4 max-w-2xl leading-7 text-gray-600">
-              Partner salon chunein — uske reviews, salon ki images, address aur
-              Google Map location dekhein. Book Now karke usi salon ki services
-              se booking karein.
+              Hamare partner salons — reviews, images, address aur Google Map location ke saath.
             </p>
           </div>
 
