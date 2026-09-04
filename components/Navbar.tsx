@@ -66,7 +66,7 @@ export default function Navbar() {
         <button
           type="button"
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="flex flex-col gap-1.5 md:hidden"
+          className="flex flex-col gap-1.5 lg:hidden"
           aria-label="Toggle menu"
         >
           <span
@@ -92,7 +92,7 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="absolute left-0 top-full z-50 w-full border-t border-gray-100 bg-white shadow-lg md:hidden">
+        <div className="absolute left-0 top-full z-50 w-full border-t border-gray-100 bg-white shadow-lg lg:hidden">
           <nav className="mx-auto max-w-7xl px-6 py-4">
             <ul className="space-y-1">
               {navLinks.map((link) => (
