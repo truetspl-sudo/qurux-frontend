@@ -41,12 +41,17 @@ export default function FeatureCards() {
       <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-3 px-2 py-10 md:grid-cols-2 lg:grid-cols-4">
 
         {cards.map((card) => (
-          <Link
+          <div
             key={card.title}
-            href={card.href}
-            className="group block overflow-hidden rounded-[35px] bg-white shadow-2xl transition-all duration-500 hover:-translate-y-3 hover:shadow-[0_35px_80px_rgba(236,72,153,.35)]"
+            className="group relative rounded-[38px] bg-gradient-to-br from-rose-900 via-rose-600 to-amber-500 p-[3px] shadow-2xl transition-all duration-500 hover:-translate-y-3 hover:shadow-[0_35px_85px_rgba(159,18,57,.45)]"
           >
-            <div className="overflow-hidden rounded-[35px] bg-white">
+            {/* Gold sheen ring on hover */}
+            <div className="pointer-events-none absolute inset-0 rounded-[38px] bg-gradient-to-tr from-amber-400/0 via-amber-300/60 to-rose-300/0 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+
+            <Link
+              href={card.href}
+              className="block overflow-hidden rounded-[35px] bg-white"
+            >
 
               {/* IMAGE - 70% */}
               <div className="relative h-[390px] w-full overflow-hidden bg-pink-100">
@@ -73,8 +78,8 @@ export default function FeatureCards() {
                 </div>
 
               </div>
-            </div>
-          </Link>
+            </Link>
+          </div>
         ))}
 
       </div>
