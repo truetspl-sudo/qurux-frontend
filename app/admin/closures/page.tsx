@@ -279,6 +279,7 @@ export default function AdminClosuresPage() {
     cashCollectedAmt: number,
     paidVia: string
   ) {
+    const closure = closures.find((c) => c.id === id) || null;
     if (!adminRemarks.trim()) {
       alert("Admin remarks are required to close the service.");
       return;
@@ -302,14 +303,21 @@ export default function AdminClosuresPage() {
       alert(res.message || "Failed to close booking. Please try again.");
       return;
     }
+    // EMI close → backend apne aap EMIPlan banata hai (total/paid/balance),
+    // balance = amount - collected. Yahan list me bhi wahi numbers dikhate hain.
+    const balance =
+      paidVia === "EMI" ? Math.max(0, (closure?.amount || 0) - cashCollectedAmt) : 0;
+    const effPayStatus = paidVia === "EMI" ? (balance > 0 ? "PARTIAL" : "PAID") : payStatus;
     setClosures((prev) =>
       prev.map((c) =>
         c.id === id
           ? {
               ...c,
               status: "CLOSED" as const,
-              paymentStatus: payStatus,
+              paymentStatus: effPayStatus,
               paidVia,
+              cashCollected: cashCollectedAmt,
+              emiPending: balance,
               adminRemarks,
               customerRemarks,
               rating,
@@ -322,8 +330,10 @@ export default function AdminClosuresPage() {
         ? {
             ...prev,
             status: "CLOSED",
-            paymentStatus: payStatus,
+            paymentStatus: effPayStatus,
             paidVia,
+            cashCollected: cashCollectedAmt,
+            emiPending: balance,
             adminRemarks,
             customerRemarks,
             rating,
@@ -509,9 +519,43 @@ function ClosureModal({
   const [customerRemarks, setCustomerRemarks] = useState(closure.customerRemarks);
   const [rating, setRating] = useState(closure.rating);
   const [hover, setHover] = useState(0);
-  const [payStatus, setPayStatus] = useState("PAID");
-  const [paidVia, setPaidVia] = useState(closure.paidVia || "CASH");
+  // Mode ka default booking ke option ke hisaab se — EMI booking → EMI mode,
+  // BOB booking → BOB mode (kyunki booking ke waqt koi payment nahi hui).
+  const defaultVia = () =>
+    closure.paymentMethod === "No Cost EMI"
+      ? "EMI"
+      : closure.paymentMethod === "Pay from BOB"
+        ? "BOB"
+        : closure.paymentMethod === "Mixed/Split"
+          ? "EMI"
+          : "CASH";
+  const [paidVia, setPaidVia] = useState(closure.paidVia || defaultVia());
+  const [payStatus, setPayStatus] = useState(() => {
+    const via = closure.paidVia || defaultVia();
+    if (via === "EMI") {
+      const collected = Number(closure.cashCollected || 0);
+      return Math.max(0, closure.amount - collected) > 0 ? "PARTIAL" : "PAID";
+    }
+    return closure.paymentStatus === "PARTIAL" ? "PARTIAL" : "PAID";
+  });
   const [cashCollectedAmt, setCashCollectedAmt] = useState(String(closure.cashCollected || 0));
+
+  // EMI mode → balance bachta hai to status PARTIAL (EMI plan me dikhega),
+  // pura amount collected to PAID (due zero).
+  function changePaidVia(v: string) {
+    setPaidVia(v);
+    if (v === "EMI") {
+      const balance = Math.max(0, closure.amount - (Number(cashCollectedAmt) || 0));
+      setPayStatus(balance > 0 ? "PARTIAL" : "PAID");
+    }
+  }
+  function onCashChange(v: string) {
+    setCashCollectedAmt(v);
+    if (paidVia === "EMI") {
+      const balance = Math.max(0, closure.amount - (Number(v) || 0));
+      setPayStatus(balance > 0 ? "PARTIAL" : "PAID");
+    }
+  }
 
   const cl = closure.verificationChecklist;
   const allChecked = cl.serviceDelivered && cl.customerPresent && cl.qualityConfirmed && cl.paymentConfirmed;
@@ -743,7 +787,7 @@ function ClosureModal({
                   <label className="mb-1 block text-xs font-bold text-gray-600">PAID VIA (MODE)</label>
                   <select
                     value={paidVia}
-                    onChange={(e) => setPaidVia(e.target.value)}
+                    onChange={(e) => changePaidVia(e.target.value)}
                     className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-green-500"
                   >
                     <option value="CASH">💵 Cash</option>
@@ -770,11 +814,48 @@ function ClosureModal({
                     type="number"
                     min={0}
                     value={cashCollectedAmt}
-                    onChange={(e) => setCashCollectedAmt(e.target.value)}
+                    onChange={(e) => onCashChange(e.target.value)}
                     className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-green-500"
                   />
                 </div>
               </div>
+
+              {/* EMI mode → plan auto-create ka preview (customer EMI details me dikhega) */}
+              {paidVia === "EMI" && (() => {
+                const collected = Number(cashCollectedAmt) || 0;
+                const balance = Math.max(0, closure.amount - collected);
+                return (
+                  <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm">
+                    <p className="font-bold text-blue-800">📊 EMI PLAN (AUTO-CREATE ON CLOSE)</p>
+                    <p className="mt-1 text-blue-700">
+                      Customer ke <strong>EMI Details</strong> me dikhega:
+                    </p>
+                    <div className="mt-2 grid gap-2 text-xs sm:grid-cols-4">
+                      <div className="rounded-lg bg-white p-2">
+                        <p className="font-bold text-gray-400">SERVICE</p>
+                        <p className="mt-0.5 font-bold text-gray-900">{closure.service}</p>
+                      </div>
+                      <div className="rounded-lg bg-white p-2">
+                        <p className="font-bold text-gray-400">TOTAL</p>
+                        <p className="mt-0.5 font-black text-gray-900">₹{closure.amount.toLocaleString("en-IN")}</p>
+                      </div>
+                      <div className="rounded-lg bg-white p-2">
+                        <p className="font-bold text-gray-400">ABHI PAID</p>
+                        <p className="mt-0.5 font-black text-green-700">₹{collected.toLocaleString("en-IN")}</p>
+                      </div>
+                      <div className="rounded-lg bg-white p-2">
+                        <p className="font-bold text-gray-400">BALANCE (EMI)</p>
+                        <p className="mt-0.5 font-black text-orange-700">₹{balance.toLocaleString("en-IN")}</p>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-blue-700">
+                      {balance > 0
+                        ? `Customer is balance ₹${balance.toLocaleString("en-IN")} flexible EMI repayments me dega — /emi approve queue me admin approve karega. Pura pay karne par due ₹0.`
+                        : "Balance ₹0 — pura amount collect ho gaya, customer ka due zero."}
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Close Button */}
@@ -799,6 +880,21 @@ function ClosureModal({
             <div className="text-4xl">🔒</div>
             <p className="mt-3 text-xl font-black text-green-700">SERVICE CLOSED</p>
             <p className="mt-2 text-sm font-bold text-green-700">💳 Payment updated by admin — {closure.paymentStatus === "PAID" ? "PAID" : closure.paymentStatus} via {closure.paidVia || "CASH"}</p>
+            {closure.paidVia === "EMI" && (
+              <div className="mx-auto mt-3 max-w-sm rounded-xl bg-white p-3 text-left text-xs">
+                <p className="font-bold text-blue-800">📊 EMI PLAN (customer ke EMI Details me)</p>
+                <p className="mt-1 text-gray-700">
+                  Total ₹{closure.amount.toLocaleString("en-IN")} • Abhi paid ₹
+                  {closure.cashCollected.toLocaleString("en-IN")} • Balance ₹
+                  {closure.emiPending.toLocaleString("en-IN")}
+                </p>
+                <p className="mt-1 text-blue-700">
+                  {closure.emiPending > 0
+                    ? "Customer flexible EMI repayments karega — admin approve karega. Balance 0 hone par due zero."
+                    : "Balance ₹0 — due zero ✅"}
+                </p>
+              </div>
+            )}
             {closure.rating > 0 && (
               <p className="mt-2 text-2xl">{"⭐".repeat(closure.rating)}</p>
             )}

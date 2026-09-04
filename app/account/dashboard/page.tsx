@@ -344,6 +344,16 @@ export default function DashboardPage() {
                           <span className="ml-2 font-medium text-gray-400">
                             {b.paymentMethod} • {b.paymentStatus}
                           </span>
+                          {Number(b.emiAmount || 0) > 0 && (
+                            <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700">
+                              EMI Due ₹{Number(b.emiAmount).toLocaleString("en-IN")}
+                            </span>
+                          )}
+                          {b.paymentStatus === "PAID" && Number(b.emiAmount || 0) === 0 && (
+                            <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
+                              Due ₹0 ✓
+                            </span>
+                          )}
                         </p>
                       </div>
                     ))}
@@ -374,10 +384,15 @@ export default function DashboardPage() {
                         </p>
                         <p className="mt-1 text-sm font-bold text-gray-900">
                           ₹{Number(o.total || 0).toLocaleString("en-IN")}
-                          {o.paymentStatus === "PENDING" && (
-                            <Link href={`/checkout`} className="ml-3 text-xs font-bold text-pink-600 underline">
-                              Pay now
-                            </Link>
+                          {Number(o.emiAmount || 0) > 0 && (
+                            <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700">
+                              EMI Due ₹{Number(o.emiAmount).toLocaleString("en-IN")}
+                            </span>
+                          )}
+                          {o.paymentStatus === "PAID" && Number(o.emiAmount || 0) === 0 && (
+                            <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
+                              Due ₹0 ✓
+                            </span>
                           )}
                         </p>
                       </div>
@@ -487,9 +502,22 @@ export default function DashboardPage() {
                         <p className="mt-1 text-xs text-gray-500">{plan.purchaseType}</p>
                         <p className="mt-2 text-sm font-bold text-gray-800">
                           Total ₹{Number(plan.totalAmount || 0).toLocaleString("en-IN")} • Paid ₹
-                          {Number(plan.paidAmount || 0).toLocaleString("en-IN")} • Pending ₹
+                          {Number(plan.paidAmount || 0).toLocaleString("en-IN")} • Balance ₹
                           {Number(plan.pendingAmount || 0).toLocaleString("en-IN")}
                         </p>
+                        {plan.status === "ACTIVE" && Number(plan.pendingAmount || 0) > 0 && (
+                          <Link
+                            href="/bob"
+                            className="mt-2 inline-block rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100"
+                          >
+                            💳 Pay EMI Balance →
+                          </Link>
+                        )}
+                        {plan.status === "COMPLETED" && (
+                          <span className="mt-2 inline-block rounded-full bg-green-100 px-3 py-1.5 text-xs font-bold text-green-700">
+                            ✓ Fully Paid — Due ₹0
+                          </span>
+                        )}
                         {(plan.paymentHistory || []).length > 0 && (
                           <div className="mt-3 space-y-1 border-t border-gray-100 pt-3">
                             {(plan.paymentHistory || []).map((h: any, idx: number) => (

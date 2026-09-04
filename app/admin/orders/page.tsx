@@ -24,8 +24,18 @@ type Order = {
   status: string;
   deliveryAddress: string;
   cashAmount?: number;
+  paidVia?: string;
+  emiAmount?: number;
   createdAt: string;
 };
+
+// Mode ka default order ke option ke hisaab se — EMI order → EMI mode.
+function effVia(o: Order): string {
+  if (o.paidVia && o.paidVia !== "CASH") return o.paidVia;
+  if (o.paymentMethod === "EMI" || o.paymentMethod === "MIXED") return "EMI";
+  if (o.paymentMethod === "BOB") return "BOB";
+  return "CASH";
+}
 
 const statusColors: Record<string, string> = {
   PENDING: "bg-orange-100 text-orange-700",
@@ -70,10 +80,40 @@ export default function AdminOrdersPage() {
 
   // Manual model: admin WhatsApp pe payment verify karke yahan update karta hai
   // (jaise service bookings closure pe admin payment update karta hai).
-  async function updatePayment(id: string, paymentStatus: string, cashAmount?: number) {
-    await apiPatch(`/orders/${id}/pay`, { paymentStatus, cashAmount });
-    setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, paymentStatus, cashAmount: cashAmount ?? o.cashAmount } : o)));
-    if (selected?._id === id) setSelected((prev) => (prev ? { ...prev, paymentStatus, cashAmount: cashAmount ?? prev.cashAmount } : null));
+  // EMI mode → backend apne aap EMIPlan banata hai (products, total/paid/balance).
+  async function updatePayment(id: string, paymentStatus: string, cashAmount?: number, paidVia?: string) {
+    const body: Record<string, unknown> = { paymentStatus };
+    if (cashAmount !== undefined) body.cashAmount = cashAmount;
+    if (paidVia !== undefined) body.paidVia = paidVia;
+    const res = await apiPatch<any>(`/orders/${id}/pay`, body);
+    const serverOrder = res.ok ? (res.data as any)?.order : null;
+    const effStatus = serverOrder?.paymentStatus || paymentStatus;
+    const effCash = serverOrder?.cashAmount !== undefined ? serverOrder.cashAmount : cashAmount;
+    setOrders((prev) =>
+      prev.map((o) =>
+        o._id === id
+          ? {
+              ...o,
+              paymentStatus: effStatus,
+              cashAmount: effCash !== undefined ? effCash : o.cashAmount,
+              paidVia: serverOrder?.paidVia || paidVia || o.paidVia || effVia(o),
+              emiAmount: serverOrder?.emiAmount ?? o.emiAmount,
+            }
+          : o
+      )
+    );
+    if (selected?._id === id)
+      setSelected((prev) =>
+        prev
+          ? {
+              ...prev,
+              paymentStatus: effStatus,
+              cashAmount: effCash !== undefined ? effCash : prev.cashAmount,
+              paidVia: serverOrder?.paidVia || paidVia || prev.paidVia || effVia(prev),
+              emiAmount: serverOrder?.emiAmount ?? prev.emiAmount,
+            }
+          : null
+      );
   }
 
   const filtered = orders.filter((o) => filterStatus === "All" || o.status === filterStatus);
@@ -198,6 +238,16 @@ export default function AdminOrdersPage() {
                 <p className="text-xs font-bold text-gray-400">DELIVERY ADDRESS</p>
                 <p className="mt-1 text-sm font-bold text-gray-900">{selected.deliveryAddress || "Not provided"}</p>
               </div>
+              <div className="rounded-2xl bg-gray-50 p-4">
+                <p className="text-xs font-bold text-gray-400">PAID VIA</p>
+                <p className="mt-1 font-bold text-gray-900">{selected.paidVia || effVia(selected)}</p>
+              </div>
+              {Number(selected.emiAmount || 0) > 0 && (
+                <div className="rounded-2xl bg-orange-50 p-4">
+                  <p className="text-xs font-bold text-orange-700">EMI BALANCE</p>
+                  <p className="mt-1 font-bold text-orange-700">₹{Number(selected.emiAmount || 0).toLocaleString("en-IN")}</p>
+                </div>
+              )}
             </div>
 
             {/* Payment update — manual model (admin WhatsApp pe verify karke fill karta hai) */}
@@ -206,29 +256,66 @@ export default function AdminOrdersPage() {
               <p className="mt-1 text-xs text-gray-600">
                 Customer ne payment WhatsApp/UPI pe kar di hai? Yahan status + amount update karein.
               </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <select
-                  value={selected.paymentStatus}
-                  onChange={(e) => updatePayment(selected._id, e.target.value)}
-                  className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-green-500"
-                >
-                  <option value="PENDING">PENDING</option>
-                  <option value="PARTIAL">PARTIAL</option>
-                  <option value="PAID">✓ PAID</option>
-                  <option value="REFUNDED">REFUNDED</option>
-                </select>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-gray-500">₹</span>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">PAID VIA (MODE)</label>
+                  <select
+                    value={effVia(selected)}
+                    onChange={(e) => updatePayment(selected._id, selected.paymentStatus, undefined, e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-green-500"
+                  >
+                    <option value="CASH">💵 Cash</option>
+                    <option value="UPI">📱 UPI</option>
+                    <option value="BOB">🏦 BOB Wallet</option>
+                    <option value="EMI">📊 EMI</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">PAYMENT STATUS</label>
+                  <select
+                    value={selected.paymentStatus}
+                    onChange={(e) => updatePayment(selected._id, e.target.value, undefined, effVia(selected))}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-green-500"
+                  >
+                    <option value="PENDING">PENDING</option>
+                    <option value="PARTIAL">PARTIAL</option>
+                    <option value="PAID">✓ PAID</option>
+                    <option value="REFUNDED">REFUNDED</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-gray-600">AMOUNT COLLECTED (₹)</label>
                   <input
                     type="number"
                     min={0}
                     defaultValue={selected.cashAmount || 0}
-                    onBlur={(e) => updatePayment(selected._id, selected.paymentStatus, Number(e.target.value) || 0)}
+                    onBlur={(e) => updatePayment(selected._id, selected.paymentStatus, Number(e.target.value) || 0, effVia(selected))}
                     placeholder="Amount collected"
                     className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-green-500"
                   />
                 </div>
               </div>
+
+              {/* EMI mode → plan auto-create preview (customer EMI details me dikhega) */}
+              {effVia(selected) === "EMI" && (() => {
+                const collected = Number(selected.cashAmount || 0);
+                const balance = Math.max(0, selected.total - collected);
+                return (
+                  <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs">
+                    <p className="font-bold text-blue-800">📊 EMI PLAN (AUTO — CUSTOMER KE EMI DETAILS ME)</p>
+                    <p className="mt-1 text-blue-700">
+                      Products: <strong>{selected.items.map((i) => `${i.name} ×${i.quantity}`).join(", ")}</strong> •
+                      Total ₹{selected.total.toLocaleString("en-IN")} • Abhi paid ₹{collected.toLocaleString("en-IN")} •
+                      Balance EMI ₹{balance.toLocaleString("en-IN")}
+                    </p>
+                    <p className="mt-1 text-blue-700">
+                      {balance > 0
+                        ? "Customer balance flexible EMI repayments me dega (admin /emi approve karega). Pura pay hone par due ₹0."
+                        : "Balance ₹0 — due zero ✅"}
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="mt-4 flex items-center justify-between">
