@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { services as staticServices } from "@/components/book/services";
 import RatingReviewSection from "@/components/RatingReview";
 import BobBalanceCard from "@/components/BobBalanceCard";
+import QuruxLogo from "@/components/QuruxLogo";
 
 const extraDetails: Record<
   string,
@@ -989,8 +990,9 @@ export default function ServiceDetails() {
 
             <div className="flex flex-col justify-center p-8 md:p-12">
 
-              <p className="text-sm font-bold uppercase tracking-[0.3em] text-pink-600">
-                QURUX MAKEOVER & ACADEMY
+              <p className="flex items-center gap-3">
+                <QuruxLogo heightClass="h-11 w-auto" />
+                <span className="text-xs font-bold uppercase tracking-[0.25em] text-pink-600">MAKEOVER &amp; ACADEMY</span>
               </p>
 
               <h2 className="mt-4 text-4xl font-bold text-gray-900 md:text-5xl">

@@ -7,6 +7,7 @@ import {
 
 import { Phone, Mail, MapPin } from "lucide-react";
 import Link from "next/link";
+import QuruxLogo from "./QuruxLogo";
 
 export default function Footer() {
   return (
@@ -22,9 +23,7 @@ export default function Footer() {
 
             {/* Brand */}
             <div>
-              <h2 className="bg-gradient-to-r from-rose-800 via-pink-600 to-amber-500 bg-clip-text text-4xl font-bold text-transparent">
-                QURUX
-              </h2>
+              <QuruxLogo heightClass="h-16 w-auto" />
 
               <p className="mt-2 text-xs uppercase tracking-[0.35em] text-rose-700">
                 MAKEOVER &amp; ACADEMY

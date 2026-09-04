@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "@/lib/api";
+import QuruxLogo from "@/components/QuruxLogo";
 
 type CourseItem = {
   id: string;
@@ -180,8 +181,9 @@ export default function AdminCoursesPage() {
               </div>
             ) : (
               <div className="flex h-32 items-center justify-center bg-gradient-to-br from-pink-100 to-pink-200">
-                <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-500">
-                  QURUX ACADEMY
+                <p className="flex items-center justify-center gap-2">
+                  <QuruxLogo heightClass="h-7 w-auto" />
+                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-pink-500">ACADEMY</span>
                 </p>
               </div>
             )}

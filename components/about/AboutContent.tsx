@@ -1,3 +1,5 @@
+import QuruxLogo from "../QuruxLogo";
+
 export default function AboutContent() {
   return (
     <section className="bg-white py-20">
@@ -5,8 +7,9 @@ export default function AboutContent() {
 
         {/* Heading */}
         <div className="text-center">
-          <h1 className="text-5xl font-bold text-gray-900">
-            About <span className="text-pink-600">QURUX</span>
+          <h1 className="flex flex-wrap items-center justify-center gap-x-3 text-5xl font-bold text-gray-900">
+            <span>About</span>
+            <QuruxLogo heightClass="h-16 w-auto md:h-20" />
           </h1>
 
           <p className="mt-4 text-lg text-gray-600">

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import QuruxLogo from "@/components/QuruxLogo";
 
 const courses = [
   {
@@ -246,8 +247,9 @@ export default function AcademyPage() {
             ) : (
               <div className="flex h-[220px] w-full items-center justify-center bg-gradient-to-br from-pink-100 to-pink-200">
 
-                <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-600">
-                  QURUX ACADEMY
+                <p className="flex items-center justify-center gap-2">
+                  <QuruxLogo heightClass="h-9 w-auto" />
+                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-pink-600">ACADEMY</span>
                 </p>
 
               </div>
@@ -260,8 +262,9 @@ export default function AcademyPage() {
                   {/* Heading */}
                   <div className="text-center">
 
-                    <p className="text-sm font-bold uppercase tracking-[0.3em] text-pink-600">
-                      QURUX MAKEOVER & ACADEMY
+                    <p className="flex items-center justify-center gap-3">
+                      <QuruxLogo heightClass="h-10 w-auto md:h-11" />
+                      <span className="text-xs font-bold uppercase tracking-[0.25em] text-pink-600 md:text-sm">MAKEOVER &amp; ACADEMY</span>
                     </p>
 
                     <h1 className="mt-4 text-3xl font-bold text-gray-900 md:text-4xl">
@@ -410,8 +413,9 @@ export default function AcademyPage() {
                     ✓
                   </div>
 
-                  <p className="mt-7 text-sm font-bold uppercase tracking-[0.3em] text-pink-600">
-                    QURUX MAKEOVER & ACADEMY
+                  <p className="mt-7 flex items-center justify-center gap-3">
+                    <QuruxLogo heightClass="h-10 w-auto md:h-11" />
+                    <span className="text-xs font-bold uppercase tracking-[0.25em] text-pink-600 md:text-sm">MAKEOVER &amp; ACADEMY</span>
                   </p>
 
                   <h2 className="mt-4 text-3xl font-bold text-gray-900">
@@ -456,8 +460,9 @@ export default function AcademyPage() {
         {/* Bottom */}
         <section className="bg-pink-600 px-6 py-14 text-center text-white">
 
-          <p className="text-sm font-bold uppercase tracking-[0.3em] text-pink-100">
-            QURUX ACADEMY
+          <p className="flex items-center justify-center gap-3">
+            <QuruxLogo heightClass="h-12 w-auto brightness-0 invert" />
+            <span className="text-sm font-bold uppercase tracking-[0.25em] text-pink-100">ACADEMY</span>
           </p>
 
           <h2 className="mt-4 text-3xl font-bold md:text-4xl">
@@ -480,8 +485,9 @@ export default function AcademyPage() {
       {/* HEADER */}
       <section className="px-6 pb-12 pt-16 text-center">
 
-        <p className="text-sm font-bold uppercase tracking-[0.35em] text-pink-600">
-          QURUX MAKEOVER & ACADEMY
+        <p className="flex items-center justify-center gap-3">
+          <QuruxLogo heightClass="h-14 w-auto" />
+          <span className="text-sm font-bold uppercase tracking-[0.25em] text-pink-600">MAKEOVER &amp; ACADEMY</span>
         </p>
 
         <h1 className="mt-4 text-4xl font-bold text-gray-900 md:text-6xl">
@@ -602,8 +608,9 @@ export default function AcademyPage() {
 
                   <div className="text-center">
 
-                    <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-500">
-                      QURUX ACADEMY
+                    <p className="flex items-center justify-center gap-2">
+                      <QuruxLogo heightClass="h-9 w-auto" />
+                      <span className="text-xs font-bold uppercase tracking-[0.2em] text-pink-500">ACADEMY</span>
                     </p>
 
                     <p className="mt-2 text-xs text-gray-400">
@@ -767,8 +774,9 @@ export default function AcademyPage() {
       {/* FINAL SECTION */}
       <section className="bg-pink-600 px-6 py-14 text-center text-white">
 
-        <p className="text-sm font-bold uppercase tracking-[0.3em] text-pink-100">
-          QURUX ACADEMY
+        <p className="flex items-center justify-center gap-3">
+          <QuruxLogo heightClass="h-12 w-auto brightness-0 invert" />
+          <span className="text-sm font-bold uppercase tracking-[0.25em] text-pink-100">ACADEMY</span>
         </p>
 
         <h2 className="mt-4 text-3xl font-bold md:text-4xl">

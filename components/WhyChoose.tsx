@@ -1,5 +1,7 @@
 "use client";
 
+import QuruxLogo from "./QuruxLogo";
+
 export default function WhyChoose() {
   const features = [
     {
@@ -57,34 +59,10 @@ export default function WhyChoose() {
             ✦ The QURUX Promise ✦
           </span>
 
-          <h2 className="mt-6 text-4xl font-black leading-tight tracking-tight text-gray-900 md:text-5xl">
-            Why Choose{" "}
-            <span className="relative inline-block">
-              <span className="bg-gradient-to-r from-rose-800 via-pink-600 to-amber-500 bg-clip-text text-transparent">
-                QURUX
-              </span>
-              <svg
-                className="absolute -bottom-2 left-0 w-full"
-                viewBox="0 0 200 9"
-                fill="none"
-                preserveAspectRatio="none"
-              >
-                <path
-                  d="M2 7C40 2 160 2 198 7"
-                  stroke="url(#goldUnderline)"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                />
-                <defs>
-                  <linearGradient id="goldUnderline" x1="0" y1="0" x2="200" y2="0" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#9F1239" />
-                    <stop offset="0.5" stopColor="#DB2777" />
-                    <stop offset="1" stopColor="#F59E0B" />
-                  </linearGradient>
-                </defs>
-              </svg>
-            </span>
-            ?
+          <h2 className="mt-6 flex flex-wrap items-end justify-center gap-x-3 text-4xl font-black leading-tight tracking-tight text-gray-900 md:text-5xl">
+            <span>Why Choose</span>
+            <QuruxLogo heightClass="h-16 w-auto md:h-24" />
+            <span>?</span>
           </h2>
 
           <div className="mt-6 flex items-center justify-center gap-3">

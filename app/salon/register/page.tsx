@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import QuruxLogo from "@/components/QuruxLogo";
 
 export default function SalonRegisterPage() {
   const [submitted, setSubmitted] = useState(false);
@@ -168,8 +169,9 @@ export default function SalonRegisterPage() {
 
         {/* Header */}
         <section className="text-center">
-          <p className="text-sm font-bold uppercase tracking-[0.3em] text-pink-600">
-            QURUX MAKEOVER & ACADEMY
+          <p className="flex items-center justify-center gap-3">
+            <QuruxLogo heightClass="h-12 w-auto md:h-14" />
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-pink-600 md:text-sm">MAKEOVER &amp; ACADEMY</span>
           </p>
           <h1 className="mt-4 text-4xl font-bold text-gray-900 md:text-5xl">
             Salon / Vendor Registration

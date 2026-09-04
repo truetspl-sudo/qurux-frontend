@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import QuruxLogo from "../QuruxLogo";
 
 const navItems = [
   { label: "Dashboard", href: "/admin", icon: "📊" },
@@ -48,8 +49,9 @@ export default function AdminLayout({
           href="/admin"
           className="block rounded-2xl px-4 py-3"
         >
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-pink-400">
-            QURUX ADMIN
+          <p className="flex items-center gap-2">
+            <QuruxLogo heightClass="h-7 w-auto brightness-0 invert" />
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-pink-400">ADMIN</span>
           </p>
           <h2 className="mt-1 text-lg font-black text-white">
             Control Panel
@@ -90,9 +92,10 @@ export default function AdminLayout({
           <div>
             <Link
               href="/admin"
-              className="text-xs font-bold uppercase tracking-[0.25em] text-pink-600"
+              className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-pink-600"
             >
-              QURUX ADMIN
+              <QuruxLogo heightClass="h-6 w-auto" />
+              ADMIN
             </Link>
             <h1 className="mt-1 text-3xl font-black text-gray-900">
               {title}

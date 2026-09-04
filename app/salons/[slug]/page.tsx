@@ -7,6 +7,7 @@ import { apiGet, apiPost, getLoggedInUser } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
+import QuruxLogo from "@/components/QuruxLogo";
 
 type ServiceItem = {
   _id: string;
@@ -234,7 +235,10 @@ export default function SalonDetailPage() {
           )}
           <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10">
             <div className="mx-auto max-w-6xl">
-              <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-200">QURUX PARTNER SALON</p>
+              <p className="flex items-center gap-3">
+                <QuruxLogo heightClass="h-9 w-auto brightness-0 invert" />
+                <span className="text-sm font-bold uppercase tracking-[0.25em] text-pink-200">PARTNER SALON</span>
+              </p>
               <h1 className="mt-2 text-4xl font-black text-white md:text-5xl">{salon.name}</h1>
               <p className="mt-2 flex flex-wrap items-center gap-3 text-white">
                 <span className="text-amber-300 text-xl tracking-tight">

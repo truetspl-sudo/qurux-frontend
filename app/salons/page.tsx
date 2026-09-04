@@ -5,6 +5,7 @@ import Link from "next/link";
 import { apiGet } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import QuruxLogo from "@/components/QuruxLogo";
 
 type Salon = {
   _id: string;
@@ -70,8 +71,9 @@ export default function SalonsListPage() {
       <main className="bg-gradient-to-b from-white via-pink-50 to-white px-6 py-12">
         <div className="mx-auto max-w-6xl">
           <div className="text-center">
-            <p className="text-sm font-bold uppercase tracking-[0.3em] text-pink-600">
-              QURUX PARTNER SALONS
+            <p className="flex items-center justify-center gap-3">
+              <QuruxLogo heightClass="h-10 w-auto" />
+              <span className="text-xs font-bold uppercase tracking-[0.25em] text-pink-600 md:text-sm">PARTNER SALONS</span>
             </p>
             <h1 className="mt-3 text-4xl font-black text-gray-900 md:text-5xl">
               Our Partner Salons

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { services } from "@/components/book/services";
 import { apiPost, getLoggedInUser } from "@/lib/api";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
+import QuruxLogo from "@/components/QuruxLogo";
 
 export default function BookingPage() {
   return (
@@ -185,8 +186,9 @@ function BookingContent() {
 
         {/* Heading */}
         <div className="mb-10 text-center">
-          <p className="text-sm font-bold uppercase tracking-[0.3em] text-pink-600">
-            QURUX MAKEOVER &amp; ACADEMY
+          <p className="flex items-center justify-center gap-3">
+            <QuruxLogo heightClass="h-12 w-auto md:h-14" />
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-pink-600 md:text-sm">MAKEOVER &amp; ACADEMY</span>
           </p>
 
           <h1 className="mt-4 text-4xl font-bold text-gray-900 md:text-5xl">

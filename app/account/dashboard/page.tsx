@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { apiGet, apiPost, getLoggedInUser, logout as apiLogout } from "../../../lib/api";
+import QuruxLogo from "../../../components/QuruxLogo";
 
 type Tab =
   | "profile"
@@ -139,8 +140,9 @@ export default function DashboardPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-pink-50 via-white to-slate-100 p-5">
         <section className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl">
-          <p className="text-xs font-bold uppercase tracking-[0.25em] text-pink-600">
-            QURUX MAKEOVER & ACADEMY
+          <p className="flex items-center gap-2">
+            <QuruxLogo heightClass="h-8 w-auto" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-pink-600">MAKEOVER &amp; ACADEMY</span>
           </p>
           <h1 className="mt-2 text-3xl font-black text-gray-900">My Account</h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
