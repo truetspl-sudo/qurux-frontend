@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiGet, apiPost } from "@/lib/api";
+import ServiceCollageMarquee from "@/components/ServiceCollageMarquee";
 
 type DashboardTab = "SAVING" | "PURCHASES" | "PAYMENT" | "STATEMENT" | "PROFILE";
 
@@ -356,6 +357,9 @@ export default function BOBPage() {
           </div>
         </div>
       </section>
+
+      {/* Animated services collage marquee */}
+      <ServiceCollageMarquee />
 
       {/* Summary Cards */}
       <section className="px-6 pb-4">
