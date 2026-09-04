@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import QuruxLogo from "@/components/QuruxLogo";
+import { services as bookServices } from "@/components/book/services";
 
 export default function SalonRegisterPage() {
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [svcOpen, setSvcOpen] = useState(false);
+  const [svcQuery, setSvcQuery] = useState("");
 
   const [form, setForm] = useState({
     salonName: "",
@@ -18,7 +21,7 @@ export default function SalonRegisterPage() {
     city: "",
     pincode: "",
     salonType: "",
-    servicesOffered: "",
+    servicesOffered: [] as string[],
     experience: "",
     teamSize: "",
     gstNumber: "",
@@ -30,9 +33,21 @@ export default function SalonRegisterPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) {
     const { name, value, type } = e.target;
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+      };
+      return next as typeof prev;
+    });
+  }
+
+  function toggleService(name: string) {
     setForm((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+      servicesOffered: prev.servicesOffered.includes(name)
+        ? prev.servicesOffered.filter((s) => s !== name)
+        : [...prev.servicesOffered, name],
     }));
   }
 
@@ -55,6 +70,12 @@ export default function SalonRegisterPage() {
 
     if (!form.agreeTerms) {
       setMessage("Please agree to the terms and conditions.");
+      setBusy(false);
+      return;
+    }
+
+    if (form.servicesOffered.length === 0) {
+      setMessage("Please select at least one service from the list.");
       setBusy(false);
       return;
     }
@@ -93,7 +114,7 @@ export default function SalonRegisterPage() {
         alternatePhone: form.altPhone,
         yearsOfExperience: expMap[form.experience] || 0,
         teamSize: teamMap[form.teamSize] || 1,
-        servicesOffered: form.servicesOffered.split(/[,\n]/).map(s => s.trim()).filter(Boolean),
+        servicesOffered: form.servicesOffered,
         about: form.description,
       };
       const res = await fetch((process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002") + "/api/salons/register", {
@@ -393,17 +414,103 @@ export default function SalonRegisterPage() {
               </label>
             </div>
 
-            <label className="block text-sm font-bold text-gray-800">
-              Services Offered
-              <textarea
-                name="servicesOffered"
-                rows={3}
-                value={form.servicesOffered}
-                onChange={handleChange}
-                placeholder="List the services your salon provides (e.g. Bridal Makeup, Hair Styling, Facial, Waxing)"
-                className="mt-1.5 w-full resize-none rounded-xl border border-gray-200 px-4 py-3.5 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
-              />
-            </label>
+            {/* Services Offered — Book catalog se select */}
+            <div className="block text-sm font-bold text-gray-800">
+              Services Offered *
+              <div className="relative mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => setSvcOpen((o) => !o)}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-left text-sm outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                >
+                  {form.servicesOffered.length > 0 ? (
+                    <span className="font-bold text-pink-600">
+                      {form.servicesOffered.length} service{form.servicesOffered.length > 1 ? "s" : ""} selected
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">Book se services chunein…</span>
+                  )}
+                  <span className={`text-gray-400 transition ${svcOpen ? "rotate-180" : ""}`}>▾</span>
+                </button>
+
+                {svcOpen && (
+                  <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-80 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl">
+                    <input
+                      autoFocus
+                      type="text"
+                      value={svcQuery}
+                      onChange={(e) => setSvcQuery(e.target.value)}
+                      placeholder="Search service…"
+                      className="mb-3 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-pink-500"
+                    />
+                    {(() => {
+                      const q = svcQuery.trim().toLowerCase();
+                      const filtered = bookServices.filter(
+                        (s: any) =>
+                          !q ||
+                          String(s.name || "").toLowerCase().includes(q) ||
+                          String(s.category || "").toLowerCase().includes(q)
+                      );
+                      const cats: { cat: string; items: any[] }[] = [];
+                      const catIdx: Record<string, number> = {};
+                      filtered.forEach((s: any) => {
+                        const cat = s.category || "Other";
+                        if (!(cat in catIdx)) {
+                          catIdx[cat] = cats.length;
+                          cats.push({ cat, items: [] });
+                        }
+                        cats[catIdx[cat]].items.push(s);
+                      });
+                      if (cats.length === 0) {
+                        return <p className="px-2 py-4 text-center text-sm text-gray-400">Koi service nahi mili</p>;
+                      }
+                      return cats.map((g) => (
+                        <div key={g.cat} className="mb-2">
+                          <p className="px-1 py-1 text-[11px] font-bold uppercase tracking-wider text-pink-500">
+                            {g.cat}
+                          </p>
+                          {g.items.map((s: any) => {
+                            const on = form.servicesOffered.includes(s.name);
+                            return (
+                              <label
+                                key={s.name}
+                                className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition hover:bg-pink-50 ${
+                                  on ? "bg-pink-50 text-pink-700" : "text-gray-700"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={on}
+                                  onChange={() => toggleService(s.name)}
+                                  className="h-4 w-4 accent-pink-600"
+                                />
+                                <span className="font-medium">{s.name}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              {form.servicesOffered.length > 0 && (
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {form.servicesOffered.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => toggleService(s)}
+                      className="inline-flex items-center gap-1 rounded-full bg-pink-100 px-3 py-1 text-xs font-bold text-pink-700 hover:bg-pink-200"
+                    >
+                      {s}
+                      <span className="text-pink-400">×</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <label className="block text-sm font-bold text-gray-800">
               About Your Salon
