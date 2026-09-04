@@ -36,13 +36,14 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:block">
-          <ul className="flex items-center gap-8 text-[17px] font-semibold text-gray-800">
+        {/* Desktop Navigation */}
+        <nav className="hidden lg:block">
+          <ul className="flex items-center gap-2 text-[13px] font-semibold text-gray-800 2xl:gap-7 2xl:text-[17px] xl:gap-5 xl:text-[15px]">
             {navLinks.map((link) => (
-              <li key={link.href}>
+              <li key={link.href} className="whitespace-nowrap">
                 <Link
                   href={link.href}
-                  className="border-b-2 border-transparent pb-1 transition-all duration-300 hover:border-pink-500 hover:text-pink-600"
+                  className="whitespace-nowrap border-b-2 border-transparent pb-1 transition-all duration-300 hover:border-pink-500 hover:text-pink-600"
                 >
                   {link.label}
                 </Link>
@@ -52,10 +53,10 @@ export default function Navbar() {
         </nav>
 
         {/* Desktop Account Button */}
-        <div className="hidden md:block">
+        <div className="hidden lg:block">
           <Link
             href="/account"
-            className="rounded-full bg-pink-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-pink-700"
+            className="whitespace-nowrap rounded-full bg-pink-600 px-3 py-2 text-[12px] font-bold text-white transition hover:bg-pink-700 2xl:px-6 2xl:py-2.5 2xl:text-sm xl:px-5 xl:text-[13px]"
           >
             My Account
           </Link>
