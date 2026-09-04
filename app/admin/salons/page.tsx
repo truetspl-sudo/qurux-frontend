@@ -28,30 +28,34 @@ const defaultSalons: Salon[] = [];
 
 export default function AdminSalonsPage() {
   const [salons, setSalons] = useState(defaultSalons);
+  const [rawSalons, setRawSalons] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
+  async function fetchSalons() {
+    setLoading(true);
+    try {
+      const res = await apiGet<any[]>("/salons/all");
+      if (res.ok) {
+        setRawSalons(res.data);
+        setSalons(res.data.map((s: any) => ({
+          id: s._id, salonName: s.name, ownerName: s.ownerName, email: s.ownerEmail,
+          phone: s.ownerMobile, altPhone: s.alternatePhone || "", address: s.address,
+          city: s.city, pincode: s.pincode, salonType: s.type || "Unisex",
+          servicesOffered: (s.servicesOffered || []).join(", "), experience: `${s.yearsOfExperience || 0} years`,
+          teamSize: `${s.teamSize || 1} staff`, gstNumber: s.gstNumber || "",
+          description: s.about || "", status: s.status || "PENDING",
+          submittedAt: s.createdAt?.split("T")[0] || "",
+        })));
+      }
+    } catch {}
+    setLoading(false);
+  }
+
   useEffect(() => {
-    async function fetchSalons() {
-      setLoading(true);
-      try {
-        const res = await apiGet<any[]>("/salons/all");
-        if (res.ok) {
-          setSalons(res.data.map((s: any) => ({
-            id: s._id, salonName: s.name, ownerName: s.ownerName, email: s.ownerEmail,
-            phone: s.ownerMobile, altPhone: s.alternatePhone || "", address: s.address,
-            city: s.city, pincode: s.pincode, salonType: s.type || "Unisex",
-            servicesOffered: (s.servicesOffered || []).join(", "), experience: `${s.yearsOfExperience || 0} years`,
-            teamSize: `${s.teamSize || 1} staff`, gstNumber: s.gstNumber || "",
-            description: s.about || "", status: s.status || "PENDING",
-            submittedAt: s.createdAt?.split("T")[0] || "",
-          })));
-        }
-      } catch {}
-      setLoading(false);
-    }
     fetchSalons();
   }, []);
   const [selected, setSelected] = useState<Salon | null>(null);
+  const [manageSalon, setManageSalon] = useState<any | null>(null);
   const [filterStatus, setFilterStatus] = useState("All");
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
@@ -141,11 +145,13 @@ export default function AdminSalonsPage() {
       {/* Salon List */}
       <div className="mt-5 space-y-4">
         {filtered.map((salon) => (
-          <button
+          <div
             key={salon.id}
-            type="button"
+            role="button"
+            tabIndex={0}
             onClick={() => setSelected(salon)}
-            className="w-full rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition hover:border-pink-300 hover:bg-pink-50"
+            onKeyDown={(e) => e.key === "Enter" && setSelected(salon)}
+            className="w-full cursor-pointer rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition hover:border-pink-300 hover:bg-pink-50"
           >
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
@@ -163,19 +169,32 @@ export default function AdminSalonsPage() {
                 </p>
               </div>
 
-              <span
-                className={`inline-flex w-fit rounded-full px-4 py-2 text-xs font-bold ${
-                  salon.status === "PENDING"
-                    ? "bg-orange-100 text-orange-700"
-                    : salon.status === "APPROVED"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-red-100 text-red-600"
-                }`}
-              >
-                {salon.status}
-              </span>
+              <div className="flex flex-col items-end gap-2">
+                <span
+                  className={`inline-flex w-fit rounded-full px-4 py-2 text-xs font-bold ${
+                    salon.status === "PENDING"
+                      ? "bg-orange-100 text-orange-700"
+                      : salon.status === "APPROVED"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-600"
+                  }`}
+                >
+                  {salon.status}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const raw = rawSalons.find((r) => r._id === salon.id);
+                    if (raw) setManageSalon(raw);
+                  }}
+                  className="rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100"
+                >
+                  ✏️ Manage Salon Page
+                </button>
+              </div>
             </div>
-          </button>
+          </div>
         ))}
 
         {filtered.length === 0 && (
@@ -318,6 +337,215 @@ export default function AdminSalonsPage() {
           </div>
         </div>
       )}
+
+      {/* Manage Salon Page Modal */}
+      {manageSalon && (
+        <ManageSalonModal
+          salon={manageSalon}
+          onClose={() => setManageSalon(null)}
+          onSaved={async () => {
+            setManageSalon(null);
+            await fetchSalons();
+          }}
+        />
+      )}
     </AdminLayout>
+  );
+}
+
+/* =============================================
+   MANAGE SALON PAGE — public /salons page ke liye
+   images, work images, Google map, services assign
+============================================= */
+function ManageSalonModal({
+  salon,
+  onClose,
+  onSaved,
+}: {
+  salon: any;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [catalog, setCatalog] = useState<any[]>([]);
+  const [about, setAbout] = useState(salon.about || "");
+  const [image, setImage] = useState(salon.image || "");
+  const [imagesText, setImagesText] = useState((salon.images || []).join("\n"));
+  const [workText, setWorkText] = useState((salon.workImages || []).join("\n"));
+  const [mapUrl, setMapUrl] = useState(salon.googleMapUrl || "");
+  const [selectedServices, setSelectedServices] = useState<string[]>(
+    (salon.servicesIds || []).map(String)
+  );
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const res = await apiGet<any[]>("/services/all");
+      if (res.ok) setCatalog(res.data || []);
+    })();
+  }, []);
+
+  function toggleService(id: string) {
+    setSelectedServices((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  async function save() {
+    setSaving(true);
+    setErr("");
+    const body: Record<string, unknown> = {
+      about,
+      image: image.trim(),
+      images: imagesText.split(/\n+/).map((s: string) => s.trim()).filter(Boolean),
+      workImages: workText.split(/\n+/).map((s: string) => s.trim()).filter(Boolean),
+      googleMapUrl: mapUrl.trim(),
+      servicesIds: selectedServices,
+    };
+    const res = await apiPatch<any>(`/salons/${salon._id}`, body);
+    setSaving(false);
+    if (res.ok) {
+      onSaved();
+    } else {
+      setErr(res.message || "Save fail hua.");
+    }
+  }
+
+  const link = salon.slug
+    ? `/salons/${salon.slug}`
+    : `/salons/${salon._id}`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-7 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-blue-600">
+              ✏️ MANAGE SALON PAGE
+            </p>
+            <h3 className="mt-2 text-2xl font-black text-gray-900">{salon.name}</h3>
+            {salon.status === "APPROVED" && (
+              <a
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-block text-xs font-bold text-pink-600 hover:underline"
+              >
+                View public page → /salons
+              </a>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xl font-bold hover:bg-gray-200"
+          >
+            ×
+          </button>
+        </div>
+
+        <p className="mt-3 rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-700">
+          Ye fields public salon page (/salons) pe dikhte hain — salon ki images,
+          work photos, Google Map location aur us salon me available services.
+          Image URL (link) daalein — ek line me ek URL.
+        </p>
+
+        <div className="mt-5 space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-bold text-gray-600">ABOUT SALON</label>
+            <textarea
+              rows={2}
+              value={about}
+              onChange={(e) => setAbout(e.target.value)}
+              placeholder="Salon ke baare me likhein..."
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-gray-600">MAIN IMAGE (cover photo URL)</label>
+            <input
+              type="text"
+              value={image}
+              onChange={(e) => setImage(e.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-gray-600">SALON GALLERY IMAGES (ek line me ek URL)</label>
+            <textarea
+              rows={3}
+              value={imagesText}
+              onChange={(e) => setImagesText(e.target.value)}
+              placeholder={"https://salon-img-1.jpg\nhttps://salon-img-2.jpg"}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-gray-600">WORK IMAGES / KAAM KI PHOTOS (ek line me ek URL)</label>
+            <textarea
+              rows={3}
+              value={workText}
+              onChange={(e) => setWorkText(e.target.value)}
+              placeholder={"https://work-img-1.jpg\nhttps://work-img-2.jpg"}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-gray-600">GOOGLE MAP (share link ya embed URL)</label>
+            <input
+              type="text"
+              value={mapUrl}
+              onChange={(e) => setMapUrl(e.target.value)}
+              placeholder="https://maps.app.goo.gl/... ya ...maps/embed?..."
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-500"
+            />
+            <p className="mt-1 text-[11px] text-gray-400">
+              Khaali chhodein to address se automatic map ban jayega.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-bold text-gray-600">
+              SERVICES (is salon me available services — Book Now flow)
+            </label>
+            {catalog.length === 0 ? (
+              <p className="rounded-xl bg-gray-50 p-3 text-xs text-gray-500">Services catalog load ho raha hai...</p>
+            ) : (
+              <div className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-gray-200 p-3">
+                {catalog.map((s: any) => (
+                  <label key={s._id} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-blue-50">
+                    <input
+                      type="checkbox"
+                      checked={selectedServices.includes(String(s._id))}
+                      onChange={() => toggleService(String(s._id))}
+                      className="h-4 w-4 accent-blue-600"
+                    />
+                    <span className="font-semibold text-gray-800">{s.name}</span>
+                    <span className="ml-auto text-xs text-gray-500">{s.category}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <p className="mt-1 text-[11px] text-gray-400">
+              {selectedServices.length === 0
+                ? "Koi service select nahi ki to public page pe poora catalog dikhega."
+                : `${selectedServices.length} service(s) select ki gayi hain.`}
+            </p>
+          </div>
+
+          {err && <div className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-600">❌ {err}</div>}
+
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="w-full rounded-full bg-blue-600 py-3.5 font-bold text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            {saving ? "SAVING..." : "💾 SAVE SALON PAGE"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
