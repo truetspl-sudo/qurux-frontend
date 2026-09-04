@@ -424,10 +424,7 @@ export default function SalonDetailPage() {
                   })
                 )}
               </div>
-              <p className="mt-3 rounded-xl bg-yellow-50 p-3 text-[11px] leading-5 text-yellow-800">
-                Service select karke BOOK NOW dabayein — booking request admin approve
-                karega (manual WhatsApp process).
-              </p>
+
             </aside>
           </div>
 
@@ -579,28 +576,22 @@ export default function SalonDetailPage() {
                     >
                       {bkSaving ? "SUBMITTING..." : `SUBMIT BOOKING REQUEST — ${fmtPrice(selService.price)}`}
                     </button>
-                    <p className="text-center text-xs text-gray-500">
-                      Booking request admin WhatsApp pe confirm karega — manual approval process.
-                    </p>
+
                   </form>
                 )}
               </section>
             )}
           </div>
 
-          {/* Bottom Book CTA — sabse neeche Book Now option */}
-          <div className="mt-8 rounded-3xl bg-gradient-to-r from-rose-900 via-pink-700 to-pink-600 p-7 text-center text-white shadow-xl">
-            <p className="text-xl font-black md:text-2xl">Is salon me appointment book karein</p>
-            <p className="mt-1 text-sm text-pink-100">
-              Neeche diye services me se koi service chuno — booking request admin approve karke vendor ko assign karega.
-            </p>
+          {/* Bottom Book CTA — sirf ek clean button, koi note nahi */}
+          <div className="mt-10 text-center">
             <button
               type="button"
               onClick={() => {
                 setBookOpen(true);
                 document.getElementById("salon-book")?.scrollIntoView({ behavior: "smooth" });
               }}
-              className="mt-5 rounded-full bg-white px-10 py-3 font-black text-rose-900 shadow-lg hover:bg-pink-50"
+              className="rounded-full bg-gradient-to-r from-rose-600 via-pink-600 to-rose-600 px-12 py-4 text-lg font-black text-white shadow-lg transition hover:scale-105 hover:shadow-xl"
             >
               BOOK NOW — {salon.name} →
             </button>
