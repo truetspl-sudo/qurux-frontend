@@ -62,18 +62,22 @@ export default function FeatureCards() {
                 />
               </div>
 
-              {/* TEXT - 30% */}
-              <div className="relative h-[180px] bg-gradient-to-b from-gray-700 to-black px-7 py-5">
+              {/* TEXT - 30%: light premium rose-gold */}
+              <div className="relative h-[180px] overflow-hidden bg-gradient-to-b from-rose-50 via-pink-50 to-[#ffe6ee] px-7 py-5">
+                {/* Gold hairline on top of the text panel */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
+                {/* soft rose glow corner */}
+                <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-rose-200/40 blur-2xl" />
 
-                <h2 className="text-4xl font-bold tracking-[0.15em] text-white">
+                <h2 className="bg-gradient-to-r from-rose-800 via-pink-600 to-amber-600 bg-clip-text text-4xl font-bold tracking-[0.15em] text-transparent">
                   {card.title}
                 </h2>
 
-                <p className="mt-2 text-base leading-6 text-white/90">
+                <p className="mt-2 text-base leading-6 text-rose-950/70">
                   {card.subtitle}
                 </p>
 
-                <div className="mt-4 inline-block rounded-full bg-pink-600 px-7 py-2.5 font-semibold text-white transition duration-300 group-hover:scale-105 group-hover:bg-pink-700">
+                <div className="mt-4 inline-block rounded-full bg-gradient-to-r from-rose-800 via-pink-600 to-amber-500 px-7 py-2.5 font-semibold text-white shadow-md transition duration-300 group-hover:scale-105 group-hover:shadow-lg">
                   Explore →
                 </div>
 
