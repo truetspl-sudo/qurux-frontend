@@ -369,7 +369,7 @@ export default function BOBPage() {
                       alt="Qurux UPI barcode"
                       className="mx-auto mt-3 h-48 w-48 rounded-xl bg-white object-contain shadow-sm ring-1 ring-pink-100"
                     />
-                    <p className="mt-2 text-xs text-gray-500">UPI ID: <span className="font-mono font-bold text-pink-600">qurux@upi</span></p>
+                    <p className="mt-2 text-xs text-gray-500">UPI ID: <span className="font-mono font-bold text-pink-600">8130231520@hdfc</span></p>
                   </div>
 
                   <div className="flex flex-col gap-4 sm:flex-row">
@@ -617,14 +617,14 @@ export default function BOBPage() {
 
                         {/* Amount */}
                         <div className="mt-5 rounded-2xl bg-pink-50 p-4">
-                          <p className="text-sm font-bold text-gray-700">Pay Amount (₹10 se ₹{emiPayPlan.pendingAmount.toLocaleString("en-IN")} tak)</p>
-                          <input type="number" min={10} max={emiPayPlan.pendingAmount} value={emiPayAmount} onChange={(e) => setEmiPayAmount(e.target.value)}
-                            placeholder={`Enter amount (min ₹10, max ₹${emiPayPlan.pendingAmount.toLocaleString("en-IN")})`}
+                          <p className="text-sm font-bold text-gray-700">Pay Amount — weekly jab jitna ho bharo (₹1 se ₹{emiPayPlan.pendingAmount.toLocaleString("en-IN")} tak)</p>
+                          <input type="number" min={1} max={emiPayPlan.pendingAmount} value={emiPayAmount} onChange={(e) => setEmiPayAmount(e.target.value)}
+                            placeholder={`Jitna bhi paisa ho (₹1 se ₹${emiPayPlan.pendingAmount.toLocaleString("en-IN")})`}
                             className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-lg font-bold outline-none focus:border-pink-500" />
                         </div>
 
                         {/* UPI QR */}
-                        {emiPayAmount && Number(emiPayAmount) >= 10 && (
+                        {emiPayAmount && Number(emiPayAmount) >= 1 && (
                           <div className="mt-4 rounded-2xl border border-gray-100 p-5 text-center">
                             <p className="text-sm font-bold text-gray-700">Scan & Pay — ₹{Number(emiPayAmount).toLocaleString("en-IN")}</p>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -633,7 +633,7 @@ export default function BOBPage() {
                               alt="Qurux UPI barcode"
                               className="mx-auto mt-3 h-48 w-48 rounded-xl bg-white object-contain shadow-sm ring-1 ring-pink-100"
                             />
-                            <p className="mt-2 text-xs text-gray-400">UPI ID: qurux@upi</p>
+                            <p className="mt-2 text-xs text-gray-400">UPI ID: 8130231520@hdfc</p>
                           </div>
                         )}
 
@@ -656,7 +656,7 @@ export default function BOBPage() {
                         {/* Submit */}
                         <button
                           type="button"
-                          disabled={!emiPayAmount || Number(emiPayAmount) < 10 || !emiPayTxn || emiPayLoading}
+                          disabled={!emiPayAmount || Number(emiPayAmount) < 1 || !emiPayTxn || emiPayLoading}
                           onClick={async () => {
                             setEmiPayLoading(true);
                             try {
@@ -701,7 +701,7 @@ export default function BOBPage() {
           {activeTab === "PAYMENT" && (
             <div>
               <h3 className="text-2xl font-bold text-gray-900">Payment</h3>
-              <p className="mt-2 text-gray-500">Flexible payments — ₹10 se pending amount tak koi bhi amount pay karein.</p>
+              <p className="mt-2 text-gray-500">EMI balance weekly pay karein — jab jitna paisa ho, ₹1 se pending tak koi bhi amount (25% down payment ke baad balance 75% EMI pe hota hai).</p>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-2xl border border-pink-100 p-6 text-center">

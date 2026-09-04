@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 
+// Timing 10:00 AM se 9:30 PM tak (30-min slots)
 const morningSlots = [
-  "9:00 AM",
-  "9:30 AM",
   "10:00 AM",
   "10:30 AM",
   "11:00 AM",
@@ -31,6 +30,10 @@ const eveningSlots = [
   "6:30 PM",
   "7:00 PM",
   "7:30 PM",
+  "8:00 PM",
+  "8:30 PM",
+  "9:00 PM",
+  "9:30 PM",
 ];
 
 type TimeSlotProps = {

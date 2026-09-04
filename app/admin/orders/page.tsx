@@ -37,6 +37,144 @@ function effVia(o: Order): string {
   return "CASH";
 }
 
+// RULE (25/75 EMI): EMI mode me minimum 25% down payment abhi, baaki 75%
+// EMI balance plan me — customer weekly / jitna bhi ho flexible repayments me dega.
+function OrderPayPanel({ order, onSaved }: { order: Order; onSaved: (o: Order) => void }) {
+  const billTotal = Math.max(0, Number(order.total) || 0);
+  const minDown = Math.ceil(billTotal * 0.25);
+  const [via, setVia] = useState(order.paidVia && order.paidVia !== "CASH" ? order.paidVia : effVia(order));
+  const [status, setStatus] = useState(order.paymentStatus);
+  const [cash, setCash] = useState(String(order.cashAmount || 0));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const invalid = via === "EMI" && (Number(cash) || 0) < minDown;
+
+  async function save() {
+    if (invalid) {
+      setErr(`EMI close ke liye minimum ₹${minDown.toLocaleString("en-IN")} (bill ka 25%) abhi pay karna hoga.`);
+      return;
+    }
+    setBusy(true);
+    setErr("");
+    const res = await apiPatch<any>(`/orders/${order._id}/pay`, {
+      paymentStatus: status,
+      cashAmount: Number(cash) || 0,
+      paidVia: via,
+    });
+    setBusy(false);
+    if (!res.ok) {
+      setErr(res.message || "Payment update fail hua.");
+      return;
+    }
+    onSaved(res.data?.order as Order);
+  }
+
+  function changeVia(v: string) {
+    setVia(v);
+    setErr("");
+    if (v === "EMI") {
+      setCash(String(Math.max(Number(cash) || 0, minDown)));
+      setStatus(billTotal - Math.max(Number(cash) || 0, minDown) > 0 ? "PARTIAL" : "PAID");
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-2xl border border-green-200 bg-green-50/50 p-4">
+      <p className="text-xs font-bold uppercase tracking-[0.15em] text-green-700">💳 PAYMENT UPDATE (MANUAL)</p>
+      <p className="mt-1 text-xs text-gray-600">
+        Customer ne payment WhatsApp/UPI pe kar di hai? Yahan status + amount update karein.
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <div>
+          <label className="mb-1 block text-xs font-bold text-gray-600">PAID VIA (MODE)</label>
+          <select
+            value={via}
+            onChange={(e) => changeVia(e.target.value)}
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-green-500"
+          >
+            <option value="CASH">💵 Cash</option>
+            <option value="UPI">📱 UPI</option>
+            <option value="BOB">🏦 BOB Wallet</option>
+            <option value="EMI">📊 EMI</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-bold text-gray-600">PAYMENT STATUS</label>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-green-500"
+          >
+            <option value="PENDING">PENDING</option>
+            <option value="PARTIAL">PARTIAL</option>
+            <option value="PAID">✓ PAID</option>
+            <option value="REFUNDED">REFUNDED</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-bold text-gray-600">AMOUNT COLLECTED (₹)</label>
+          <input
+            type="number"
+            min={0}
+            value={cash}
+            onChange={(e) => {
+              setCash(e.target.value);
+              setErr("");
+              if (via === "EMI") {
+                const bal = billTotal - (Number(e.target.value) || 0);
+                setStatus(bal > 0 ? "PARTIAL" : "PAID");
+              }
+            }}
+            placeholder="Amount collected"
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-green-500"
+          />
+        </div>
+      </div>
+
+      {via === "EMI" && (() => {
+        const collected = Math.max(Number(cash) || 0, 0);
+        const balance = Math.max(0, billTotal - collected);
+        return (
+          <div className={`mt-3 rounded-xl border p-3 text-xs ${invalid ? "border-red-300 bg-red-50" : "border-blue-200 bg-blue-50"}`}>
+            <p className={`font-bold ${invalid ? "text-red-800" : "text-blue-800"}`}>
+              📊 EMI RULE — MIN 25% DOWN + 75% EMI BALANCE
+            </p>
+            <p className={`mt-1 ${invalid ? "text-red-700" : "text-blue-700"}`}>
+              Bill ₹{billTotal.toLocaleString("en-IN")} pe minimum 25% = <strong>₹{minDown.toLocaleString("en-IN")}</strong> abhi.
+              Baaki EMI balance plan me — customer weekly/jitna bhi ho flexible repayments me dega.
+            </p>
+            {!invalid && (
+              <p className="mt-1 text-blue-700">
+                EMI plan auto-create hoga: Total ₹{billTotal.toLocaleString("en-IN")} • Down ₹{collected.toLocaleString("en-IN")} •
+                Balance ₹{balance.toLocaleString("en-IN")}. Pura pay hone par due ₹0.
+              </p>
+            )}
+            {invalid && (
+              <p className="mt-1 font-semibold text-red-700">
+                ⚠️ EMI close ke liye minimum ₹{minDown.toLocaleString("en-IN")} (25%) abhi collect karna zaroori hai.
+              </p>
+            )}
+          </div>
+        );
+      })()}
+
+      {err && <p className="mt-2 text-xs font-semibold text-red-600">⚠️ {err}</p>}
+
+      <button
+        type="button"
+        onClick={save}
+        disabled={busy || invalid}
+        className={`mt-3 w-full rounded-xl px-4 py-2.5 text-sm font-bold text-white transition ${
+          invalid ? "bg-gray-300 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+        }`}
+      >
+        {busy ? "UPDATING..." : invalid ? "MIN 25% DOWN PAYMENT CHAHIYE" : "💾 UPDATE PAYMENT"}
+      </button>
+    </div>
+  );
+}
+
 const statusColors: Record<string, string> = {
   PENDING: "bg-orange-100 text-orange-700",
   CONFIRMED: "bg-blue-100 text-blue-700",
@@ -81,39 +219,17 @@ export default function AdminOrdersPage() {
   // Manual model: admin WhatsApp pe payment verify karke yahan update karta hai
   // (jaise service bookings closure pe admin payment update karta hai).
   // EMI mode → backend apne aap EMIPlan banata hai (products, total/paid/balance).
-  async function updatePayment(id: string, paymentStatus: string, cashAmount?: number, paidVia?: string) {
-    const body: Record<string, unknown> = { paymentStatus };
-    if (cashAmount !== undefined) body.cashAmount = cashAmount;
-    if (paidVia !== undefined) body.paidVia = paidVia;
-    const res = await apiPatch<any>(`/orders/${id}/pay`, body);
-    const serverOrder = res.ok ? (res.data as any)?.order : null;
-    const effStatus = serverOrder?.paymentStatus || paymentStatus;
-    const effCash = serverOrder?.cashAmount !== undefined ? serverOrder.cashAmount : cashAmount;
-    setOrders((prev) =>
-      prev.map((o) =>
-        o._id === id
-          ? {
-              ...o,
-              paymentStatus: effStatus,
-              cashAmount: effCash !== undefined ? effCash : o.cashAmount,
-              paidVia: serverOrder?.paidVia || paidVia || o.paidVia || effVia(o),
-              emiAmount: serverOrder?.emiAmount ?? o.emiAmount,
-            }
-          : o
-      )
-    );
-    if (selected?._id === id)
-      setSelected((prev) =>
-        prev
-          ? {
-              ...prev,
-              paymentStatus: effStatus,
-              cashAmount: effCash !== undefined ? effCash : prev.cashAmount,
-              paidVia: serverOrder?.paidVia || paidVia || prev.paidVia || effVia(prev),
-              emiAmount: serverOrder?.emiAmount ?? prev.emiAmount,
-            }
-          : null
-      );
+  function applyServerOrder(serverOrder: Order) {
+    if (!serverOrder?._id) return;
+    const merge = (o: Order): Order => ({
+      ...o,
+      paymentStatus: serverOrder.paymentStatus ?? o.paymentStatus,
+      cashAmount: serverOrder.cashAmount ?? o.cashAmount,
+      paidVia: serverOrder.paidVia || o.paidVia,
+      emiAmount: serverOrder.emiAmount ?? o.emiAmount,
+    });
+    setOrders((prev) => prev.map((o) => (o._id === serverOrder._id ? merge(o) : o)));
+    setSelected((prev) => (prev && prev._id === serverOrder._id ? merge(prev) : prev));
   }
 
   const filtered = orders.filter((o) => filterStatus === "All" || o.status === filterStatus);
@@ -251,72 +367,7 @@ export default function AdminOrdersPage() {
             </div>
 
             {/* Payment update — manual model (admin WhatsApp pe verify karke fill karta hai) */}
-            <div className="mt-4 rounded-2xl border border-green-200 bg-green-50/50 p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.15em] text-green-700">💳 PAYMENT UPDATE (MANUAL)</p>
-              <p className="mt-1 text-xs text-gray-600">
-                Customer ne payment WhatsApp/UPI pe kar di hai? Yahan status + amount update karein.
-              </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                <div>
-                  <label className="mb-1 block text-xs font-bold text-gray-600">PAID VIA (MODE)</label>
-                  <select
-                    value={effVia(selected)}
-                    onChange={(e) => updatePayment(selected._id, selected.paymentStatus, undefined, e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-green-500"
-                  >
-                    <option value="CASH">💵 Cash</option>
-                    <option value="UPI">📱 UPI</option>
-                    <option value="BOB">🏦 BOB Wallet</option>
-                    <option value="EMI">📊 EMI</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-bold text-gray-600">PAYMENT STATUS</label>
-                  <select
-                    value={selected.paymentStatus}
-                    onChange={(e) => updatePayment(selected._id, e.target.value, undefined, effVia(selected))}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-green-500"
-                  >
-                    <option value="PENDING">PENDING</option>
-                    <option value="PARTIAL">PARTIAL</option>
-                    <option value="PAID">✓ PAID</option>
-                    <option value="REFUNDED">REFUNDED</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-bold text-gray-600">AMOUNT COLLECTED (₹)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    defaultValue={selected.cashAmount || 0}
-                    onBlur={(e) => updatePayment(selected._id, selected.paymentStatus, Number(e.target.value) || 0, effVia(selected))}
-                    placeholder="Amount collected"
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-green-500"
-                  />
-                </div>
-              </div>
-
-              {/* EMI mode → plan auto-create preview (customer EMI details me dikhega) */}
-              {effVia(selected) === "EMI" && (() => {
-                const collected = Number(selected.cashAmount || 0);
-                const balance = Math.max(0, selected.total - collected);
-                return (
-                  <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs">
-                    <p className="font-bold text-blue-800">📊 EMI PLAN (AUTO — CUSTOMER KE EMI DETAILS ME)</p>
-                    <p className="mt-1 text-blue-700">
-                      Products: <strong>{selected.items.map((i) => `${i.name} ×${i.quantity}`).join(", ")}</strong> •
-                      Total ₹{selected.total.toLocaleString("en-IN")} • Abhi paid ₹{collected.toLocaleString("en-IN")} •
-                      Balance EMI ₹{balance.toLocaleString("en-IN")}
-                    </p>
-                    <p className="mt-1 text-blue-700">
-                      {balance > 0
-                        ? "Customer balance flexible EMI repayments me dega (admin /emi approve karega). Pura pay hone par due ₹0."
-                        : "Balance ₹0 — due zero ✅"}
-                    </p>
-                  </div>
-                );
-              })()}
-            </div>
+            <OrderPayPanel key={selected._id} order={selected} onSaved={applyServerOrder} />
 
             <div className="mt-4 flex items-center justify-between">
               <span className={`rounded-full px-4 py-2 text-sm font-bold ${statusColors[selected.status] || "bg-gray-100"}`}>{selected.status}</span>

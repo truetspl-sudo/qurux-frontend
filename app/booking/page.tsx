@@ -502,8 +502,9 @@ function BookingContent() {
                     <div>
                       <p className="font-bold text-gray-900">No Cost EMI</p>
                       <p className="mt-1 text-sm text-gray-600">
-                        Split into easy installments. Booking ke waqt koi
-                        payment nahi — admin approval ke baad plan banega.
+                        Service hone ke baad bill ka 25% down payment; baaki
+                        75% flexible EMI — weekly jab jitna ho bharo. Booking
+                        ke waqt koi payment nahi.
                       </p>
                     </div>
                   </div>
@@ -554,11 +555,6 @@ function BookingContent() {
             >
               {saving ? "SUBMITTING..." : "SUBMIT BOOKING"}
             </button>
-
-            <p className="text-center text-xs leading-5 text-gray-500">
-              Booking ke waqt koi payment nahi leni hai — payment service hone
-              ke baad hoti hai aur admin booking close karte waqt update karta hai.
-            </p>
 
           </form>
         </section>

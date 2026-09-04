@@ -529,30 +529,44 @@ function ClosureModal({
         : closure.paymentMethod === "Mixed/Split"
           ? "EMI"
           : "CASH";
+  // RULE (25/75 EMI): EMI pe bill ka minimum 25% abhi pay karna hoga;
+  // baaki 75% EMI balance customer flexible repayments me dega.
+  const billTotal = Math.max(0, Number(closure.amount) || 0);
+  const minDown = Math.ceil(billTotal * 0.25);
   const [paidVia, setPaidVia] = useState(closure.paidVia || defaultVia());
   const [payStatus, setPayStatus] = useState(() => {
     const via = closure.paidVia || defaultVia();
     if (via === "EMI") {
-      const collected = Number(closure.cashCollected || 0);
-      return Math.max(0, closure.amount - collected) > 0 ? "PARTIAL" : "PAID";
+      const collected = Math.max(Number(closure.cashCollected || 0), minDown);
+      return Math.max(0, billTotal - collected) > 0 ? "PARTIAL" : "PAID";
     }
     return closure.paymentStatus === "PARTIAL" ? "PARTIAL" : "PAID";
   });
-  const [cashCollectedAmt, setCashCollectedAmt] = useState(String(closure.cashCollected || 0));
+  const [cashCollectedAmt, setCashCollectedAmt] = useState(
+    String(
+      (closure.paidVia || defaultVia()) === "EMI"
+        ? Math.max(Number(closure.cashCollected || 0), minDown)
+        : closure.cashCollected || 0
+    )
+  );
 
-  // EMI mode → balance bachta hai to status PARTIAL (EMI plan me dikhega),
-  // pura amount collected to PAID (due zero).
+  const emiDownInvalid =
+    paidVia === "EMI" && (Number(cashCollectedAmt) || 0) < minDown;
+
+  // EMI mode → minimum 25% abhi, balance 75% EMI plan me (status PARTIAL),
+  // pura amount collect karne pe PAID (due zero).
   function changePaidVia(v: string) {
     setPaidVia(v);
     if (v === "EMI") {
-      const balance = Math.max(0, closure.amount - (Number(cashCollectedAmt) || 0));
-      setPayStatus(balance > 0 ? "PARTIAL" : "PAID");
+      const amt = Math.max(Number(cashCollectedAmt) || 0, minDown);
+      setCashCollectedAmt(String(amt));
+      setPayStatus(billTotal - amt > 0 ? "PARTIAL" : "PAID");
     }
   }
   function onCashChange(v: string) {
     setCashCollectedAmt(v);
     if (paidVia === "EMI") {
-      const balance = Math.max(0, closure.amount - (Number(v) || 0));
+      const balance = Math.max(0, billTotal - (Number(v) || 0));
       setPayStatus(balance > 0 ? "PARTIAL" : "PAID");
     }
   }
@@ -822,54 +836,70 @@ function ClosureModal({
 
               {/* EMI mode → plan auto-create ka preview (customer EMI details me dikhega) */}
               {paidVia === "EMI" && (() => {
-                const collected = Number(cashCollectedAmt) || 0;
-                const balance = Math.max(0, closure.amount - collected);
+                const collected = Math.max(Number(cashCollectedAmt) || 0, 0);
+                const balance = Math.max(0, billTotal - collected);
+                const invalid = collected < minDown;
                 return (
-                  <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm">
-                    <p className="font-bold text-blue-800">📊 EMI PLAN (AUTO-CREATE ON CLOSE)</p>
-                    <p className="mt-1 text-blue-700">
-                      Customer ke <strong>EMI Details</strong> me dikhega:
+                  <div className={`mt-4 rounded-xl border p-4 text-sm ${invalid ? "border-red-300 bg-red-50" : "border-blue-200 bg-blue-50"}`}>
+                    <p className={`font-bold ${invalid ? "text-red-800" : "text-blue-800"}`}>
+                      📊 EMI RULE — MIN 25% DOWN + 75% EMI BALANCE
                     </p>
-                    <div className="mt-2 grid gap-2 text-xs sm:grid-cols-4">
-                      <div className="rounded-lg bg-white p-2">
-                        <p className="font-bold text-gray-400">SERVICE</p>
-                        <p className="mt-0.5 font-bold text-gray-900">{closure.service}</p>
+                    <p className={`mt-1 ${invalid ? "text-red-700" : "text-blue-700"}`}>
+                      Bill ₹{billTotal.toLocaleString("en-IN")} pe minimum 25% ={" "}
+                      <strong>₹{minDown.toLocaleString("en-IN")}</strong> abhi pay karna hoga.
+                      Baaki 75% tak EMI balance customer ke <strong>EMI Details</strong> me
+                      banega — customer weekly / jab jitna paisa ho flexible repayments me dega.
+                    </p>
+                    {!invalid && (
+                      <div className="mt-2 grid gap-2 text-xs sm:grid-cols-4">
+                        <div className="rounded-lg bg-white p-2">
+                          <p className="font-bold text-gray-400">SERVICE</p>
+                          <p className="mt-0.5 font-bold text-gray-900">{closure.service}</p>
+                        </div>
+                        <div className="rounded-lg bg-white p-2">
+                          <p className="font-bold text-gray-400">TOTAL</p>
+                          <p className="mt-0.5 font-black text-gray-900">₹{billTotal.toLocaleString("en-IN")}</p>
+                        </div>
+                        <div className="rounded-lg bg-white p-2">
+                          <p className="font-bold text-gray-400">DOWN PAYMENT (ABHI)</p>
+                          <p className="mt-0.5 font-black text-green-700">₹{collected.toLocaleString("en-IN")}</p>
+                        </div>
+                        <div className="rounded-lg bg-white p-2">
+                          <p className="font-bold text-gray-400">EMI BALANCE (75% TAK)</p>
+                          <p className="mt-0.5 font-black text-orange-700">₹{balance.toLocaleString("en-IN")}</p>
+                        </div>
                       </div>
-                      <div className="rounded-lg bg-white p-2">
-                        <p className="font-bold text-gray-400">TOTAL</p>
-                        <p className="mt-0.5 font-black text-gray-900">₹{closure.amount.toLocaleString("en-IN")}</p>
-                      </div>
-                      <div className="rounded-lg bg-white p-2">
-                        <p className="font-bold text-gray-400">ABHI PAID</p>
-                        <p className="mt-0.5 font-black text-green-700">₹{collected.toLocaleString("en-IN")}</p>
-                      </div>
-                      <div className="rounded-lg bg-white p-2">
-                        <p className="font-bold text-gray-400">BALANCE (EMI)</p>
-                        <p className="mt-0.5 font-black text-orange-700">₹{balance.toLocaleString("en-IN")}</p>
-                      </div>
-                    </div>
-                    <p className="mt-2 text-xs text-blue-700">
-                      {balance > 0
-                        ? `Customer is balance ₹${balance.toLocaleString("en-IN")} flexible EMI repayments me dega — /emi approve queue me admin approve karega. Pura pay karne par due ₹0.`
-                        : "Balance ₹0 — pura amount collect ho gaya, customer ka due zero."}
+                    )}
+                    <p className={`mt-2 text-xs ${invalid ? "text-red-700" : "text-blue-700"}`}>
+                      {invalid
+                        ? `⚠️ EMI close karne ke liye minimum ₹${minDown.toLocaleString("en-IN")} (25%) abhi collect karna zaroori hai — aur amount bharo.`
+                        : balance > 0
+                          ? `EMI plan auto-create hoga — Total ₹${billTotal.toLocaleString("en-IN")} • Down ₹${collected.toLocaleString("en-IN")} • Balance ₹${balance.toLocaleString("en-IN")}. Pura pay karne par due ₹0.`
+                          : "Balance ₹0 — pura amount collect ho gaya, customer ka due zero."}
                     </p>
                   </div>
                 );
               })()}
             </div>
 
+            {emiDownInvalid && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+                ⚠️ EMI close ke liye minimum ₹{minDown.toLocaleString("en-IN")} (bill ka 25%) abhi pay karna hoga.
+              </div>
+            )}
+
             {/* Close Button */}
             <button
               type="button"
               onClick={() => onClosures(adminRemarks, customerRemarks, rating, payStatus, Number(cashCollectedAmt) || 0, paidVia)}
-              disabled={busy || !adminRemarks.trim() || rating === 0}
+              disabled={busy || !adminRemarks.trim() || rating === 0 || emiDownInvalid}
               className={`w-full rounded-full px-6 py-3.5 font-bold text-white transition ${
-                adminRemarks.trim() && rating > 0
+                adminRemarks.trim() && rating > 0 && !emiDownInvalid
                   ? "bg-pink-600 hover:bg-pink-700"
                   : "bg-gray-300 cursor-not-allowed"
               }`}
             >
-              {busy ? "PROCESSING..." : "🔒 CLOSE SERVICE & UPDATE PAYMENT"}
+              {busy ? "PROCESSING..." : emiDownInvalid ? "🔒 MIN 25% DOWN PAYMENT CHAHIYE" : "🔒 CLOSE SERVICE & UPDATE PAYMENT"}
             </button>
           </div>
         )}

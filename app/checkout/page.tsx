@@ -256,7 +256,7 @@ export default function CheckoutPage() {
                   <div className="mt-5 grid gap-3 sm:grid-cols-2">
                     {[
                       { key: "full" as const, label: "Full Payment", desc: "Pay complete amount now", icon: "💳" },
-                      { key: "emi" as const, label: "No Cost EMI", desc: "Split into installments", icon: "📊" },
+                      { key: "emi" as const, label: "No Cost EMI", desc: "25% down + 75% flexible EMI (weekly jitna ho)", icon: "📊" },
                       { key: "bob" as const, label: "Pay from BOB", desc: "Use your BOB wallet", icon: "🏦" },
                       { key: "mixed" as const, label: "Mixed / Split", desc: "Combine multiple methods", icon: "🔀" },
                     ].map((opt) => (

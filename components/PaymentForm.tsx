@@ -27,7 +27,8 @@ export default function PaymentForm({
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
-  const upiId = "qurux@upi";
+  // Company ka asli UPI ID — barcode (public/payment/quruxbarcode.png) pe yahi hai
+  const upiId = "8130231520@hdfc";
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
