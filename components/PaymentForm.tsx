@@ -167,7 +167,7 @@ export default function PaymentForm({
 
           <p className="mt-3 max-w-sm text-center text-[11px] leading-5 text-gray-400">
             ⚠️ Ye automatic payment gateway nahi hai. UPI app me payment karke
-            transaction ID + screenshot submit karein. Admin manually verify karke approve karega.
+            transaction ID + screenshot submit karein.
           </p>
         </div>
       </section>
