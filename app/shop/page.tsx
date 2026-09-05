@@ -18,123 +18,13 @@ type Product = {
   stock: number;
 };
 
-const products: Product[] = [
-  {
-    id: "p1",
-    slug: "essn-hd-foundation",
-    name: "ESSN HD Foundation",
-    category: "Makeup",
-    price: "₹1,299",
-    priceNum: 1299,
-    image: "/cards/buy.jpg",
-    description:
-      "High-definition foundation for a smooth, camera-ready finish.",
-    stock: 25,
-  },
-  {
-    id: "p2",
-    slug: "essn-matte-lipstick-set",
-    name: "ESSN Matte Lipstick Set",
-    category: "Makeup",
-    price: "₹899",
-    priceNum: 899,
-    image: "/cards/buy.jpg",
-    description:
-      "Set of 6 long-lasting matte lipsticks in trending shades.",
-    stock: 40,
-  },
-  {
-    id: "p3",
-    slug: "essn-glow-serum",
-    name: "ESSN Glow Serum",
-    category: "Skincare",
-    price: "₹1,499",
-    priceNum: 1499,
-    image: "/cards/buy.jpg",
-    description:
-      "Vitamin C glow serum for radiant and even-toned skin.",
-    stock: 30,
-  },
-  {
-    id: "p4",
-    slug: "essn-hydrating-moisturiser",
-    name: "ESSN Hydrating Moisturiser",
-    category: "Skincare",
-    price: "₹799",
-    priceNum: 799,
-    image: "/cards/buy.jpg",
-    description:
-      "Lightweight hydrating moisturiser for all skin types.",
-    stock: 50,
-  },
-  {
-    id: "p5",
-    slug: "essn-hair-repair-mask",
-    name: "ESSN Hair Repair Mask",
-    category: "Hair Care",
-    price: "₹699",
-    priceNum: 699,
-    image: "/cards/buy.jpg",
-    description:
-      "Deep-conditioning hair mask for damaged and dry hair.",
-    stock: 35,
-  },
-  {
-    id: "p6",
-    slug: "essn-professional-brush-kit",
-    name: "ESSN Professional Brush Kit",
-    category: "Tools & Brushes",
-    price: "₹2,499",
-    priceNum: 2499,
-    image: "/cards/buy.jpg",
-    description:
-      "12-piece professional makeup brush set with travel pouch.",
-    stock: 20,
-  },
-  {
-    id: "p7",
-    slug: "essn-sunset-eau-de-parfum",
-    name: "ESSN Sunset Eau de Parfum",
-    category: "Fragrance",
-    price: "₹1,999",
-    priceNum: 1999,
-    image: "/cards/buy.jpg",
-    description:
-      "Luxurious evening fragrance with floral and woody notes.",
-    stock: 15,
-  },
-  {
-    id: "p8",
-    slug: "essn-concealer-palette",
-    name: "ESSN Concealer Palette",
-    category: "Makeup",
-    price: "₹699",
-    priceNum: 699,
-    image: "/cards/buy.jpg",
-    description:
-      "Multi-shade concealer palette for colour correction and coverage.",
-    stock: 45,
-  },
-  {
-    id: "p9",
-    slug: "essn-sunscreen-spf50",
-    name: "ESSN Sunscreen SPF 50",
-    category: "Skincare",
-    price: "₹599",
-    priceNum: 599,
-    image: "/cards/buy.jpg",
-    description:
-      "Lightweight broad-spectrum sunscreen for daily protection.",
-    stock: 60,
-  },
-];
 
 export default function ShopPage() {
   const [cart, setCart] = useState<
     { product: Product; qty: number }[]
   >([]);
   const [showCart, setShowCart] = useState(false);
-  const [allProducts, setAllProducts] = useState<Product[]>(products);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuQuery, setMenuQuery] = useState("");
