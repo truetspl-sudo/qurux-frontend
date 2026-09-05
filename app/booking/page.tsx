@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { services } from "@/components/book/services";
-import { apiPost, getLoggedInUser } from "@/lib/api";
+import { apiPost, apiGet, getLoggedInUser } from "@/lib/api";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
 import QuruxLogo from "@/components/QuruxLogo";
 
@@ -42,11 +42,26 @@ function BookingContent() {
   const [timeSlot, setTimeSlot] = useState("");
   const [address, setAddress] = useState("");
   const [selectedSalon, setSelectedSalon] = useState("");
+  const [salons, setSalons] = useState<{ _id: string; name: string; slug?: string; city?: string; rating?: { stars: number; count: number } }[]>([]);
+  const [loadingSalons, setLoadingSalons] = useState(true);
 
   const [submitted, setSubmitted] = useState(false);
   const [bookingId, setBookingId] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    async function loadSalons() {
+      try {
+        const res = await apiGet<any[]>("/salons");
+        if (res.ok) {
+          setSalons(res.data || []);
+        }
+      } catch {}
+      setLoadingSalons(false);
+    }
+    loadSalons();
+  }, []);
 
   const loggedInUser = getLoggedInUser();
 
@@ -440,8 +455,17 @@ function BookingContent() {
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3.5 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
                 >
                   <option value="">Select a salon</option>
-                  <option value="Naraina Vihar">QURUX Salon — Naraina Vihar</option>
-                  <option value="Uttam Nagar">QURUX Salon — Uttam Nagar</option>
+                  {loadingSalons ? (
+                    <option value="" disabled>Loading salons...</option>
+                  ) : salons.length === 0 ? (
+                    <option value="" disabled>No salons available yet</option>
+                  ) : (
+                    salons.map((s) => (
+                      <option key={s._id} value={s.name}>
+                        {s.name} — {s.city || ""}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <TimeSlotPicker value={timeSlot} onChange={setTimeSlot} />
               </div>
