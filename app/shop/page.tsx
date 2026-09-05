@@ -358,70 +358,132 @@ export default function ShopPage() {
           </div>
         </div>
 
-        {/* Products Grid — all products */}
-        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {allProducts.map((product) => (
-            <div
-              key={product.id}
-              className="group overflow-hidden rounded-[28px] bg-white shadow-md transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+        {/* Products Grid — Coming Soon banner when catalog empty */}
+        {allProducts.length === 0 ? (
+          <div className="mt-10 flex flex-col items-center justify-center rounded-[32px] border-2 border-dashed border-pink-200 bg-pink-50/40 px-6 py-16 text-center">
+            <div className="text-6xl">🕊️</div>
+            <h2 className="mt-4 text-2xl font-black text-gray-900">
+              Coming Soon
+            </h2>
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-gray-600">
+              Our shop is being set up. New beauty products will appear here soon — watch this space.
+            </p>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="mt-6 rounded-full border-2 border-pink-600 bg-white px-6 py-3 font-bold text-pink-600 transition hover:bg-pink-50"
             >
-              {/* Image */}
-              <div className="relative aspect-[4/3] w-full overflow-hidden bg-pink-100">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                />
-                {product.stock <= 5 && (
-                  <span className="absolute left-4 top-4 rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white">
-                    Low Stock
-                  </span>
-                )}
-              </div>
+              {menuOpen ? "Close" : "Browse All Products"}
+            </button>
 
-              {/* Content */}
-              <div className="p-6">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-pink-600">
-                  {product.category}
-                </p>
-                <h2 className="mt-2 text-xl font-bold text-gray-900">
-                  {product.name}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-gray-600">
-                  {product.description}
-                </p>
-
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-2xl font-black text-pink-600">
-                    {product.price}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    Stock: {product.stock}
-                  </span>
-                </div>
-
-                {/* BOB Balance for logged-in customers */}
-                <BobBalanceCard price={product.price} itemName={product.name} />
-
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => addToCart(product)}
-                    className="rounded-full border-2 border-pink-600 bg-white px-4 py-2.5 text-xs font-bold text-pink-600 transition hover:bg-pink-50"
-                  >
-                    🛒 ADD TO CART
-                  </button>
-                  <Link
-                    href={`/shop/${product.slug || product.id}`}
-                    className="rounded-full bg-pink-600 px-4 py-2.5 text-center text-xs font-bold text-white transition hover:bg-pink-700"
-                  >
-                    VIEW DETAILS →
-                  </Link>
+            {/* Keep product menu reachable */}
+            {menuOpen && (
+              <div className="mt-6 w-full max-w-xl">
+                <div className="relative">
+                  <div className="absolute left-0 right-0 z-50 mt-2 max-h-[420px] overflow-hidden rounded-3xl border border-pink-100 bg-white shadow-2xl">
+                    <div className="border-b border-pink-50 p-3">
+                      <input
+                        type="text"
+                        value={menuQuery}
+                        onChange={(e) => setMenuQuery(e.target.value)}
+                        placeholder="Type to filter products..."
+                        autoFocus
+                        className="w-full rounded-full border border-pink-200 bg-pink-50 px-5 py-3 text-sm outline-none focus:border-pink-500"
+                      />
+                    </div>
+                    <div className="max-h-[360px] overflow-y-auto p-2">
+                      <div className="space-y-1">
+                        {menuResults.map((product) => (
+                          <Link
+                            key={product.id}
+                            href={`/shop/${product.slug || product.id}`}
+                            onClick={() => {
+                              setMenuOpen(false);
+                              setMenuQuery("");
+                            }}
+                            className="flex items-center justify-between rounded-2xl px-4 py-3 transition hover:bg-pink-50"
+                          >
+                            <span className="font-semibold text-gray-800">{product.name}</span>
+                            <span className="text-xs font-bold text-pink-600">{product.price}</span>
+                          </Link>
+                        ))}
+                        {menuResults.length === 0 && (
+                          <p className="px-4 py-6 text-center text-sm text-gray-500">
+                            No product found
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            )}
+          </div>
+        ) : (
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {allProducts.map((product) => (
+              <div
+                key={product.id}
+                className="group overflow-hidden rounded-[28px] bg-white shadow-md transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+              >
+                {/* Image */}
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-pink-100">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                  />
+                  {product.stock <= 5 && (
+                    <span className="absolute left-4 top-4 rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white">
+                      Low Stock
+                    </span>
+                  )}
+                </div>
+
+                {/* Content */}
+                <div className="p-6">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-pink-600">
+                    {product.category}
+                  </p>
+                  <h2 className="mt-2 text-xl font-bold text-gray-900">
+                    {product.name}
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-gray-600">
+                    {product.description}
+                  </p>
+
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-2xl font-black text-pink-600">
+                      {product.price}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Stock: {product.stock}
+                    </span>
+                  </div>
+
+                  {/* BOB Balance for logged-in customers */}
+                  <BobBalanceCard price={product.price} itemName={product.name} />
+
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => addToCart(product)}
+                      className="rounded-full border-2 border-pink-600 bg-white px-4 py-2.5 text-xs font-bold text-pink-600 transition hover:bg-pink-50"
+                    >
+                      🛒 ADD TO CART
+                    </button>
+                    <Link
+                      href={`/shop/${product.slug || product.id}`}
+                      className="rounded-full bg-pink-600 px-4 py-2.5 text-center text-xs font-bold text-white transition hover:bg-pink-700"
+                    >
+                      VIEW DETAILS →
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
       </div>
     </main>
