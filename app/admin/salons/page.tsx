@@ -375,6 +375,68 @@ function ManageSalonModal({
   const [selectedServices, setSelectedServices] = useState<string[]>(
     (salon.servicesIds || []).map(String)
   );
+  // Auto-match: registration se aayi Book-catalog service names
+  // (servicesOffered) ko live Service _id se match karo — admin ko
+  // baar-baar manual select karna nahi padega.
+  useEffect(() => {
+    if (!catalog.length || !salon) return;
+    const offered: string[] = salon.servicesOffered || [];
+    if (!offered.length) return;
+
+    // Build lookup: name (case-insensitive) and slug
+    const byName: Record<string, any[]> = {};
+    const bySlug: Record<string, any> = {};
+    for (const s of catalog) {
+      const n = String(s.name || "").toLowerCase();
+      (byName[n] = byName[n] || []).push(s);
+      const sl = String(s.slug || "").toLowerCase();
+      if (sl) bySlug[sl] = s;
+    }
+
+    const matchedIds: string[] = [];
+    const unmatched: string[] = [];
+
+    for (const name of offered) {
+      const key = name.toLowerCase();
+
+      // Pass 1: exact name match
+      const nameMatch = byName[key];
+      if (nameMatch && nameMatch.length === 1) {
+        matchedIds.push(String(nameMatch[0]._id));
+        continue;
+      }
+      // Pass 1b: name match with multiple — pick first
+      if (nameMatch && nameMatch.length > 1) {
+        matchedIds.push(String(nameMatch[0]._id));
+        continue;
+      }
+
+      // Pass 2: slug fallback — build slug the same way
+      // Service.pre me slug = name.toLowerCase().replace(/[^a-z0-9]+/g,'-')
+      const slugKey = key.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
+      const slugMatch = bySlug[slugKey];
+      if (slugMatch) {
+        matchedIds.push(String(slugMatch._id));
+        continue;
+      }
+
+      // No match — admin ko radius dega (manual select)
+      unmatched.push(name);
+    }
+
+    // Merge with any already manually selected (avoid duplicates)
+    const combined = [...new Set([...selectedServices, ...matchedIds])];
+    setSelectedServices(combined);
+
+    // Optionally surface unmatched in console / UI if needed.
+    if (unmatched.length > 0) {
+      console.warn(
+        "manage-salon: auto-match failed for",
+        unmatched,
+        "— admin will select manually"
+      );
+    }
+  }, [catalog, salon]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
