@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import QuruxLogo from "../QuruxLogo";
+import { apiGet } from "@/lib/api";
 
 const navItems = [
   { label: "Dashboard", href: "/admin", icon: "📊" },
@@ -37,6 +39,29 @@ export default function AdminLayout({
   subtitle,
 }: AdminLayoutProps) {
   const pathname = usePathname();
+
+  // Services awaiting admin closure verification (partner ne service done mark ki)
+  const [awaitingClosure, setAwaitingClosure] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiGet<any[]>("/bookings");
+        if (cancelled || !res.ok || !Array.isArray(res.data)) return;
+        setAwaitingClosure(
+          res.data.filter(
+            (b) => b.status === "PARTNER_COMPLETED"
+          ).length
+        );
+      } catch {
+        // silent — badge optional hai
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
 
   return (
     <div className="flex min-h-screen bg-slate-100">
@@ -78,6 +103,11 @@ export default function AdminLayout({
               >
                 <span className="text-base">{item.icon}</span>
                 {item.label}
+                {item.href === "/admin/closures" && awaitingClosure > 0 && (
+                  <span className="ml-auto flex h-6 min-w-6 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-black text-white">
+                    {awaitingClosure}
+                  </span>
+                )}
               </Link>
             );
           })}

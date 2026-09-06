@@ -444,8 +444,29 @@ export default function PartnerDashboardPage() {
                             : "✅ Mark Service Completed"}
                         </button>
                       ) : b.status === "COMPLETED" ? (
-                        <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-xs font-bold text-green-700">
-                          🔒 CLOSED BY ADMIN
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-xs font-bold text-green-700">
+                            🔒 CLOSED BY ADMIN
+                          </span>
+                          <a
+                            href={`https://wa.me/91${(b.customerPhone || "").replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                              [
+                                "🎋 QURUX Makeover & Academy",
+                                "",
+                                `📋 Booking: ${b.bookingId}`,
+                                `💄 Service: ${b.serviceName}`,
+                                `📅 Date: ${b.date} at ${b.timeSlot || "TBD"}`,
+                                `💳 Payment: ${b.paymentMethod} — ₹${b.amount}`,
+                                "",
+                                "✅ Aapki service complete ho gayi hai. Booking close kar di gayi hai. Thank you! 💕",
+                              ].join("\n")
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-green-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-green-700"
+                          >
+                            💬 WhatsApp Customer
+                          </a>
                         </span>
                       ) : null}
                     </div>

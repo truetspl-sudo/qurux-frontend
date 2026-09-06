@@ -20,6 +20,7 @@ type BookingClosure = {
   emiPending: number;
   cashCollected: number;
   status: "PARTNER_COMPLETED" | "ADMIN_VERIFIED" | "CLOSED";
+  partnerMarkedDone?: boolean;
   paymentStatus?: string;
   paidVia?: string;
   partnerRemarks: string;
@@ -186,6 +187,7 @@ export default function AdminClosuresPage() {
             bobUsed: Number(b.bobPaidAmount || 0),
             emiPending: Number(b.emiAmount || 0),
             cashCollected: Number(b.cashAmount || 0),
+            partnerMarkedDone: b.status === "PARTNER_COMPLETED",
             status: b.status === "COMPLETED" ? "CLOSED" : "PARTNER_COMPLETED",
             paymentStatus: b.paymentStatus || (b.status === "COMPLETED" ? "PAID" : "PENDING"),
             paidVia: b.paidVia || "",
@@ -345,6 +347,7 @@ export default function AdminClosuresPage() {
   const pendingCount = closures.filter((c) => c.status === "PARTNER_COMPLETED").length;
   const verifiedCount = closures.filter((c) => c.status === "ADMIN_VERIFIED").length;
   const closedCount = closures.filter((c) => c.status === "CLOSED").length;
+  const partnerDoneCount = closures.filter((c) => c.partnerMarkedDone).length;
 
   return (
     <AdminLayout
@@ -375,6 +378,22 @@ export default function AdminClosuresPage() {
           ))}
         </div>
       </div>
+
+      {/* Partner-marked alert — partner ne service done mark ki, admin verification pending */}
+      {partnerDoneCount > 0 && (
+        <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-purple-200 bg-purple-50 p-5">
+          <span className="text-2xl">📢</span>
+          <div className="flex-1">
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-purple-700">
+              {partnerDoneCount} SERVICE{partnerDoneCount > 1 ? "S" : ""} DONE — VERIFICATION PENDING
+            </p>
+            <p className="mt-1 text-sm text-purple-700">
+              Partner salon ne service completed mark ki hai. Neeche purple badge wali bookings check karke
+              verify + payment update karke close karein.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -444,6 +463,11 @@ export default function AdminClosuresPage() {
               </div>
 
               <div className="flex items-center gap-3">
+                {closure.partnerMarkedDone && (
+                  <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
+                    🛎 Partner: Service Done
+                  </span>
+                )}
                 <span className="rounded-full bg-pink-100 px-3 py-1 text-xs font-bold text-pink-600">
                   {closure.paymentMethod}
                 </span>
