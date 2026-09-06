@@ -310,6 +310,60 @@ Use these to log in and manage your salon bookings.
               </div>
             )}
 
+            {/* Partner login credentials (admin manual issue) */}
+            {selected.status === "PENDING" && (
+              <div className="mt-4 rounded-2xl border border-pink-100 bg-pink-50 p-4">
+                <p className="text-xs font-bold text-pink-600">🔑 PARTNER LOGIN CREDENTIALS</p>
+                <p className="mt-1 text-xs text-gray-600">
+                  Partner salon ko WhatsApp pe login User ID + Password bheja jayega.
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setUseGenerated(true)}
+                    className={`flex-1 rounded-full px-3 py-2 text-xs font-bold transition ${
+                      useGenerated ? "bg-pink-600 text-white" : "bg-white text-gray-600"
+                    }`}
+                  >
+                    ✨ Auto-generate
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUseGenerated(false)}
+                    className={`flex-1 rounded-full px-3 py-2 text-xs font-bold transition ${
+                      !useGenerated ? "bg-pink-600 text-white" : "bg-white text-gray-600"
+                    }`}
+                  >
+                    ✍️ Enter manually
+                  </button>
+                </div>
+                {!useGenerated && (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-xs font-bold text-gray-700">User ID</label>
+                      <input
+                        type="text"
+                        value={partnerUserId}
+                        onChange={(e) => setPartnerUserId(e.target.value.toUpperCase())}
+                        placeholder="e.g. SALON-DELHI01"
+                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-bold text-gray-700">Password</label>
+                      <input
+                        type="text"
+                        value={partnerPassword}
+                        onChange={(e) => setPartnerPassword(e.target.value)}
+                        placeholder="e.g. Salon@2026"
+                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Status + Actions */}
             <div className="mt-6">
               {selected.status === "PENDING" ? (
