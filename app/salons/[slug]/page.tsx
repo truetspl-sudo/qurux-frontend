@@ -36,7 +36,7 @@ type SalonData = {
   rating?: { stars: number; count: number };
 };
 
-type ReviewItem = { _id: string; customerName: string; stars: number; customerRemarks: string; createdAt: string };
+type ReviewItem = { _id: string; customerName: string; stars: number; customerRemarks: string; createdAt: string; isAdminClosed?: boolean };
 
 function fmtPrice(n?: number) {
   return n ? `₹${Number(n).toLocaleString("en-IN")}` : "";
@@ -367,7 +367,14 @@ export default function SalonDetailPage() {
                       <div key={r._id} className="rounded-2xl border border-gray-100 p-4">
                         <div className="flex items-center justify-between">
                           <p className="font-bold text-gray-800">{r.customerName}</p>
-                          <span className="text-amber-400">{"★".repeat(Math.round(r.stars))}</span>
+                          <div className="flex items-center gap-2">
+                            {r.isAdminClosed && (
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                                ✓ Admin verified
+                              </span>
+                            )}
+                            <span className="text-amber-400">{"★".repeat(Math.round(r.stars))}</span>
+                          </div>
                         </div>
                         {r.customerRemarks && <p className="mt-1 text-sm text-gray-600">{r.customerRemarks}</p>}
                         <p className="mt-1 text-xs text-gray-400">
