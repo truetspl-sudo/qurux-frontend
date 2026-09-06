@@ -22,14 +22,17 @@ const slides: HeroSlide[] = [
   {
     src: "/hero/hero1.jpg",
     alt: "QURUX Makeover & Academy — luxury bridal makeup and beauty services",
+    href: "/book",
   },
   {
     src: "/hero/hero2.jpg",
     alt: "Certified beauticians, quality products and a beautifully decorated salon — salon in Naraina Vihar & Uttam Nagar, home service available, 70% off on first booking",
+    href: "/book",
   },
   {
     src: "/hero/hero3.jpg",
     alt: "Luxury beauty and bridal makeover services — bridal, party and engagement makeup, salon in Naraina Vihar & Uttam Nagar, home service available",
+    href: "/book",
   },
   {
     src: "/hero/hero4.jpg",
