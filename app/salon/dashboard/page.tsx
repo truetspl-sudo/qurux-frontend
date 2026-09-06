@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { apiGet, apiPost, getLoggedInUser } from "@/lib/api";
+import { apiGet, apiPost, apiPatch, getLoggedInUser } from "@/lib/api";
 import QuruxLogo from "@/components/QuruxLogo";
 
 type Booking = {
@@ -75,6 +75,23 @@ export default function PartnerDashboardPage() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [markingId, setMarkingId] = useState<string | null>(null);
+  const [markMsg, setMarkMsg] = useState<{ id: string; text: string; error?: boolean } | null>(null);
+
+  async function markServiceDone(id: string) {
+    setMarkingId(id);
+    setMarkMsg(null);
+    const res = await apiPatch<any>(`/bookings/${id}/partner-complete`, {});
+    setMarkingId(null);
+    if (res.ok) {
+      setMarkMsg({ id, text: "✅ Service completed mark ho gayi — admin verification ka intezaar." });
+      setBookings((prev) =>
+        prev.map((b) => (b._id === id ? { ...b, status: "PARTNER_COMPLETED" } : b))
+      );
+    } else {
+      setMarkMsg({ id, text: res.message || "Mark karne me error aaya.", error: true });
+    }
+  }
 
   async function loadAll() {
     setLoading(true);
@@ -320,6 +337,7 @@ export default function PartnerDashboardPage() {
               <option value="PENDING">Pending</option>
               <option value="CONFIRMED">Confirmed</option>
               <option value="IN_PROGRESS">In Progress</option>
+              <option value="PARTNER_COMPLETED">Service Done — Awaiting Admin</option>
               <option value="COMPLETED">Completed</option>
               <option value="CANCELLED">Cancelled</option>
             </select>
@@ -350,14 +368,20 @@ export default function PartnerDashboardPage() {
                             className={`rounded-full px-3 py-0.5 text-xs font-bold ${
                               b.status === "COMPLETED"
                                 ? "bg-green-100 text-green-700"
+                                : b.status === "PARTNER_COMPLETED"
+                                ? "bg-purple-100 text-purple-700"
                                 : b.status === "PENDING"
                                 ? "bg-orange-100 text-orange-700"
                                 : b.status === "CONFIRMED"
                                 ? "bg-blue-100 text-blue-700"
+                                : b.status === "IN_PROGRESS"
+                                ? "bg-yellow-100 text-yellow-700"
                                 : "bg-gray-100 text-gray-600"
                             }`}
                           >
-                            {b.status}
+                            {b.status === "PARTNER_COMPLETED"
+                              ? "SERVICE DONE — AWAITING ADMIN"
+                              : b.status}
                           </span>
                         </div>
                         <p className="text-sm text-gray-500">
@@ -392,6 +416,38 @@ export default function PartnerDashboardPage() {
                           Payment: {b.paymentStatus} • {b.paidVia || "not updated"}
                         </p>
                       </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      {markMsg && markMsg.id === b._id && (
+                        <p
+                          className={`text-xs font-semibold ${
+                            markMsg.error ? "text-red-600" : "text-green-700"
+                          }`}
+                        >
+                          {markMsg.text}
+                        </p>
+                      )}
+                      {b.status === "PARTNER_COMPLETED" ? (
+                        <span className="inline-flex items-center gap-2 rounded-full bg-purple-100 px-4 py-2 text-xs font-bold text-purple-700">
+                          ⏳ ADMIN VERIFICATION PENDING
+                        </span>
+                      ) : b.status === "PENDING" || b.status === "CONFIRMED" || b.status === "IN_PROGRESS" ? (
+                        <button
+                          type="button"
+                          onClick={() => markServiceDone(b._id)}
+                          disabled={markingId === b._id}
+                          className="rounded-full bg-green-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {markingId === b._id
+                            ? "Marking..."
+                            : "✅ Mark Service Completed"}
+                        </button>
+                      ) : b.status === "COMPLETED" ? (
+                        <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-xs font-bold text-green-700">
+                          🔒 CLOSED BY ADMIN
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 ))}
