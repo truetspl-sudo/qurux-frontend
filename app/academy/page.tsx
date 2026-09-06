@@ -1,170 +1,105 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import QuruxLogo from "@/components/QuruxLogo";
+import { apiGet, apiPost, getLoggedInUser } from "@/lib/api";
 
-const courses = [
-  {
-    title: "Basic Makeup Artist Course",
-    duration: "15 Days",
-    hours: "45 Hours",
-    fee: "₹26,999",
-    level: "Beginner",
-    image: "/course-images/basic-makeup-artist.jpg",
-    description:
-      "Build a strong foundation in professional makeup techniques, products, tools and client preparation.",
-    topics: [
-      "Makeup fundamentals",
-      "Skin preparation",
-      "Face shapes",
-      "Colour theory",
-      "Base & complexion",
-      "Eye & lip makeup",
-      "Product & brush knowledge",
-      "Hygiene & sanitation",
-    ],
-  },
+type CourseItem = {
+  _id: string;
+  slug: string;
+  title: string;
+  duration: string;
+  hours: string;
+  fee: string;
+  level: string;
+  image: string;
+  description: string;
+  topics: string[];
+};
 
-  {
-    title: "Professional Makeup Artist Course",
-    duration: "30 Days",
-    hours: "90 Hours",
-    fee: "₹49,999",
-    level: "Professional",
-    image: "/course-images/professional-makeup-artist.jpg",
-    description:
-      "A complete professional makeup course combining theory, trainer demonstrations and hands-on model practice.",
-    topics: [
-      "Professional makeup techniques",
-      "Party makeup",
-      "Engagement makeup",
-      "Reception makeup",
-      "Eye makeup",
-      "Lashes & lip detailing",
-      "Client consultation",
-      "Hands-on model practice",
-    ],
-  },
+function levelLabel(l: string): string {
+  return l === "PROFESSIONAL"
+    ? "Professional"
+    : l === "ADVANCED"
+      ? "Advanced"
+      : "Beginner";
+}
 
-  {
-    title: "Advanced Bridal & HD Makeup Course",
-    duration: "45 Days",
-    hours: "135 Hours",
-    fee: "₹74,999",
-    level: "Advanced",
-    image: "/course-images/advanced-bridal-hd-makeup.jpg",
-    description:
-      "Advanced bridal training covering traditional bridal looks, HD techniques, long-wear preparation and professional finishing.",
-    topics: [
-      "Bridal makeup",
-      "HD makeup",
-      "Long-wear preparation",
-      "Bridal eye makeup",
-      "Colour correction",
-      "Face detailing",
-      "Bridal look planning",
-      "Live model practice",
-    ],
-  },
-
-  {
-    title: "Professional Hair Styling Course",
-    duration: "30 Days",
-    hours: "90 Hours",
-    fee: "₹39,999",
-    level: "Professional",
-    image: "",
-    description:
-      "Learn professional hair styling techniques for bridal, party and special-event looks.",
-    topics: [
-      "Hair preparation",
-      "Blow-dry techniques",
-      "Curls & waves",
-      "Straight styling",
-      "Bridal hairstyles",
-      "Party hairstyles",
-      "Hair accessories",
-      "Hands-on practice",
-    ],
-  },
-
-  {
-    title: "Skin & Beauty Therapy Course",
-    duration: "30 Days",
-    hours: "90 Hours",
-    fee: "₹34,999",
-    level: "Professional",
-    image: "",
-    description:
-      "Learn essential skin-care and beauty-service techniques with theory, demonstrations and practical training.",
-    topics: [
-      "Skin fundamentals",
-      "Skin analysis",
-      "Cleansing techniques",
-      "Facial procedures",
-      "Exfoliation",
-      "Massage techniques",
-      "Product knowledge",
-      "Practical sessions",
-    ],
-  },
-
-  {
-    title: "Complete Beauty Artist Course",
-    duration: "3 Months",
-    hours: "270 Hours",
-    fee: "₹89,999",
-    level: "Professional",
-    image: "",
-    description:
-      "A comprehensive beauty training program combining makeup, hair styling and essential beauty services.",
-    topics: [
-      "Professional makeup",
-      "Bridal makeup",
-      "HD makeup",
-      "Hair styling",
-      "Skin care",
-      "Facial services",
-      "Beauty grooming",
-      "Professional practice",
-    ],
-  },
-
-  {
-    title: "Advanced Professional Makeup & Hair",
-    duration: "2 Months",
-    hours: "180 Hours",
-    fee: "₹99,999",
-    level: "Advanced",
-    image: "",
-    description:
-      "Advanced professional training for students who want to develop complete makeup and hair styling skills.",
-    topics: [
-      "Advanced makeup",
-      "Bridal looks",
-      "HD techniques",
-      "Eye artistry",
-      "Advanced hair styling",
-      "Look coordination",
-      "Client handling",
-      "Professional model practice",
-    ],
-  },
-];
+function fmtFee(n: any): string {
+  const num = Number(n) || 0;
+  return `₹${num.toLocaleString("en-IN")}`;
+}
 
 export default function AcademyPage() {
-  const [selectedCourse, setSelectedCourse] = useState<
-    (typeof courses)[number] | null
-  >(null);
+  const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  // Live courses from backend /api/courses (admin /admin/courses se manage hote hain)
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      try {
+        const res = await apiGet<any[]>("/courses");
+        if (!alive) return;
+        if (res.ok) {
+          setCourses(
+            (res.data || []).map((c: any) => ({
+              _id: c._id,
+              slug: c.slug,
+              title: c.title,
+              duration: c.duration || "",
+              hours: c.hours || "",
+              fee: fmtFee(c.fee),
+              level: levelLabel(c.level),
+              image: c.image || "",
+              description: c.description || "",
+              topics: c.topics || [],
+            }))
+          );
+        } else {
+          setLoadError(res.message || "Courses load nahi ho paye.");
+        }
+      } catch (err: any) {
+        if (alive) setLoadError(err?.message || "Courses load nahi ho paye.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const [selectedCourse, setSelectedCourse] = useState<CourseItem | null>(null);
 
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [enrollError, setEnrollError] = useState("");
+  const [enrollOrderId, setEnrollOrderId] = useState("");
+
+  const loggedInUser = getLoggedInUser();
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
+    payment: "FULL",
   });
+
+  // Prefill from website login
+  useEffect(() => {
+    if (loggedInUser) {
+      setFormData((prev) => ({
+        ...prev,
+        name: prev.name || loggedInUser.fullName || "",
+        phone: prev.phone || loggedInUser.mobile || "",
+        email: prev.email || loggedInUser.email || "",
+      }));
+    }
+  }, [loggedInUser]);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement>
@@ -177,19 +112,48 @@ export default function AcademyPage() {
     }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  // RULE (master note #8): course order submit → order PENDING, koi payment abhi
+  // nahi. Admin WhatsApp pe verify karke /admin/orders me payment update karega
+  // (FULL/EMI 25-75/BOB) aur enrollment confirm karega.
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitted(true);
+    if (!selectedCourse) return;
+    if (!loggedInUser) {
+      setEnrollError("Enroll karne ke liye pehle website par login karein (/account).");
+      return;
+    }
+    setSaving(true);
+    setEnrollError("");
+    try {
+      const res = await apiPost<any>("/orders", {
+        items: [{ courseId: selectedCourse._id || selectedCourse.slug, quantity: 1 }],
+        paymentMethod: formData.payment,
+      });
+      if (!res.ok) {
+        setEnrollError(
+          (res as any)?.data?.message || res.message || "Enrollment request submit nahi ho payi."
+        );
+        return;
+      }
+      setEnrollOrderId((res.data as any)?.order?.orderId || "");
+      setSubmitted(true);
+    } catch (err: any) {
+      setEnrollError(err?.message || "Enrollment request submit nahi ho payi.");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function openDetails(course: (typeof courses)[number]) {
+  function openDetails(course: CourseItem) {
     setSelectedCourse(course);
     setSubmitted(false);
+    setEnrollError("");
 
     setFormData({
-      name: "",
-      email: "",
-      phone: "",
+      name: loggedInUser?.fullName || "",
+      email: loggedInUser?.email || "",
+      phone: loggedInUser?.mobile || "",
+      payment: "FULL",
     });
 
     window.scrollTo({
@@ -201,6 +165,8 @@ export default function AcademyPage() {
   function backToCourses() {
     setSelectedCourse(null);
     setSubmitted(false);
+    setEnrollError("");
+    setEnrollOrderId("");
 
     window.scrollTo({
       top: 0,
@@ -268,13 +234,13 @@ export default function AcademyPage() {
                     </p>
 
                     <h1 className="mt-4 text-3xl font-bold text-gray-900 md:text-4xl">
-                      Get Course Details
+                      Enroll in This Course
                     </h1>
 
                     <p className="mx-auto mt-4 max-w-xl leading-7 text-gray-600">
-                      Fill in your details and our academy team
-                      will contact you with complete information
-                      about the selected course.
+                      Apni course seat book karein. Payment abhi nahi lena hai —
+                      admin aapki enrollment request verify karke payment update
+                      karega (Full / No Cost EMI / BOB).
                     </p>
 
                   </div>
@@ -389,18 +355,85 @@ export default function AcademyPage() {
 
                     </div>
 
+                    {/* Payment Mode — RULE: abhi koi payment nahi, sirf mode select */}
+                    <div>
+                      <p className="mb-3 font-semibold text-gray-800">
+                        Payment Option
+                      </p>
+
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        {[
+                          { value: "FULL", label: "Full Payment", emoji: "💵" },
+                          { value: "EMI", label: "No Cost EMI", emoji: "📊" },
+                          { value: "BOB", label: "Pay from BOB", emoji: "🏦" },
+                        ].map((opt) => (
+                          <label
+                            key={opt.value}
+                            className={`cursor-pointer rounded-2xl border-2 p-4 text-center transition ${
+                              formData.payment === opt.value
+                                ? "border-pink-500 bg-pink-50"
+                                : "border-gray-200 bg-white hover:border-pink-200"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="payment"
+                              value={opt.value}
+                              checked={formData.payment === opt.value}
+                              onChange={handleChange}
+                              className="hidden"
+                            />
+                            <p className="text-2xl">{opt.emoji}</p>
+                            <p className="mt-1 text-sm font-bold text-gray-800">{opt.label}</p>
+                          </label>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500">
+                        Booking/EMI payment service ke baad hota hai — admin verify karke update karega.
+                      </p>
+                    </div>
+
+                    {/* Login required note */}
+                    {!loggedInUser && (
+                      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
+                        <p className="text-sm font-bold text-blue-800">🔐 LOGIN REQUIRED</p>
+                        <p className="mt-1 text-sm leading-6 text-blue-700">
+                          Enrollment karne ke liye website par login karein
+                          (User ID + Password se). Agar User ID nahi hai to pehle sign up karein.
+                        </p>
+                        <a
+                          href="/account"
+                          className="mt-3 inline-block rounded-full bg-blue-600 px-6 py-2 text-sm font-bold text-white hover:bg-blue-700"
+                        >
+                          Login / Sign Up →
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Error */}
+                    {enrollError && (
+                      <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+                        ❌ {enrollError}
+                      </div>
+                    )}
+
                     {/* Submit */}
                     <button
                       type="submit"
-                      className="w-full rounded-full bg-pink-600 px-8 py-4 text-lg font-bold text-white shadow-lg transition hover:bg-pink-700"
+                      disabled={saving || !loggedInUser}
+                      className={`w-full rounded-full px-8 py-4 text-lg font-bold text-white shadow-lg transition ${
+                        saving || !loggedInUser
+                          ? "cursor-not-allowed bg-gray-300"
+                          : "bg-pink-600 hover:bg-pink-700"
+                      }`}
                     >
-                      SUBMIT APPLICATION
+                      {saving ? "SUBMITTING..." : "SUBMIT ENROLLMENT REQUEST"}
                     </button>
 
                     <p className="text-center text-xs leading-5 text-gray-500">
-                      By submitting this form, you are requesting
-                      course information from QURUX MAKEOVER &
-                      ACADEMY.
+                      Enrollment request admin ko jayegi — admin WhatsApp pe payment
+                      verify karke confirm karega. EMI select kiya to 25% down + 75%
+                      EMI balance aapke EMI details me dikhega.
                     </p>
 
                   </form>
@@ -419,26 +452,31 @@ export default function AcademyPage() {
                   </p>
 
                   <h2 className="mt-4 text-3xl font-bold text-gray-900">
-                    Application Submitted
+                    Enrollment Request Submitted
                   </h2>
 
                   <p className="mx-auto mt-5 max-w-xl leading-7 text-gray-600">
-                    Thank you for your interest in QURUX MAKEOVER &
-                    ACADEMY. Our academy team will contact you
-                    shortly with complete course information.
+                    Aapki course enrollment request bana di gayi hai — abhi koi
+                    payment nahi lena hai. Admin aapki request verify karke
+                    payment update karega aur course confirm karega.
                   </p>
 
-                  <div className="mt-7 rounded-2xl bg-pink-50 p-6">
-
-                    <p className="text-sm text-gray-500">
-                      Course Applied For
+                  <div className="mt-6 rounded-2xl border border-pink-100 bg-pink-50 p-5">
+                    <p className="text-sm font-bold text-pink-700">📋 ENROLLMENT REQUEST</p>
+                    <p className="mt-1 text-lg font-black text-gray-900">
+                      {enrollOrderId || selectedCourse.title}
                     </p>
-
-                    <p className="mt-2 text-xl font-bold text-pink-600">
-                      {selectedCourse.title}
+                    <p className="mt-1 text-sm text-gray-600">{selectedCourse.title}</p>
+                    <p className="mt-1 text-sm font-bold text-pink-600">
+                      {selectedCourse.fee} • {formData.payment === "EMI" ? "No Cost EMI" : formData.payment === "BOB" ? "Pay from BOB" : "Full Payment"}
                     </p>
-
                   </div>
+
+                  <p className="mx-auto mt-5 max-w-xl text-sm leading-6 text-gray-500">
+                    Admin approve hone par aapko WhatsApp pe confirmation milegi.
+                    EMI choose kiya hai to 25% abhi + 75% balance EMI repayment
+                    me — details aapke account ke EMI section me dikhenge.
+                  </p>
 
                   <button
                     type="button"
@@ -580,6 +618,27 @@ export default function AcademyPage() {
 
         </div>
 
+        {loadError ? (
+          <div className="mx-auto max-w-lg rounded-3xl border border-red-100 bg-red-50 p-8 text-center">
+            <p className="text-4xl">⚠️</p>
+            <p className="mt-3 font-bold text-red-700">{loadError}</p>
+          </div>
+        ) : loading ? (
+          <div className="py-20 text-center text-gray-500">
+            Courses load ho rahe hain...
+          </div>
+        ) : courses.length === 0 ? (
+          <div className="mx-auto max-w-lg rounded-[28px] bg-white p-10 text-center shadow-lg">
+            <div className="text-6xl">🎓</div>
+            <h3 className="mt-5 text-2xl font-bold text-gray-900">
+              Courses Jald Aa Rahe Hain
+            </h3>
+            <p className="mt-3 leading-7 text-gray-600">
+              Academy courses jald hi available honge. Enrollment ke liye
+              abhi call karein: 9911227916
+            </p>
+          </div>
+        ) : (
         <div className="grid gap-7 md:grid-cols-2 lg:grid-cols-3">
 
           {courses.map((course) => (
@@ -768,6 +827,7 @@ export default function AcademyPage() {
           ))}
 
         </div>
+        )}
 
       </section>
 

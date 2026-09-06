@@ -14,6 +14,7 @@ type OrderItem = {
 type Order = {
   _id: string;
   orderId: string;
+  orderType?: string;
   customerName: string;
   customerPhone: string;
   items: OrderItem[];
@@ -281,7 +282,12 @@ export default function AdminOrdersPage() {
                     <p className="font-bold text-gray-900">{order.customerName}</p>
                     <p className="text-xs text-gray-500">{order.customerPhone}</p>
                   </td>
-                  <td className="px-5 py-4 text-gray-600">{order.items.map((i) => `${i.name} ×${i.quantity}`).join(", ")}</td>
+                  <td className="px-5 py-4 text-gray-600">
+                    {order.orderType === "COURSE" && (
+                      <span className="mr-2 rounded-full bg-purple-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-purple-700">🎓 Course Enroll</span>
+                    )}
+                    {order.items.map((i) => `${i.name} ×${i.quantity}`).join(", ")}
+                  </td>
                   <td className="px-5 py-4 font-bold text-pink-600">₹{order.total.toLocaleString("en-IN")}</td>
                   <td className="px-5 py-4">
                     <span className={`rounded-full px-3 py-1 text-xs font-bold ${payStatusColors[order.paymentStatus] || "bg-gray-100"}`}>
