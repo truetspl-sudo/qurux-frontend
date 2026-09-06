@@ -429,8 +429,30 @@ export default function PartnerDashboardPage() {
                         </p>
                       )}
                       {b.status === "PARTNER_COMPLETED" ? (
-                        <span className="inline-flex items-center gap-2 rounded-full bg-purple-100 px-4 py-2 text-xs font-bold text-purple-700">
-                          ⏳ ADMIN VERIFICATION PENDING
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-2 rounded-full bg-purple-100 px-4 py-2 text-xs font-bold text-purple-700">
+                            ⏳ ADMIN VERIFICATION PENDING
+                          </span>
+                          <a
+                            href={`https://wa.me/919911227916?text=${encodeURIComponent(
+                              [
+                                "🎋 QURUX Makeover & Academy — Partner Salon",
+                                "",
+                                `📋 Booking: ${b.bookingId}`,
+                                `💄 Service: ${b.serviceName}`,
+                                `👤 Customer: ${b.customerName} (${b.customerPhone})`,
+                                `📅 Date: ${b.date} at ${b.timeSlot || "TBD"}`,
+                                `💳 Payment: ${b.paymentMethod} — ₹${b.amount}`,
+                                "",
+                                "✅ Service complete ho gayi hai. Kripya closure verification + payment update karke booking close kar dein. Dhanyawad! 🙏",
+                              ].join("\n")
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-purple-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-purple-700"
+                          >
+                            💬 WhatsApp to Admin
+                          </a>
                         </span>
                       ) : b.status === "PENDING" || b.status === "CONFIRMED" || b.status === "IN_PROGRESS" ? (
                         <button
