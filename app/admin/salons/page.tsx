@@ -69,16 +69,47 @@ export default function AdminSalonsPage() {
     return matchStatus && matchSearch;
   });
 
-  const [approvedSalon, setApprovedSalon] = useState<Salon | null>(null);
+  type ApprovedSalon = Salon & {
+    partnerAccount?: { userId: string; password: string; mobile: string };
+  };
+  const [approvedSalon, setApprovedSalon] = useState<ApprovedSalon | null>(null);
+
+  // auto-generated vs manual userId/password for partner login
+  const [partnerUserId, setPartnerUserId] = useState("");
+  const [partnerPassword, setPartnerPassword] = useState("");
+  const [useGenerated, setUseGenerated] = useState(true);
 
   async function approveSalon(id: string) {
     setBusy(true);
-    await apiPatch(`/salons/${id}/approve`, {});
-    const salon = salons.find(s => s.id === id);
-    setSalons((prev) => prev.map((s) => (s.id === id ? { ...s, status: "APPROVED" as const } : s)));
-    if (salon) setApprovedSalon({ ...salon, status: "APPROVED" });
+    try {
+      const body: any = {};
+      if (!useGenerated) {
+        // admin manually issues userId + password
+        body.userId = partnerUserId.trim();
+        body.password = partnerPassword;
+      }
+      const res = await apiPatch<any>(`/salons/${id}/approve`, body);
+      if (res.ok && res.data?.partnerAccount) {
+        // show the issued credential in the WhatsApp modal
+        setApprovedSalon({
+          ...res.data.salon,
+          partnerAccount: res.data.partnerAccount,
+        });
+      } else {
+        // legacy response (no partnerAccount) — still mark approved
+        const salon = salons.find((s) => s.id === id);
+        if (salon) setApprovedSalon({ ...salon, status: "APPROVED" });
+      }
+      setSalons((prev) => prev.map((s) => (s.id === id ? { ...s, status: "APPROVED" as const } : s)));
+    } catch {
+      // keep old behaviour
+      const salon = salons.find((s) => s.id === id);
+      if (salon) setApprovedSalon({ ...salon, status: "APPROVED" });
+      setSalons((prev) => prev.map((s) => (s.id === id ? { ...s, status: "APPROVED" as const } : s)));
+    } finally {
+      setBusy(false);
+    }
     setSelected(null);
-    setBusy(false);
   }
 
   async function rejectSalon(id: string) {
@@ -95,7 +126,12 @@ export default function AdminSalonsPage() {
   const rejectedCount = salons.filter((s) => s.status === "REJECTED").length;
 
   const approvedMsg = approvedSalon
-    ? `🎋 QURUX Makeover & Academy\n\nNamaste ${approvedSalon.ownerName}!\n\nCongratulations! Your salon \"${approvedSalon.salonName}\" has been approved as a QURUX Partner Salon.\n\n✅ Your salon is now live in the QURUX booking system.\n\n📍 Location: ${approvedSalon.address}, ${approvedSalon.city}\n📞 Contact: ${approvedSalon.phone}\n\nYou will start receiving bookings from customers through the QURUX platform.\n\nFor any queries, contact the QURUX admin team.\n\nBest Regards,\nQURUX Makeover & Academy`
+    ? `🎋 QURUX Makeover & Academy\n\nNamaste ${approvedSalon.ownerName}!\n\nCongratulations! Your salon \"${approvedSalon.salonName}\" has been approved as a QURUX Partner Salon.\n\n✅ Your salon is now live in the QURUX booking system.\n\n📍 Location: ${approvedSalon.address}, ${approvedSalon.city}\n📞 Contact: ${approvedSalon.phone}\n\nYou will start receiving bookings from customers through the QURUX platform.\n\n🔑 Your partner login credentials (for /salon/dashboard):
+   User ID: ${approvedSalon.partnerAccount?.userId || "—"}
+   Password: ${approvedSalon.partnerAccount?.password || "—"}
+
+Use these to log in and manage your salon bookings.
+\n\nFor any queries, contact the QURUX admin team.\n\nBest Regards,\nQURUX Makeover & Academy`
     : "";
 
   return (
@@ -321,12 +357,22 @@ export default function AdminSalonsPage() {
             </div>
             <p className="mt-3 text-sm text-gray-600">Copy this message and send to the salon owner via WhatsApp:</p>
             <div className="mt-3 rounded-2xl bg-green-50 p-4">
-              <pre className="whitespace-pre-wrap text-sm leading-6 text-gray-800">{`🎋 QURUX Makeover & Academy\n\nNamaste ${approvedSalon.ownerName}!\n\nCongratulations! Your salon "${approvedSalon.salonName}" has been approved as a QURUX Partner Salon.\n\n✅ Your salon is now live in the QURUX booking system.\n\n📍 Location: ${approvedSalon.address}, ${approvedSalon.city}\n📞 Contact: ${approvedSalon.phone}\n\nYou will start receiving bookings from customers through the QURUX platform.\n\nFor any queries, contact the QURUX admin team.\n\nBest Regards,\nQURUX Makeover & Academy`}</pre>
+              <pre className="whitespace-pre-wrap text-sm leading-6 text-gray-800">{`🎋 QURUX Makeover & Academy\n\nNamaste ${approvedSalon.ownerName}!\n\nCongratulations! Your salon "${approvedSalon.salonName}" has been approved as a QURUX Partner Salon.\n\n✅ Your salon is now live in the QURUX booking system.\n\n📍 Location: ${approvedSalon.address}, ${approvedSalon.city}\n📞 Contact: ${approvedSalon.phone}\n\nYou will start receiving bookings from customers through the QURUX platform.\n\n🔑 Your partner login credentials (for /salon/dashboard):
+   User ID: ${approvedSalon.partnerAccount?.userId || "—"}
+   Password: ${approvedSalon.partnerAccount?.password || "—"}
+
+Use these to log in and manage your salon bookings.
+\n\nFor any queries, contact the QURUX admin team.\n\nBest Regards,\nQURUX Makeover & Academy`}</pre>
             </div>
             <button
               type="button"
               onClick={() => {
-                const msg = `🎋 QURUX Makeover & Academy\n\nNamaste ${approvedSalon.ownerName}!\n\nCongratulations! Your salon "${approvedSalon.salonName}" has been approved as a QURUX Partner Salon.\n\n✅ Your salon is now live in the QURUX booking system.\n\n📍 Location: ${approvedSalon.address}, ${approvedSalon.city}\n📞 Contact: ${approvedSalon.phone}\n\nYou will start receiving bookings from customers through the QURUX platform.\n\nFor any queries, contact the QURUX admin team.\n\nBest Regards,\nQURUX Makeover & Academy`;
+                const msg = `🎋 QURUX Makeover & Academy\n\nNamaste ${approvedSalon.ownerName}!\n\nCongratulations! Your salon "${approvedSalon.salonName}" has been approved as a QURUX Partner Salon.\n\n✅ Your salon is now live in the QURUX booking system.\n\n📍 Location: ${approvedSalon.address}, ${approvedSalon.city}\n📞 Contact: ${approvedSalon.phone}\n\nYou will start receiving bookings from customers through the QURUX platform.\n\n🔑 Your partner login credentials (for /salon/dashboard):
+   User ID: ${approvedSalon.partnerAccount?.userId || "—"}
+   Password: ${approvedSalon.partnerAccount?.password || "—"}
+
+Use these to log in and manage your salon bookings.
+\n\nFor any queries, contact the QURUX admin team.\n\nBest Regards,\nQURUX Makeover & Academy`;
                 navigator.clipboard.writeText(msg);
                 setApprovedSalon(null);
               }}

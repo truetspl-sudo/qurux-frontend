@@ -9,13 +9,289 @@ import QuruxLogo from "@/components/QuruxLogo";
 
 export default function BookingPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-4 border-pink-200 border-t-pink-600" /></div>}>
-      <BookingContent />
+    <Suspense fallback={<BookingLoadingFallback />}>
+      <BookingSearchParams />
     </Suspense>
   );
 }
 
-function BookingContent() {
+function BookingLoadingFallback() {
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-white via-pink-50 to-white py-14">
+      <div className="mx-auto max-w-4xl px-6">
+        <div className="mb-10 text-center">
+          <p className="flex items-center justify-center gap-3">
+            <QuruxLogo heightClass="h-12 w-auto md:h-14" />
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-pink-600 md:text-sm">MAKEOVER &amp; ACADEMY</span>
+          </p>
+
+          <h1 className="mt-4 text-4xl font-bold text-gray-900 md:text-5xl">
+            Book Your Service
+          </h1>
+
+          <p className="mx-auto mt-4 max-w-2xl leading-7 text-gray-600">
+            Fill in your details below and choose your preferred
+            location and payment option.
+          </p>
+        </div>
+
+        {/* Service picker shell while resolving URL param */}
+        <div className="mb-8 overflow-hidden rounded-[25px] bg-white shadow-lg">
+          <div className="p-6">
+            <p className="text-sm font-semibold uppercase tracking-wider text-pink-600">
+              Selected Service
+            </p>
+            <h2 className="mt-4 text-xl font-bold text-gray-900">
+              Please select a service
+            </h2>
+            <p className="mt-2 text-gray-600">
+              Loading service from link…
+            </p>
+          </div>
+        </div>
+
+        {/* Form shell */}
+        <section className="rounded-[30px] bg-white p-6 shadow-xl md:p-10">
+          <h2 className="text-3xl font-bold text-gray-900">
+            Booking Details
+          </h2>
+          <p className="mt-2 text-gray-600">
+            Please provide the information required for your booking.
+          </p>
+          <div className="mt-8 space-y-6">
+            <div>
+              <label htmlFor="name" className="mb-2 block font-semibold text-gray-800">
+                Full Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+
+                placeholder="Enter your full name"
+                className="w-full rounded-xl border border-gray-200 px-4 py-3.5 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="phone" className="mb-2 block font-semibold text-gray-800">
+                Mobile Number
+              </label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                required
+                pattern="[0-9]{10}"
+                maxLength={10}
+                placeholder="Enter 10 digit mobile number"
+                className="w-full rounded-xl border border-gray-200 px-4 py-3.5 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                Please enter a valid 10 digit mobile number.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="date" className="mb-2 block font-semibold text-gray-800">
+                Preferred Date
+              </label>
+              <input
+                id="date"
+                name="date"
+                type="date"
+                required
+                min={new Date().toISOString().split("T")[0]}
+
+                className="w-full rounded-xl border border-gray-200 px-4 py-3.5 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+              />
+            </div>
+
+            <div>
+              <p className="mb-3 font-semibold text-gray-800">
+                Choose Service Location
+              </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label
+                  className={`cursor-pointer rounded-2xl border p-5 transition ${
+                    false
+                      ? "border-pink-500 bg-pink-50"
+                      : "border-gray-200 hover:border-pink-300"
+                  }`}
+                >
+                  <div className="flex gap-3">
+                    <input
+                      type="radio"
+                      name="location"
+                      value="Home Service"
+                      className="mt-1 h-4 w-4 accent-pink-600"
+                    />
+                    <div>
+                      <p className="font-bold text-gray-900">🏠 Home Service</p>
+                      <p className="mt-1 text-sm text-gray-600">
+                        Service at your doorstep. Min cart ₹2,500 required.
+                      </p>
+                    </div>
+                  </div>
+                </label>
+
+                <label
+                  className={`cursor-pointer rounded-2xl border p-5 transition ${
+                    false
+                      ? "border-pink-500 bg-pink-50"
+                      : "border-gray-200 hover:border-pink-300"
+                  }`}
+                >
+                  <div className="flex gap-3">
+                    <input
+                      type="radio"
+                      name="location"
+                      value="Salon"
+                      className="mt-1 h-4 w-4 accent-pink-600"
+                    />
+                    <div>
+                      <p className="font-bold text-gray-900">💈 Available Salon</p>
+                      <p className="mt-1 text-sm text-gray-600">
+                        Visit our salon for the service.
+                      </p>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Home Service - Address (pre-rendered) */}
+            <div className="space-y-4 rounded-2xl bg-pink-50 p-5">
+              <p className="font-semibold text-pink-700">
+                Home Service Details
+              </p>
+              <div>
+                <label className="mb-2 block text-sm font-bold text-gray-800">
+                  Full Address
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="House No, Street, Landmark, City, Pincode"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                />
+              </div>
+              <TimeSlotPicker value="" onChange={() => {}} />
+              <div className="rounded-xl bg-amber-50 p-3">
+                <p className="text-sm font-bold text-amber-700">
+                  ₹2,500 Minimum Cart Required for Home Service
+                </p>
+              </div>
+            </div>
+
+            {/* Available Salon - Select Salon (pre-rendered with salon list) */}
+            <div className="space-y-4 rounded-2xl bg-pink-50 p-5">
+              <p className="font-semibold text-pink-700">
+                Available Salons
+              </p>
+              <select
+                disabled
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3.5 outline-none"
+              >
+                <option value="">Loading salons…</option>
+              </select>
+            </div>
+
+            {/* Payment */}
+            <div>
+              <p className="mb-3 font-semibold text-gray-800">
+                Payment Option
+              </p>
+              <div className="grid gap-4 md:grid-cols-3">
+                <label
+                  className={`cursor-pointer rounded-2xl border p-5 transition ${
+                    false
+                      ? "border-pink-500 bg-pink-50"
+                      : "border-gray-200"
+                  }`}
+                >
+                  <div className="flex gap-3">
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="Full Payment"
+                      required
+
+                      className="mt-1 h-4 w-4 accent-pink-600"
+                    />
+                    <div>
+                      <p className="font-bold text-gray-900">Full Payment</p>
+                      <p className="mt-1 text-sm text-gray-600">
+                        Pay the complete booking amount
+                        <strong> after the service</strong> (UPI/Cash).
+                      </p>
+                    </div>
+                  </div>
+                </label>
+
+                <label
+                  className={`cursor-pointer rounded-2xl border p-5 transition ${
+                    false
+                      ? "border-pink-500 bg-pink-50"
+                      : "border-gray-200"
+                  }`}
+                >
+                  <div className="flex gap-3">
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="No Cost EMI"
+                      required
+
+                      className="mt-1 h-4 w-4 accent-pink-600"
+                    />
+                    <div>
+                      <p className="font-bold text-gray-900">No Cost EMI</p>
+                      <p className="mt-1 text-sm text-gray-600">
+                        Service hone ke baad bill ka 25% down payment; baaki
+                        75% flexible EMI — weekly jab jitna ho bharo. Booking
+                        ke waqt koi payment nahi.
+                      </p>
+                    </div>
+                  </div>
+                </label>
+
+                <label
+                  className={`cursor-pointer rounded-2xl border p-5 transition ${
+                    false
+                      ? "border-green-500 bg-green-50"
+                      : "border-gray-200"
+                  }`}
+                >
+                  <div className="flex gap-3">
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="Pay from BOB"
+                      required
+
+                      className="mt-1 h-4 w-4 accent-green-600"
+                    />
+                    <div className="w-full">
+                      <p className="font-bold text-gray-900">Pay from BOB</p>
+                      <p className="mt-1 text-sm text-gray-600">
+                        Use your Bank of Beauty value. BOB ka koi alag login
+                        nahi — website login hi BOB login hai.
+                      </p>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function BookingSearchParams() {
   const searchParams = useSearchParams();
   const slug = searchParams.get("service");
   const paymentParam = searchParams.get("payment");
@@ -23,6 +299,13 @@ function BookingContent() {
   const selectedService = services.find(
     (service) => service.slug === slug
   );
+
+  return (
+    <BookingContent service={selectedService} paymentParam={paymentParam ?? undefined} />
+  );
+}
+
+function BookingContent({ service, paymentParam }: { service?: typeof services[0]; paymentParam?: string }) {
 
   const [formData, setFormData] = useState({
     name: "",
@@ -38,11 +321,10 @@ function BookingContent() {
             ? "Full Payment"
             : "",
   });
-
   const [timeSlot, setTimeSlot] = useState("");
   const [address, setAddress] = useState("");
   const [selectedSalon, setSelectedSalon] = useState("");
-  const [salons, setSalons] = useState<{ _id: string; name: string; slug?: string; city?: string; rating?: { stars: number; count: number } }[]>([]);
+  const [salons, setSalons] = useState<{ _id: string; name: string; city?: string }[]>([]);
   const [loadingSalons, setLoadingSalons] = useState(true);
 
   const [submitted, setSubmitted] = useState(false);
@@ -50,31 +332,32 @@ function BookingContent() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    async function loadSalons() {
-      try {
-        const res = await apiGet<any[]>("/salons");
-        if (res.ok) {
-          setSalons(res.data || []);
-        }
-      } catch {}
-      setLoadingSalons(false);
-    }
-    loadSalons();
-  }, []);
-
   const loggedInUser = getLoggedInUser();
 
   // Prefill from website login (user id/password wale account se)
   useEffect(() => {
-    const user = getLoggedInUser();
+    const user = loggedInUser;
     if (user) {
-      setFormData((prev) => ({
+      setFormData((prev: typeof formData) => ({
         ...prev,
         name: prev.name || user.fullName || "",
         phone: prev.phone || user.mobile || "",
       }));
     }
+  }, [loggedInUser, formData]);
+
+  const effectiveService = service || undefined;
+
+  // Live approved salons from backend
+  useEffect(() => {
+    async function loadSalons() {
+      try {
+        const res = await apiGet<any[]>("/salons");
+        if (res.ok) setSalons(res.data || []);
+      } catch {}
+      setLoadingSalons(false);
+    }
+    loadSalons();
   }, []);
 
   function handleChange(
@@ -86,8 +369,9 @@ function BookingContent() {
   }
 
   const paymentMethod = (() => {
-    if (formData.payment === "Pay from BOB") return "BOB";
-    if (formData.payment === "No Cost EMI") return "EMI";
+    const pay = formData.payment || "";
+    if (pay === "Pay from BOB") return "BOB";
+    if (pay === "No Cost EMI") return "EMI";
     return "FULL";
   })();
 
@@ -95,12 +379,12 @@ function BookingContent() {
     e.preventDefault();
     setError("");
 
-    if (!selectedService) {
+    if (!effectiveService) {
       setError("Pehle ek service select karein.");
       return;
     }
 
-    const priceText = selectedService.price || "0";
+    const priceText = effectiveService.price || "0";
     const amount = Number(String(priceText).replace(/[^0-9.]/g, ""));
     const locationType = formData.location === "Home Service" ? "HOME" : "SALON";
 
@@ -112,8 +396,8 @@ function BookingContent() {
     setSaving(true);
     try {
       const res = await apiPost("/bookings", {
-        serviceName: selectedService.name,
-        serviceCategory: selectedService.category || "",
+        serviceName: effectiveService.name,
+        serviceCategory: effectiveService.category || "",
         serviceLocation: locationType,
         address: locationType === "HOME" ? address : "",
         salonName: locationType === "SALON" ? selectedSalon : "",
@@ -121,7 +405,7 @@ function BookingContent() {
         timeSlot: timeSlot || "",
         amount,
         paymentMethod,
-      });
+      })
 
       if (!res.ok) {
         const msg =
@@ -144,6 +428,7 @@ function BookingContent() {
   }
 
   if (submitted) {
+    const submittedPayment = formData.payment || "";
     return (
       <main className="min-h-screen bg-gradient-to-b from-white via-pink-50 to-white px-6 py-16">
         <div className="mx-auto max-w-2xl rounded-[30px] bg-white p-10 text-center shadow-xl">
@@ -170,11 +455,11 @@ function BookingContent() {
           <div className="mt-6 rounded-2xl bg-yellow-50 p-5 text-left">
             <p className="text-sm font-bold text-yellow-800">💳 PAYMENT — SERVICE KE BAAD</p>
             <p className="mt-1 text-sm leading-6 text-yellow-700">
-              Aapne <strong>{formData.payment}</strong> option chuna hai.
+              Aapne <strong>{submittedPayment}</strong> option chuna hai.
               Booking ke waqt koi payment nahi karni hai — <strong>service
               hone ke baad</strong> payment karein (UPI/Cash).
               Admin service complete karte waqt payment update karega.
-              {formData.payment === "Pay from BOB" &&
+              {submittedPayment === "Pay from BOB" &&
                 " BOB balance se payment bhi service ke baad hogi — alag se BOB login ki zaroorat nahi hai."}
             </p>
           </div>
@@ -218,21 +503,21 @@ function BookingContent() {
 
         {/* Selected Service */}
         <div className="mb-8 overflow-hidden rounded-[25px] bg-white shadow-lg">
-          {selectedService ? (
+          {effectiveService ? (
             <>
               {/* SERVICE IMAGE */}
               <div className="relative h-[220px] w-full overflow-hidden bg-pink-100">
                 <div
                   className="absolute inset-0 scale-110 bg-cover bg-center blur-2xl"
                   style={{
-                    backgroundImage: `url("${selectedService.image}")`,
+                    backgroundImage: `url("${effectiveService.image}")`,
                   }}
                 />
                 <div className="absolute inset-0 bg-white/30" />
                 <div className="relative z-10 flex h-full w-full items-center justify-center">
                   <img
-                    src={selectedService.image}
-                    alt={selectedService.name}
+                    src={effectiveService.image}
+                    alt={effectiveService.name}
                     className="h-full max-w-full object-contain"
                   />
                 </div>
@@ -246,12 +531,12 @@ function BookingContent() {
                 <div className="mt-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900">
-                      {selectedService.name}
+                      {effectiveService.name}
                     </h2>
-                    <p className="mt-2 text-gray-600">{selectedService.duration}</p>
+                    <p className="mt-2 text-gray-600">{effectiveService.duration}</p>
                   </div>
                   <div className="text-xl font-bold text-pink-600">
-                    {selectedService.price}
+                    {effectiveService.price}
                   </div>
                 </div>
               </div>
@@ -455,17 +740,11 @@ function BookingContent() {
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3.5 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
                 >
                   <option value="">Select a salon</option>
-                  {loadingSalons ? (
-                    <option value="" disabled>Loading salons...</option>
-                  ) : salons.length === 0 ? (
-                    <option value="" disabled>No salons available yet</option>
-                  ) : (
-                    salons.map((s) => (
-                      <option key={s._id} value={s.name}>
-                        {s.name} — {s.city || ""}
-                      </option>
-                    ))
-                  )}
+                  {salons.map((s) => (
+                    <option key={s._id} value={s.name}>
+                      {s.name} — {s.city || ""}
+                    </option>
+                  ))}
                 </select>
                 <TimeSlotPicker value={timeSlot} onChange={setTimeSlot} />
               </div>
@@ -575,16 +854,14 @@ function BookingContent() {
             {/* Submit */}
             <button
               type="submit"
-              disabled={saving || !selectedService}
+              disabled={saving || !effectiveService}
               className="w-full rounded-full bg-pink-600 px-8 py-4 text-lg font-bold text-white shadow-lg hover:bg-pink-700 disabled:opacity-50"
             >
               {saving ? "SUBMITTING..." : "SUBMIT BOOKING"}
-            </button>
-
-          </form>
+            </button>      </form>
         </section>
-
       </div>
     </main>
   );
 }
+
