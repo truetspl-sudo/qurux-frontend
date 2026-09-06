@@ -90,9 +90,26 @@ export default function AdminSalonsPage() {
       }
       const res = await apiPatch<any>(`/salons/${id}/approve`, body);
       if (res.ok && res.data?.partnerAccount) {
-        // show the issued credential in the WhatsApp modal
+        // map backend field names (name/ownerMobile) to the frontend Salon shape
+        const s = res.data.salon || {};
         setApprovedSalon({
-          ...res.data.salon,
+          id: s._id || id,
+          salonName: s.name || "",
+          ownerName: s.ownerName || "",
+          email: s.ownerEmail || "",
+          phone: s.ownerMobile || "",
+          altPhone: s.alternatePhone || "",
+          address: s.address || "",
+          city: s.city || "",
+          pincode: s.pincode || "",
+          salonType: s.type || "Unisex",
+          servicesOffered: (s.servicesOffered || []).join(", "),
+          experience: `${s.yearsOfExperience || 0} years`,
+          teamSize: `${s.teamSize || 1} staff`,
+          gstNumber: s.gstNumber || "",
+          description: s.about || "",
+          status: "APPROVED" as const,
+          submittedAt: s.createdAt?.split("T")[0] || "",
           partnerAccount: res.data.partnerAccount,
         });
       } else {
