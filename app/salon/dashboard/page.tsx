@@ -449,23 +449,24 @@ export default function PartnerDashboardPage() {
                             🔒 CLOSED BY ADMIN
                           </span>
                           <a
-                            href={`https://wa.me/91${(b.customerPhone || "").replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                            href={`https://wa.me/919911227916?text=${encodeURIComponent(
                               [
-                                "🎋 QURUX Makeover & Academy",
+                                "🎋 QURUX Makeover & Academy — Partner Salon",
                                 "",
                                 `📋 Booking: ${b.bookingId}`,
                                 `💄 Service: ${b.serviceName}`,
+                                `👤 Customer: ${b.customerName} (${b.customerPhone})`,
                                 `📅 Date: ${b.date} at ${b.timeSlot || "TBD"}`,
                                 `💳 Payment: ${b.paymentMethod} — ₹${b.amount}`,
                                 "",
-                                "✅ Aapki service complete ho gayi hai. Booking close kar di gayi hai. Thank you! 💕",
+                                "✅ Service complete ho gayi hai aur booking close ho gayi hai. Kripya closure verification + payment update karein. Dhanyawad! 🙏",
                               ].join("\n")
                             )}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1.5 rounded-full bg-green-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-green-700"
                           >
-                            💬 WhatsApp Customer
+                            💬 WhatsApp to Admin
                           </a>
                         </span>
                       ) : null}
