@@ -324,6 +324,7 @@ function BookingContent({ service, paymentParam }: { service?: typeof services[0
   const [timeSlot, setTimeSlot] = useState("");
   const [address, setAddress] = useState("");
   const [selectedSalon, setSelectedSalon] = useState("");
+  const [selectedSalonId, setSelectedSalonId] = useState("");
   const [salons, setSalons] = useState<{ _id: string; name: string; city?: string }[]>([]);
   const [loadingSalons, setLoadingSalons] = useState(true);
 
@@ -401,6 +402,7 @@ function BookingContent({ service, paymentParam }: { service?: typeof services[0
         serviceLocation: locationType,
         address: locationType === "HOME" ? address : "",
         salonName: locationType === "SALON" ? selectedSalon : "",
+        salonId: locationType === "SALON" ? selectedSalonId : undefined,
         date: formData.date || "",
         timeSlot: timeSlot || "",
         amount,
@@ -736,7 +738,11 @@ function BookingContent({ service, paymentParam }: { service?: typeof services[0
                 <select
                   required
                   value={selectedSalon}
-                  onChange={(e) => setSelectedSalon(e.target.value)}
+                  onChange={(e) => {
+                    const chosen = salons.find((s) => s.name === e.target.value);
+                    setSelectedSalon(e.target.value);
+                    setSelectedSalonId(chosen?._id || "");
+                  }}
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3.5 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
                 >
                   <option value="">Select a salon</option>
