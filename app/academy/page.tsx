@@ -89,18 +89,6 @@ export default function AcademyPage() {
     payment: "FULL",
   });
 
-  // Prefill from website login
-  useEffect(() => {
-    if (loggedInUser) {
-      setFormData((prev) => ({
-        ...prev,
-        name: prev.name || loggedInUser.fullName || "",
-        phone: prev.phone || loggedInUser.mobile || "",
-        email: prev.email || loggedInUser.email || "",
-      }));
-    }
-  }, [loggedInUser]);
-
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement>
   ) {

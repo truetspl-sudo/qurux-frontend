@@ -265,7 +265,7 @@ balance/benefit now visible to customer
   gallery, work images, Google map, reviews, Book Now w/ salon services,
   booking = manual approval; admin salons ✏️ Manage assigns | ✅ new |
 | 11 | ESSN Shop | ✅ |
-| 12 | Learn/Academy | mostly ✅ (purchase flow check) |
+| 12 | Learn/Academy | ✅ (live courses + enrollment, EMI COURSE plans) |
 | 13 | Universal checkout (Full/EMI/BOB/Mixed) | FULL ✅ — EMI/BOB/Mixed partial |
 | 14 | BOB Wallet | ✅ (manual approval) |
 | 15 | EMI + repayments | ✅ (flexible, admin approve) |
@@ -284,14 +284,16 @@ balance/benefit now visible to customer
 ## 8. KNOWN GAPS / NOT DONE YET
 
 1. EMI plans are auto-created when admin CLOSES an EMI-mode booking/order
-   (closure payment section → PAID VIA = EMI) — service/product naam, total,
-   25% down paid, 75% balance customer ke EMI Details me dikhta hai (rules
-   7/8). Balance flexible repayments (min ₹1) `POST /emi/:id/pay` → admin
-   approve. COURSE EMI: course purchase/enroll order flow abhi bhi nahi hai
-   (academy pages static) — jab course order flow banega to `utils/emiSync.js`
-   COURSE purchaseType ke saath wahi 25/75 EMI plan banayega.
+   (closure payment section → PAID VIA = EMI) — service/product/course naam,
+   total, 25% down paid, 75% balance customer ke EMI Details me dikhta hai
+   (rules 7/8). Balance flexible repayments (min ₹1) `POST /emi/:id/pay` →
+   admin approve. COURSE EMI DONE: academy enrollment order (`orderType:
+   COURSE`) EMI close pe `utils/emiSync.js` COURSE purchaseType se 25/75 plan
+   banata hai.
 2. Mixed/Split payment logic in checkout is placeholder (₹0 hardcoded).
-3. Course customer purchase/enrollment full flow not yet verified E2E.
+3. Course enrollment full flow LIVE + verified E2E (enroll → admin 25% EMI
+   pay → COURSE EMIPlan in customer EMI details). Public /academy now reads
+   /api/courses (admin /admin/courses se manage).
 4. Salon public pages `/salons` + `/salons/[slug]` LIVE (list w/ star rating -
    naam - location; detail: gallery, work images, address + Google map embed,
    reviews, BOOK NOW → us salon ki services → booking request = manual
