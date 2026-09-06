@@ -357,6 +357,12 @@ export default function DashboardPage() {
                             </span>
                           )}
                         </p>
+                        {b.salonName && (
+                          <p className="mt-1 text-xs font-semibold text-pink-600">💈 {b.salonName}</p>
+                        )}
+                        {b.status === "COMPLETED" && (
+                          <RateBooking booking={b} existing={reviews.find((r: any) => r.bookingId && String(r.bookingId) === String(b._id))} onRated={(r: any) => setReviews((prev) => [...prev.filter((x) => !(x.bookingId && String(x.bookingId) === String(b._id))), r])} />
+                        )}
                       </div>
                     ))}
                   </div>
@@ -569,6 +575,90 @@ export default function DashboardPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function RateBooking({
+  booking,
+  existing,
+  onRated,
+}: {
+  booking: any;
+  existing?: any;
+  onRated: (r: any) => void;
+}) {
+  const [stars, setStars] = useState(existing ? Number(existing.stars) || 5 : 0);
+  const [hover, setHover] = useState(0);
+  const [remarks, setRemarks] = useState(existing?.customerRemarks || "");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function submitRating() {
+    if (stars === 0) {
+      setMsg("Kripya stars select karein.");
+      return;
+    }
+    setBusy(true);
+    setMsg("");
+    const res = await apiPost<any>("/ratings", {
+      bookingId: booking._id,
+      stars,
+      customerRemarks: remarks,
+    });
+    setBusy(false);
+    if (res.ok) {
+      setMsg("✅ Rating submit ho gayi — thank you!");
+      onRated(res.data.rating);
+    } else {
+      setMsg("❌ " + (res.message || "Rating submit nahi hui."));
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-2xl border border-pink-100 bg-pink-50/60 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-pink-600">
+          ⭐ Rate your experience
+        </p>
+        {existing && !msg && (
+          <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
+            ✓ Aapne rating de di — update kar sakte hain
+          </span>
+        )}
+      </div>
+      <div className="mt-2 flex gap-1">
+        {[1, 2, 3, 4, 5].map((s) => (
+          <button
+            key={s}
+            type="button"
+            onMouseEnter={() => setHover(s)}
+            onMouseLeave={() => setHover(0)}
+            onClick={() => setStars(s)}
+            className={`text-2xl transition ${s <= (hover || stars) ? "text-yellow-400" : "text-gray-300"}`}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      <textarea
+        rows={2}
+        value={remarks}
+        onChange={(e) => setRemarks(e.target.value)}
+        placeholder="Apna feedback likhein (optional)"
+        className="mt-2 w-full resize-none rounded-xl border border-pink-100 bg-white px-3 py-2 text-sm outline-none focus:border-pink-400"
+      />
+      <div className="mt-2 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={submitRating}
+          disabled={busy}
+          className="rounded-full bg-pink-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-pink-700 disabled:opacity-50"
+        >
+          {busy ? "Submitting..." : existing ? "UPDATE RATING" : "SUBMIT RATING"}
+        </button>
+        {msg && <p className={`text-xs font-semibold ${msg.startsWith("✅") ? "text-green-600" : "text-red-600"}`}>{msg}</p>}
+      </div>
+    </div>
   );
 }
 
