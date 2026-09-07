@@ -16,6 +16,7 @@ type Salon = {
   address: string;
   city: string;
   pincode?: string;
+  type?: string;
   about?: string;
   servicesCount?: number;
   rating?: { stars: number; count: number };
@@ -159,6 +160,15 @@ export default function SalonsListPage() {
                       <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-pink-700 shadow backdrop-blur">
                         💄 {s.servicesCount ?? 0} Service{(s.servicesCount ?? 0) !== 1 ? "s" : ""}
                       </span>
+                      {s.type && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-pink-700 shadow backdrop-blur">
+                          {String(s.type).toUpperCase() === "WOMEN_ONLY" || String(s.type).toUpperCase() === "WOMENS"
+                            ? "👩 Women Only"
+                            : String(s.type).toUpperCase() === "MENS"
+                              ? "👨 Men Only"
+                              : "👥 Unisex"}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="p-5">

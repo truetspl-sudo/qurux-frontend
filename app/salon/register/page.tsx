@@ -74,6 +74,12 @@ export default function SalonRegisterPage() {
       return;
     }
 
+    if (!form.salonType) {
+      setMessage("Please choose whether your salon is Unisex or Women Only.");
+      setBusy(false);
+      return;
+    }
+
     if (form.servicesOffered.length === 0) {
       setMessage("Please select at least one service from the list.");
       setBusy(false);
@@ -81,13 +87,6 @@ export default function SalonRegisterPage() {
     }
 
     try {
-      const typeMap: Record<string, string> = {
-        "Unisex Salon": "UNISEX",
-        "Women's Salon": "WOMENS",
-        "Men's Salon": "MENS",
-        "Home Studio": "HOME_STUDIO",
-        "Makeup Studio": "MAKEUP_STUDIO",
-      };
       const expMap: Record<string, number> = {
         "Less than 1 year": 0,
         "1–3 years": 2,
@@ -103,7 +102,7 @@ export default function SalonRegisterPage() {
       };
       const payload = {
         name: form.salonName,
-        type: typeMap[form.salonType] || "UNISEX",
+        type: form.salonType || "UNISEX",
         address: form.address,
         city: form.city,
         pincode: form.pincode,
@@ -239,22 +238,41 @@ export default function SalonRegisterPage() {
                 />
               </label>
 
-              <label className="block text-sm font-bold text-gray-800">
-                Salon Type
-                <select
-                  name="salonType"
-                  value={form.salonType}
-                  onChange={handleChange}
-                  className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-4 py-3.5 outline-none focus:border-pink-500"
-                >
-                  <option value="">Select type</option>
-                  <option>Unisex Salon</option>
-                  <option>Women&apos;s Salon</option>
-                  <option>Men&apos;s Salon</option>
-                  <option>Home Studio</option>
-                  <option>Makeup Studio</option>
-                </select>
-              </label>
+              <div>
+                <p className="text-sm font-bold text-gray-800">Salon Kis Liye Hai *</p>
+                <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm((p) => ({ ...p, salonType: "UNISEX" }))}
+                    className={`flex items-center gap-2 rounded-xl border-2 px-3 py-3 text-left transition ${
+                      form.salonType === "UNISEX"
+                        ? "border-pink-500 bg-pink-50"
+                        : "border-gray-200 bg-white hover:border-pink-200"
+                    }`}
+                  >
+                    <span className="text-xl">👥</span>
+                    <span>
+                      <span className="block text-sm font-bold text-gray-900">Unisex</span>
+                      <span className="block text-xs text-gray-500">Men &amp; Women</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm((p) => ({ ...p, salonType: "WOMEN_ONLY" }))}
+                    className={`flex items-center gap-2 rounded-xl border-2 px-3 py-3 text-left transition ${
+                      form.salonType === "WOMEN_ONLY"
+                        ? "border-pink-500 bg-pink-50"
+                        : "border-gray-200 bg-white hover:border-pink-200"
+                    }`}
+                  >
+                    <span className="text-xl">👩</span>
+                    <span>
+                      <span className="block text-sm font-bold text-gray-900">Women Only</span>
+                      <span className="block text-xs text-gray-500">Sirf mahila clients</span>
+                    </span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <label className="block text-sm font-bold text-gray-800">

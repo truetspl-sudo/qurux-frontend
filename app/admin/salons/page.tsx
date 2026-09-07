@@ -26,6 +26,16 @@ type Salon = {
 
 const defaultSalons: Salon[] = [];
 
+function typeLabel(t?: string): string {
+  const v = (t || "").toUpperCase();
+  if (v === "UNISEX") return "Unisex";
+  if (v === "WOMEN_ONLY" || v === "WOMENS") return "Women Only";
+  if (v === "MENS") return "Men Only";
+  if (v === "HOME_STUDIO") return "Home Studio";
+  if (v === "MAKEUP_STUDIO") return "Makeup Studio";
+  return t || "Salon";
+}
+
 export default function AdminSalonsPage() {
   const [salons, setSalons] = useState(defaultSalons);
   const [rawSalons, setRawSalons] = useState<any[]>([]);
@@ -138,6 +148,21 @@ export default function AdminSalonsPage() {
     setBusy(false);
   }
 
+  // Admin salon ko WOMEN ONLY / UNISEX mark kar sakta hai (baad me bhi)
+  async function changeType(id: string, type: string) {
+    setBusy(true);
+    const res = await apiPatch<any>(`/salons/${id}`, { type });
+    setBusy(false);
+    if (!res.ok) {
+      alert(res.message || "Type update fail hua.");
+      return;
+    }
+    const newType = res.data?.salon?.type || type;
+    setSalons((prev) => prev.map((s) => (s.id === id ? { ...s, salonType: newType } : s)));
+    setSelected((prev) => (prev ? { ...prev, salonType: newType } : null));
+    setRawSalons((prev) => prev.map((r) => (r._id === id ? { ...r, type: newType } : r)));
+  }
+
   const pendingCount = salons.filter((s) => s.status === "PENDING").length;
   const approvedCount = salons.filter((s) => s.status === "APPROVED").length;
   const rejectedCount = salons.filter((s) => s.status === "REJECTED").length;
@@ -211,7 +236,7 @@ Use these to log in and manage your salon bookings.
                 <div className="flex items-center gap-3">
                   <p className="text-lg font-bold text-gray-900">{salon.salonName}</p>
                   <span className="rounded-full bg-pink-100 px-3 py-1 text-xs font-bold text-pink-600">
-                    {salon.salonType || "Salon"}
+                    {typeLabel(salon.salonType)}
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-gray-500">
@@ -287,7 +312,7 @@ Use these to log in and manage your salon bookings.
                 { label: "EMAIL", value: selected.email },
                 { label: "PHONE", value: selected.phone },
                 { label: "ALT PHONE", value: selected.altPhone || "—" },
-                { label: "SALON TYPE", value: selected.salonType || "—" },
+                { label: "SALON TYPE", value: typeLabel(selected.salonType) },
                 { label: "EXPERIENCE", value: selected.experience || "—" },
                 { label: "TEAM SIZE", value: selected.teamSize || "—" },
                 { label: "GST", value: selected.gstNumber || "Not provided" },
@@ -297,6 +322,40 @@ Use these to log in and manage your salon bookings.
                   <p className="mt-1 font-bold text-gray-900">{item.value}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Salon Audience — admin mark karein (WOMEN ONLY / UNISEX) */}
+            <div className="mt-4 rounded-2xl border border-pink-200 bg-pink-50 p-4">
+              <p className="text-xs font-bold text-pink-600">
+                SALON AUDIENCE
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => changeType(selected.id, "UNISEX")}
+                  className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition disabled:opacity-60 ${
+                    String(selected.salonType || "").toUpperCase() === "UNISEX"
+                      ? "bg-pink-600 text-white"
+                      : "bg-white text-gray-700 hover:bg-pink-100"
+                  }`}
+                >
+                  👥 Unisex
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => changeType(selected.id, "WOMEN_ONLY")}
+                  className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition disabled:opacity-60 ${
+                    String(selected.salonType || "").toUpperCase() === "WOMEN_ONLY" ||
+                    String(selected.salonType || "").toUpperCase() === "WOMENS"
+                      ? "bg-pink-600 text-white"
+                      : "bg-white text-gray-700 hover:bg-pink-100"
+                  }`}
+                >
+                  👩 Women Only
+                </button>
+              </div>
             </div>
 
             {/* Address */}
@@ -484,6 +543,7 @@ function ManageSalonModal({
   onSaved: () => void;
 }) {
   const [catalog, setCatalog] = useState<any[]>([]);
+  const [audience, setAudience] = useState<string>(salon.type || "UNISEX");
   const [about, setAbout] = useState(salon.about || "");
   const [image, setImage] = useState(salon.image || "");
   const [imagesText, setImagesText] = useState((salon.images || []).join("\n"));
@@ -574,6 +634,7 @@ function ManageSalonModal({
     setSaving(true);
     setErr("");
     const body: Record<string, unknown> = {
+      type: audience,
       about,
       image: image.trim(),
       images: imagesText.split(/\n+/).map((s: string) => s.trim()).filter(Boolean),
@@ -630,6 +691,33 @@ function ManageSalonModal({
         </p>
 
         <div className="mt-5 space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-bold text-gray-600">SALON AUDIENCE (WOMEN ONLY / UNISEX)</label>
+            <div className="mt-1 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setAudience("UNISEX")}
+                className={`rounded-full px-4 py-2 text-xs font-bold transition ${
+                  audience === "UNISEX"
+                    ? "bg-pink-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-pink-100"
+                }`}
+              >
+                👥 Unisex
+              </button>
+              <button
+                type="button"
+                onClick={() => setAudience("WOMEN_ONLY")}
+                className={`rounded-full px-4 py-2 text-xs font-bold transition ${
+                  audience === "WOMEN_ONLY"
+                    ? "bg-pink-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-pink-100"
+                }`}
+              >
+                👩 Women Only
+              </button>
+            </div>
+          </div>
           <div>
             <label className="mb-1 block text-xs font-bold text-gray-600">ABOUT SALON</label>
             <textarea
