@@ -651,6 +651,8 @@ function ManageSalonModal({
     }
   }
 
+  const audienceIsWomen = audience === "WOMEN_ONLY" || audience === "WOMENS";
+  const audienceIsMen = audience === "MENS";
   const link = salon.slug
     ? `/salons/${salon.slug}`
     : `/salons/${salon._id}`;
@@ -663,7 +665,22 @@ function ManageSalonModal({
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-blue-600">
               ✏️ MANAGE SALON PAGE
             </p>
-            <h3 className="mt-2 text-2xl font-black text-gray-900">{salon.name}</h3>
+            <h3 className="mt-2 flex flex-wrap items-center gap-2 text-2xl font-black text-gray-900">
+              {salon.name}
+              <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold">
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${
+                    audienceIsWomen
+                      ? "bg-pink-100 text-pink-700"
+                      : audienceIsMen
+                        ? "bg-sky-100 text-sky-700"
+                        : "bg-emerald-100 text-emerald-700"
+                  }`}
+                >
+                  {audienceIsWomen ? "👩" : audienceIsMen ? "👨" : "👥"} {typeLabel(audience)}
+                </span>
+              </span>
+            </h3>
             {salon.status === "APPROVED" && (
               <a
                 href={link}
@@ -692,7 +709,9 @@ function ManageSalonModal({
 
         <div className="mt-5 space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-bold text-gray-600">SALON AUDIENCE (WOMEN ONLY / UNISEX)</label>
+            <label className="mb-1 block text-xs font-bold text-gray-600">
+              SALON TYPE — {audienceIsWomen ? "👩 Women Only" : audienceIsMen ? "👨 Men Only" : "👥 Unisex"}
+            </label>
             <div className="mt-1 flex flex-wrap gap-2">
               <button
                 type="button"
