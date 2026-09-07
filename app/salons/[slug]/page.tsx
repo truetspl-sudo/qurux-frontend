@@ -93,7 +93,8 @@ export default function SalonDetailPage() {
       }
       setSalon(res.data.salon);
       setServices(res.data.services || []);
-      setReviews(res.data.reviews || []);
+      // Sirf customer-submitted ratings dikhti hain (admin closure rating nahi deta)
+      setReviews((res.data.reviews || []).filter((r: any) => !r.isAdminClosed));
     } catch {
       setError("Backend offline?");
     }
@@ -367,14 +368,7 @@ export default function SalonDetailPage() {
                       <div key={r._id} className="rounded-2xl border border-gray-100 p-4">
                         <div className="flex items-center justify-between">
                           <p className="font-bold text-gray-800">{r.customerName}</p>
-                          <div className="flex items-center gap-2">
-                            {r.isAdminClosed && (
-                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
-                                ✓ Admin verified
-                              </span>
-                            )}
-                            <span className="text-amber-400">{"★".repeat(Math.round(r.stars))}</span>
-                          </div>
+                          <span className="text-amber-400">{"★".repeat(Math.round(r.stars))}</span>
                         </div>
                         {r.customerRemarks && <p className="mt-1 text-sm text-gray-600">{r.customerRemarks}</p>}
                         <p className="mt-1 text-xs text-gray-400">

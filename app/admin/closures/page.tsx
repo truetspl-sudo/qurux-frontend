@@ -275,27 +275,15 @@ export default function AdminClosuresPage() {
   async function closeClosure(
     id: string,
     adminRemarks: string,
-    customerRemarks: string,
-    rating: number,
     payStatus: string,
     cashCollectedAmt: number,
     paidVia: string
   ) {
     const closure = closures.find((c) => c.id === id) || null;
-    if (!adminRemarks.trim()) {
-      alert("Admin remarks are required to close the service.");
-      return;
-    }
-    if (rating === 0) {
-      alert("Please capture a star rating before closing.");
-      return;
-    }
 
     setBusy(true);
     const res = await apiPatch(`/bookings/${id}/close`, {
       adminRemarks,
-      customerRemarks,
-      rating,
       paymentStatus: payStatus,
       cashAmount: cashCollectedAmt,
       paidVia,
@@ -321,8 +309,6 @@ export default function AdminClosuresPage() {
               cashCollected: cashCollectedAmt,
               emiPending: balance,
               adminRemarks,
-              customerRemarks,
-              rating,
             }
           : c
       )
@@ -337,8 +323,6 @@ export default function AdminClosuresPage() {
             cashCollected: cashCollectedAmt,
             emiPending: balance,
             adminRemarks,
-            customerRemarks,
-            rating,
           }
         : null
     );
@@ -352,7 +336,7 @@ export default function AdminClosuresPage() {
   return (
     <AdminLayout
       title="Service Closure"
-      subtitle="Verify service completion, reconcile payments, capture remarks and ratings, then close bookings."
+      subtitle="Verify service completion, reconcile payments and close bookings."
     >
 
       {/* Workflow Steps */}
@@ -365,7 +349,6 @@ export default function AdminClosuresPage() {
             { step: "Partner Completes Service", icon: "✅" },
             { step: "Admin Verification", icon: "🔍" },
             { step: "Payment Reconciliation", icon: "💳" },
-            { step: "Customer Remarks + Rating", icon: "⭐" },
             { step: "Booking Closed", icon: "🔒" },
           ].map((item, i) => (
             <div key={item.step} className="flex items-center gap-3">
@@ -373,7 +356,7 @@ export default function AdminClosuresPage() {
                 <span className="mr-2">{item.icon}</span>
                 {item.step}
               </div>
-              {i < 4 && <span className="text-slate-500">→</span>}
+              {i < 3 && <span className="text-slate-500">→</span>}
             </div>
           ))}
         </div>
@@ -486,9 +469,6 @@ export default function AdminClosuresPage() {
                       ? "VERIFIED"
                       : "CLOSED"}
                 </span>
-                {closure.rating > 0 && (
-                  <span className="text-lg">{"⭐".repeat(closure.rating)}</span>
-                )}
               </div>
             </div>
           </button>
@@ -509,8 +489,8 @@ export default function AdminClosuresPage() {
           onClose={() => setSelected(null)}
           onChecklist={(key) => updateChecklist(selected.id, key)}
           onVerify={() => verifyClosure(selected.id)}
-          onClosures={(adminRemarks, customerRemarks, rating, payStatus, cashCollectedAmt, paidVia) =>
-            closeClosure(selected.id, adminRemarks, customerRemarks, rating, payStatus, cashCollectedAmt, paidVia)
+          onClosures={(adminRemarks, payStatus, cashCollectedAmt, paidVia) =>
+            closeClosure(selected.id, adminRemarks, payStatus, cashCollectedAmt, paidVia)
           }
         />
       )}
@@ -528,7 +508,7 @@ type ClosureModalProps = {
   onClose: () => void;
   onChecklist: (key: keyof BookingClosure["verificationChecklist"]) => void;
   onVerify: () => void;
-  onClosures: (adminRemarks: string, customerRemarks: string, rating: number, payStatus: string, cashCollectedAmt: number, paidVia: string) => void;
+  onClosures: (adminRemarks: string, payStatus: string, cashCollectedAmt: number, paidVia: string) => void;
 };
 
 function ClosureModal({
@@ -540,9 +520,6 @@ function ClosureModal({
   onClosures,
 }: ClosureModalProps) {
   const [adminRemarks, setAdminRemarks] = useState(closure.adminRemarks);
-  const [customerRemarks, setCustomerRemarks] = useState(closure.customerRemarks);
-  const [rating, setRating] = useState(closure.rating);
-  const [hover, setHover] = useState(0);
   // Mode ka default booking ke option ke hisaab se — EMI booking → EMI mode,
   // BOB booking → BOB mode (kyunki booking ke waqt koi payment nahi hui).
   const defaultVia = () =>
@@ -745,69 +722,29 @@ function ClosureModal({
           </div>
         )}
 
-        {/* Step 2: Admin Remarks + Rating (shown after verification) */}
+        {/* Step 2: Payment Reconciliation + Close (shown after verification) */}
         {closure.status === "ADMIN_VERIFIED" && (
           <div className="mt-5 space-y-5">
-            {/* Rating */}
+            {/* Step 2: Payment + Close — rating yahan nahi, customer apne dashboard se deta hai */}
             <div className="rounded-2xl border border-pink-200 bg-pink-50 p-5">
               <p className="text-sm font-bold uppercase tracking-[0.2em] text-pink-600">
-                STEP 2: CUSTOMER RATING
+                STEP 2: PAYMENT & CLOSE
               </p>
               <p className="mt-1 text-sm text-gray-600">
-                Capture the customer&apos;s star rating for this service.
+                Rating customer service ke baad apne dashboard se dega.
               </p>
-
-              <div className="mt-4 flex gap-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onMouseEnter={() => setHover(star)}
-                    onMouseLeave={() => setHover(0)}
-                    onClick={() => setRating(star)}
-                    className={`text-4xl transition ${
-                      star <= (hover || rating) ? "text-yellow-400" : "text-gray-300"
-                    }`}
-                  >
-                    ★
-                  </button>
-                ))}
-              </div>
-              {rating > 0 && (
-                <p className="mt-2 text-sm font-bold text-gray-700">
-                  {rating === 1 && "Poor"}
-                  {rating === 2 && "Below Average"}
-                  {rating === 3 && "Average"}
-                  {rating === 4 && "Good"}
-                  {rating === 5 && "Excellent"} — {rating}/5 stars
-                </p>
-              )}
             </div>
 
-            {/* Admin Remarks */}
+            {/* Admin Note (optional, internal) */}
             <div className="rounded-2xl border border-gray-200 p-5">
               <p className="text-sm font-bold uppercase tracking-[0.2em] text-pink-600">
-                ADMIN REMARKS *
+                ADMIN NOTE (OPTIONAL — INTERNAL)
               </p>
               <textarea
                 rows={3}
                 value={adminRemarks}
                 onChange={(e) => setAdminRemarks(e.target.value)}
-                placeholder="Enter admin verification notes, payment reconciliation details, any observations..."
-                className="mt-3 w-full resize-none rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
-              />
-            </div>
-
-            {/* Customer Remarks */}
-            <div className="rounded-2xl border border-gray-200 p-5">
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-pink-600">
-                CUSTOMER REMARKS
-              </p>
-              <textarea
-                rows={3}
-                value={customerRemarks}
-                onChange={(e) => setCustomerRemarks(e.target.value)}
-                placeholder="Customer feedback / remarks (captured from customer)"
+                placeholder="Payment reconciliation details, verification notes..."
                 className="mt-3 w-full resize-none rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
               />
             </div>
@@ -915,10 +852,10 @@ function ClosureModal({
             {/* Close Button */}
             <button
               type="button"
-              onClick={() => onClosures(adminRemarks, customerRemarks, rating, payStatus, Number(cashCollectedAmt) || 0, paidVia)}
-              disabled={busy || !adminRemarks.trim() || rating === 0 || emiDownInvalid}
+              onClick={() => onClosures(adminRemarks, payStatus, Number(cashCollectedAmt) || 0, paidVia)}
+              disabled={busy || emiDownInvalid}
               className={`w-full rounded-full px-6 py-3.5 font-bold text-white transition ${
-                adminRemarks.trim() && rating > 0 && !emiDownInvalid
+                !emiDownInvalid
                   ? "bg-pink-600 hover:bg-pink-700"
                   : "bg-gray-300 cursor-not-allowed"
               }`}
@@ -949,16 +886,8 @@ function ClosureModal({
                 </p>
               </div>
             )}
-            {closure.rating > 0 && (
-              <p className="mt-2 text-2xl">{"⭐".repeat(closure.rating)}</p>
-            )}
             {closure.adminRemarks && (
               <p className="mt-3 text-sm text-gray-600">{closure.adminRemarks}</p>
-            )}
-            {closure.customerRemarks && (
-              <p className="mt-2 text-sm italic text-gray-500">
-                &quot;{closure.customerRemarks}&quot;
-              </p>
             )}
           </div>
         )}

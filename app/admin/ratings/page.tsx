@@ -33,7 +33,9 @@ export default function AdminRatingsPage() {
     try {
       const res = await apiGet<any[]>("/ratings");
       if (res.ok) {
-        setReviews(res.data.map((r: any) => ({
+        // Sirf customer-submitted ratings dikhti hain — admin closure rating nahi deta
+        const customerOnly = (res.data || []).filter((r: any) => !r.isAdminClosed);
+        setReviews(customerOnly.map((r: any) => ({
           id: r._id || r.id,
           customerName: r.customerName || "Customer",
           service: r.targetName || "",

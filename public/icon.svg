@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>QURUX</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff8fb3"/>
+      <stop offset="0.55" stop-color="#f04a8f"/>
+      <stop offset="1" stop-color="#c81e62"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe9a8"/>
+      <stop offset="0.5" stop-color="#f6c453"/>
+      <stop offset="1" stop-color="#d9a02a"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffe3b3"/>
+      <stop offset="1" stop-color="#b8860b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded-square background -->
+  <rect x="8" y="8" width="496" height="496" rx="104" fill="url(#bg)"/>
+
+  <!-- Rose-gold rim -->
+  <rect x="8" y="8" width="496" height="496" rx="104" fill="none" stroke="url(#rim)" stroke-width="14"/>
+
+  <!-- Soft top light -->
+  <ellipse cx="180" cy="120" rx="230" ry="190" fill="#ffffff" opacity="0.14"/>
+
+  <!-- Queen crown -->
+  <path d="M120 216 v-48 l48 24 88 -70 88 70 48 -24 v48 z" fill="url(#gold)"/>
+  <rect x="104" y="208" width="304" height="34" rx="14" fill="#c98a12"/>
+  <!-- Pearls on crown tips -->
+  <circle cx="120" cy="164" r="17" fill="#fff6d8"/>
+  <circle cx="256" cy="118" r="17" fill="#fff6d8"/>
+  <circle cx="392" cy="164" r="17" fill="#fff6d8"/>
+  <!-- Crown band gems -->
+  <circle cx="200" cy="225" r="7" fill="#fff6d8" opacity="0.9"/>
+  <circle cx="256" cy="225" r="8" fill="#fff6d8"/>
+  <circle cx="312" cy="225" r="7" fill="#fff6d8" opacity="0.9"/>
+
+  <!-- Q monogram -->
+  <text x="256" y="478" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', 'Palatino Linotype', serif"
+        font-size="330" font-style="italic" font-weight="bold"
+        fill="#ffffff">Q</text>
+
+  <!-- Sparkles -->
+  <g fill="#fff3cf">
+    <path d="M438 132 l6 12 12 6 -12 6 -6 12 -6 -12 -12 -6 12 -6 z"/>
+    <path d="M96 336 l5 10 10 5 -10 5 -5 10 -5 -10 -10 -5 10 -5 z"/>
+    <circle cx="446" cy="330" r="6"/>
+  </g>
+</svg>

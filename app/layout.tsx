@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -16,9 +16,18 @@ export const metadata: Metadata = {
   title: "QURUX Makeover & Academy",
   description: "QURUX Makeover & Academy — Beauty Services, Products & BOB Wallet. Book salon services, shop beauty products, and save with the Bank of Beauty.",
   icons: {
-    icon: "/logo/logo.png",
-    apple: "/logo/logo.png",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.png", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+    shortcut: "/favicon.png",
   },
+  manifest: "/manifest.webmanifest",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#ec4899",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
