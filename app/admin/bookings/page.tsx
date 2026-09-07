@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { apiGet, apiPatch } from "@/lib/api";
+import { apiGet } from "@/lib/api";
 
 type Booking = {
   id: string;
@@ -152,49 +153,31 @@ export default function AdminBookingsPage() {
             </div>
             <div className="mt-4"><span className={`rounded-full px-4 py-2 text-sm font-bold ${statusColors[selected.status]}`}>{selected.status.replace("_", " ")}</span></div>
 
-            {/* Admin Service Closure */}
-            {selected.status !== "COMPLETED" && (
-              <div className="mt-5 rounded-2xl border-2 border-dashed border-pink-200 bg-pink-50 p-5">
-                <p className="text-sm font-bold text-pink-700">ADMIN SERVICE CLOSURE</p>
-                <p className="mt-1 text-xs text-gray-500">Verify service, add remarks, rate the service, then close.</p>
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="mb-1 block text-xs font-bold text-gray-700">Admin Remarks</label>
-                    <textarea rows={2} id="adminRemarks" placeholder="Service verified, payment reconciled..." className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-pink-500" />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-bold text-gray-700">Customer Remarks</label>
-                    <textarea rows={2} id="customerRemarks" placeholder="Customer feedback..." className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-pink-500" />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-bold text-gray-700">Star Rating</label>
-                    <div className="flex gap-1">
-                      {[1,2,3,4,5].map((star) => (
-                        <button key={star} type="button" id={`star-${star}`} className="text-2xl text-gray-300 hover:text-yellow-400 focus:text-yellow-400" onClick={(e) => {
-                          for (let i = 1; i <= 5; i++) {
-                            const btn = document.getElementById(`star-${i}`);
-                            if (btn) btn.textContent = i <= star ? "★" : "☆";
-                          }
-                        }}>☆</button>
-                      ))}
-                    </div>
-                  </div>
-                  <button type="button" onClick={async () => {
-                    const adminR = (document.getElementById("adminRemarks") as HTMLTextAreaElement)?.value || "";
-                    const custR = (document.getElementById("customerRemarks") as HTMLTextAreaElement)?.value || "";
-                    let ratingVal = 0;
-                    for (let i = 5; i >= 1; i--) {
-                      const btn = document.getElementById(`star-${i}`);
-                      if (btn && btn.textContent === "★") { ratingVal = i; break; }
-                    }
-                    try {
-                      await apiPatch(`/bookings/${selected.id}/close`, { adminRemarks: adminR, customerRemarks: custR, rating: ratingVal });
-                      setSelected({ ...selected, status: "COMPLETED" });
-                    } catch (err) {
-                      console.error("Close error:", err);
-                    }
-                  }} className="w-full rounded-xl bg-pink-600 py-3 text-sm font-bold text-white hover:bg-pink-700">CLOSE SERVICE & SAVE RATING</button>
-                </div>
+            {/* Service Closure — admin yahan close/rating nahi kar sakta; proper page se hota hai */}
+            {selected.status !== "COMPLETED" && selected.status !== "CANCELLED" ? (
+              <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5">
+                <p className="text-sm font-bold text-green-700">SERVICE CLOSURE</p>
+                <p className="mt-1 text-xs text-gray-600">
+                  Booking close + payment update Service Closure page se hote hain.
+                </p>
+                <Link
+                  href="/admin/closures"
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-green-700"
+                >
+                  🔒 OPEN SERVICE CLOSURE →
+                </Link>
+              </div>
+            ) : (
+              <div
+                className={`mt-5 rounded-2xl p-5 text-center text-sm font-bold ${
+                  selected.status === "COMPLETED"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-600"
+                }`}
+              >
+                {selected.status === "COMPLETED"
+                  ? "✅ Booking closed — payment reconciled by admin."
+                  : "Booking cancelled."}
               </div>
             )}
           </div>
