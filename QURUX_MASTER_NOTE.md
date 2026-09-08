@@ -1,325 +1,418 @@
-# QURUX MAKEOVER & ACADEMY — MASTER NOTE
+# QURUX MAKEOVER & ACADEMY — MASTER REFERENCE NOTE
 
-> ⚠️ **READ THIS FILE FIRST** before starting ANY new work.
-> This is the single source of truth for what the system is, what the
-> **BOB plan** is, what has already been done, and what must NEVER be broken.
-> There is also the original concept document:
-> `C:\Users\acer\Downloads\Qurux_Master_Implementation_Note.docx`
-
----
-
-## 1. Project Overview
-
-Qurux Makeover & Academy = complete beauty platform:
-Beauty/Salon services + Home Beauty services + Salon bookings +
-ESSN Cosmetics Shop + Academy/Courses + Customer accounts +
-Admin panel + BOB Wallet (savings) + EMI + Split payments +
-manual (copy-paste) WhatsApp dispatch + admin service closure + ratings.
-
-Theme: pink + white, premium beauty/salon feel, mobile + desktop responsive.
+> **Last Updated:** September 8, 2026
+> **Version:** Production Live
+> **Frontend:** https://www.qurux.in (Vercel)
+> **Backend:** https://api.qurux.in (Railway)
+> **Database:** MongoDB Atlas (qurux cluster)
 
 ---
 
-## 2. Architecture (LIVE — all deployed)
+## 1. PROJECT OVERVIEW
 
+QURUX Makeover & Academy is a beauty services platform with:
+- **Customer Website** — booking, shopping, courses, BOB wallet
+- **Admin Panel** — manage everything (customers, bookings, payments, salons, etc.)
+- **Partner Salon Dashboard** — vendors manage their assigned bookings
+- **BOB (Bank of Beauty)** — savings wallet with benefit calculations
+
+---
+
+## 2. TECH STACK
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 16 (App Router), TypeScript, Tailwind CSS |
+| Backend | Node.js, Express, Mongoose (MongoDB ODM) |
+| Database | MongoDB Atlas (srv connection) |
+| Frontend Deploy | Vercel (scope: qurux) |
+| Backend Deploy | Railway (believable-perfection project) |
+| Auth | JWT (jsonwebtoken), localStorage |
+| Payments | Manual (admin verifies via WhatsApp) |
+
+---
+
+## 3. ENVIRONMENT VARIABLES
+
+### Frontend (.env.local)
 ```
-www.qurux.in        → FRONTEND  (Next.js, Vercel)
-api.qurux.in        → BACKEND   (Express, Railway — auto-deploys from GitHub master)
-MongoDB Atlas       → DATABASE  ("qurux" DB, cloud)
-```
-
-- Frontend repo:  `truetspl-sudo/qurux-frontend`  (folder `C:\Users\acer\OneDrive\Desktop\quruxfrontend`)
-- Backend repo:    `truetspl-sudo/qurux-backend`   (folder `C:\Users\acer\OneDrive\Desktop\quruxbacken+database`)
-- Frontend deploy: Vercel CLI (`npx vercel --prod --yes`) from quruxfrontend folder.
-- Backend deploy:  push to GitHub `master` → Railway auto-deploy.
-- Vercel env: `NEXT_PUBLIC_API_URL=https://api.qurux.in` (production).
-- Railway env: `MONGODB_URI`, `ADMIN_PASSWORD`, `PORT=8080`.
-- Backend serves under `/api` → routes mounted from `server.js`.
-
----
-
-## 3. NON-NEGOTIABLE RULES (never break these)
-
-1. **BOB = MANUAL PAYMENT APPROVAL SETUP.**
-   - Customer submits a **deposit request** (amount + UPI transaction/UTR).
-   - Deposit is created with status **PENDING** — it is NOT credited automatically.
-   - Admin reviews it in `admin/bob-payments`, clicks **APPROVE** (or REJECT).
-   - On approval the deposit becomes **ACTIVE** and the 30-day beauty-benefit
-     clock starts from the **approval date**.
-   - On rejection the deposit is REJECTED and never credited.
-   - Do NOT make deposits auto-ACTIVE. Do NOT remove the PENDING step.
-
-2. **NO PAYMENT GATEWAY ANYWHERE. EVERYTHING IS MANUAL.**
-   - Customer pays via UPI to the business account — UPI ID
-     **`8130231520@hdfc`** (QURUX MAKEOVER AND ACADEMY OPC PVT LTD — barcode
-     `public/payment/quruxbarcode.png` pe yahi hai; kabhi `qurux@upi` NAHI),
-     then submits transaction ID + optional screenshot as a **Payment record
-     (status PENDING)**.
-   - Admin verifies in his bank app / WhatsApp, then clicks APPROVE in the
-     admin panel. Approving a Payment marks the linked booking/order PAID.
-   - Backend NEVER auto-marks FULL bookings/orders as PAID. Only BOB-wallet
-     payments may be PAID at creation (wallet money already inside Qurux).
-
-3. **NO WHATSAPP API INTEGRATION. MANUAL COPY-PASTE ONLY.**
-   - Every admin page has a copy-to-clipboard WhatsApp message template.
-   - Admin copies it, pastes it into WhatsApp, sends manually.
-
-4. **LOGIN IS BY USER ID — NEVER EMAIL.**
-   - Signup collects: Name, Mobile, Password (NO email field anywhere).
-   - Admin approves the PENDING customer and **manually types the User ID**
-     (shown to customer over WhatsApp by admin).
-   - Customer logs in with **User ID + the password they chose at signup**.
-   - "Sign in with email" / OTP login: do not exist, do not add.
-
-5. **PAYMENT/GATEWAY-free flows apply to: bookings, shop orders, EMI,
-   BOB deposits, courses — all money movement goes through PENDING →
-   admin approve.**
-
-6. **Never silently invent fake/demo data** in admin pages. If API returns
-   empty or 401, show empty state + clear "login as Admin required" banner.
-
-7. **SERVICE BOOKING PAYMENT = PAY AFTER SERVICE — KISI BHI OPTION ME.**
-   - Customer selects ANY option (Full Payment / No Cost EMI / Pay from BOB)
-     for a SERVICE booking → booking is created PENDING via `/bookings` with
-     the chosen `paymentMethod` (FULL/EMI/BOB). NO payment step, NO
-     PaymentForm, NO wallet deduction at booking time (booking page has no
-     separate EMI/BOB localStorage logic anymore — `/booking` was rewritten).
-   - Confirmation says: "Booking ke waqt koi payment nahi — service hone ke
-     BAAD payment (UPI/Cash)."
-   - Admin closes the service in `admin/closures` — closure modal now has a
-     **Payment Update** section: PAID VIA (mode: CASH/UPI/BOB/EMI) + PAYMENT
-     STATUS (PAID/PARTIAL/PENDING) + AMOUNT COLLECTED. Backend
-     `/bookings/:id/close` writes paymentStatus + cashAmount + paidVia onto the booking.
-   - **EMI closure → EMIPlan AUTO-CREATE.** When admin closes in **EMI** mode
-     (ya booking EMI se chuni gayi thi) the backend auto-creates/updates the
-     customer's EMIPlan (`utils/emiSync.js`): purchaseType SERVICE,
-     purchaseName = service naam, totalAmount, paidAmount = abhi collected,
-     pendingAmount = balance. Customer ke "EMI Details" (/account/dashboard,
-     /bob My Purchases/EMI) me dikhta hai: kaun si service li, kitna pay kiya,
-     kitna balance. Balance flexible EMI repayments (`/emi/:id/pay` → admin
-     approve) se ghatta hai; plan COMPLETED hone par booking apne aap PAID
-     (due ₹0). FULL/CASH/UPI/BOB full close → koi plan nahi, booking PAID,
-     due ₹0.
-   - **25/75 EMI RULE (HARD).** EMI mode me close/pay tabhi allowed hai jab
-     customer ne bill ka **minimum 25% abhi** diya ho (backend 400 returns
-     warna, frontend modal bhi enforce karta hai). Baaki **75% tak EMI
-     balance** banta hai. EMI repayment min = **₹1** — customer weekly jab
-     jitna paisa ho koi bhi amount bhar sakta hai (`/emi/:id/pay`, min ₹1,
-     max pending).
-
-8. **PRODUCTS / COURSES ORDERS = SAME MANUAL MODEL AS SERVICE BOOKINGS.**
-   - Shop checkout `/checkout` and any course order: customer just submits the
-     order → order created PENDING (NO auto-PAID, NO forced PaymentForm step).
-     Payment proof is not collected at order time.
-   - Admin verifies payment on WhatsApp and updates order payment manually in
-     `admin/orders` (Payment Update section: PAID VIA mode + PAID/PARTIAL/PENDING
-     + amount, `PATCH /orders/:id/pay`) exactly like service closures, and drives
-     order status (CONFIRMED → SHIPPED → DELIVERED).
-   - **EMI order → EMIPlan AUTO-CREATE (PRODUCT).** Same rule as bookings:
-     EMI mode pay/close pe product plan banta hai (purchaseName = items list,
-     total/paid/balance) jo customer ke EMI details me dikhta hai; full pay →
-     due ₹0. Same **25/75 rule** (25% down mandatory, baaki 75% EMI balance,
-     repayments min ₹1 flexible).
-
-9. **BOB HAS NO SEPARATE LOGIN.** Website login (User ID + password) IS the
-   BOB login. No `bobApplications`, no separate BOB password, no
-   "BOB me login karein" gate anywhere. BOB page/options identify the
-   customer from the website login only.
-
-10. **COMPANY UPI BARCODE = `public/payment/quruxbarcode.png`** (original from
-    `Desktop/final`). Used in BOB deposit form, BOB EMI pay modal, and
-    PaymentForm QR. Deposit proof = transaction ID + screenshot upload.
-    UPI ID = **`8130231520@hdfc`** (kabhi `qurux@upi` nahi).
-
-11. **PASSWORD RESET = ADMIN APPROVAL (koi current password nahi).**
-    - Customer ko apna current/pura password dene ki zaroorat NAHI.
-    - Wo "Forgot Password" karta hai: User ID + naya password →
-      `POST /api/auth/forgot-password` → `PasswordReset` doc status PENDING
-      (sirf naya hash store hota hai).
-    - Admin dashboard `/admin/password-resets` pe request dikhti hai →
-      WhatsApp pe verify karke APPROVE/REJECT.
-    - Approve par user ka password replace ho jata hai (`User.updateOne` —
-      pre-save hash hook bypass kyunki hash already store hai); customer phir
-      naye password se login karta hai.
-
----
-
-## 4. Data Layer (backend `routes/` + `models/`)
-
-| Model | Purpose |
-|---|---|
-| User | customer + admin + (salon) — role, status PENDING/APPROVED/REJECTED, userId |
-| Salon | vendor list (approved by admin) |
-| Service | beauty services catalog (categories like Bridal/Party/Facial/...) |
-| Booking | service booking (HOME min ₹2,500 / SALON), paymentMethod FULL/EMI/BOB/MIXED |
-| Product | ESSN shop products (stock tracked, slug used by frontend) |
-| Course | academy courses |
-| Order | shop orders (items resolved from Product by _id or slug) |
-| Payment | UPI proof submissions: bookingId/orderId refs, PENDING → APPROVED/REJECTED |
-| EMIPlan | No-Cost EMI plans + flexible repayment history |
-| PasswordReset | password reset requests (PENDING → admin approve/reject) — sirf naya hash store |
-| Wallet | **BOB wallet**: deposits[], usageHistory[], promotionalBalance/history |
-| Rating | ratings/reviews captured at admin closure |
-| WhatsAppDispatch | (exists; UI derives dispatch list from live bookings) |
-
-Routes: auth, customers, salons, services, bookings, products, courses,
-orders, payments, emi, wallet, ratings, admin, whatsapp — all under `/api`.
-
-Key behavior already fixed (verified by live E2E):
-- `POST /bookings` & `/orders`: `paymentStatus` = PENDING for FULL (NO auto-PAID).
-- `PATCH /payments/:id/approve` → also sets linked booking/order `paymentStatus: PAID`.
-- `PATCH /bookings/:id/pay`, `PATCH /orders/:id/pay` → admin manual mark PAID.
-- `PATCH /bookings/:id/close` → COMPLETED + rating record upsert.
-- Booking/order IDs are human strings (`BK-…`, `ORD-…`) — backend resolves them.
-- `POST /auth/register` → status PENDING; admin assigns userId.
-
----
-
-## 5. BOB WALLET — FULL PLAN (manual approval)
-
-Customer page: `/bob` (customer must be logged in — website login = BOB login).
-
-BOB = "Bank of Beauty": beauty savings account. 5 tabs:
-1. **Saving for Beauty** — deposits + pending requests + benefit table.
-2. **My Purchases / EMI** — purchases paid from BOB / EMI plans.
-3. **Payment** — pay/repay EMI from here (manual UPI proof).
-4. **Statement** — bank-style statement (download CSV).
-5. **Profile** — BOB account number + details.
-
-### Deposit lifecycle
-```
-Customer:  /bob → Make a Deposit (amount + optional UPI ref)
-   ↓ POST /wallet/deposit
-Wallet.deposits[] entry created → status = PENDING  (NOT counted in balance)
-   ↓
-Admin: /admin/bob-payments → PENDING queue → ✓ APPROVE / ✕ REJECT
-   ↓ PATCH /wallet/:walletId/deposits/:depositId/approve
-status = ACTIVE, approvedAt = now, depositDate = now (benefit clock starts)
-balance/benefit now visible to customer
+NEXT_PUBLIC_API_URL=https://api.qurux.in
 ```
 
-### Benefits (server-computed)
-- 30 days after ACTIVE deposit → **+20% beauty benefit**.
-- Then **+10% per month**, max **+100%** of original amount.
-- Using BOB money before 30 days → benefit disabled for that deposit.
-- FIFO: oldest deposit used first. Deposits tracked individually.
-
-### Balance model
-- eligibleSaving = Σ (ACTIVE originalAmount − usedAmount)
-- available = eligibleSaving + benefit + promotionalBalance
-- PENDING / REJECTED deposits are excluded from every balance calc.
-
-### Admin pages
-- `/admin/bob`            → BOB Wallet: all wallets, deposits, balances, **🎁 Credit Promo**.
-- `/admin/bob-payments`   → **Manual deposit approval queue** + WhatsApp copy template.
-
-### Wallet API
-`/wallet/me` `/wallet/deposit` (PENDING) `/wallet/requests` (admin)
-`/wallet/:wId/deposits/:dId/approve` & `/reject` (admin) `/wallet/use` (FIFO)
-`/wallet/promotional` (admin) `/wallet/all` (admin) `/wallet/balance`
+### Backend (Railway env)
+```
+MONGODB_URI=mongodb+srv://truetspl_db_user:MCxOddzsGeFK0oC7@qurux.yz0c3ld.mongodb.net/qurux?appName=qurux
+JWT_SECRET=(auto-generated)
+CORS_ORIGIN=https://www.qurux.in,https://quruxfrontend.vercel.app
+PORT=8080
+```
 
 ---
 
-## 6. WHAT IS DONE & LIVE (verified)
+## 4. API ROUTES MAP
 
-- Landing page (Book Now / Shop / Learn / About / Contact).
-- Services: browse + service detail + booking w/ HOME (₹2,500 min) or SALON.
-- **Booking flow: Full Payment → real PaymentForm (UPI proof → PENDING → admin approve).**
-  EMI/BOB options inside `/booking` are still legacy-local (gap, see §8).
-- Shop: category browse, product detail (ingredients/how-to-use/benefits),
-  cart, checkout. **Order created PENDING first → PaymentForm submits proof
-  with orderId → admin Payments approve → order PAID.** 9 products seeded in DB.
-- Academy/learn page + course admin management.
-- Signup (no email) → admin approve w/ manual userId → login by userId+password.
-- Change password (admin settings real) — live tested. Customer password
-  change ab "Forgot Password" reset request se hota hai (no current password)
-  → admin /admin/password-resets approve — live tested.
-- Customer dashboard (`/account/dashboard`) — real API: bookings, orders,
-  payments, BOB wallet, EMI, reviews.
-- **BOB wallet customer page + manual deposit approval — live tested.**
-- EMI flexible repayments (₹10+) with admin approve — live tested.
-- Admin panel (17 pages) all wired to real API, mock data removed,
-  login-required error banners added.
-  Customers (approve w/ userId), Bookings, Payments (approve/reject +
-  screenshot link), Orders, EMI, Services, Products, Courses, Salons
-  (approve/reject), Ratings, Closures (close + rating), WhatsApp dispatch,
-  BOB payments, BOB wallet, Settings (Change Password real).
-- WhatsApp templates: copy-message buttons on approve flows.
-- PaymentForm is REAL (no fake timer): screenshot upload + Payment record.
-- E2E (live): signup→approve→login→book→pay→admin verify→close→rating = 9/9.
-  Manual-payment model test (order/booking stay PENDING until approval) passed.
-  BOB deposit request→approve→credit + reject test passed.
-- Deploy: qurux.in (Vercel), api.qurux.in (Railway + SSL), MongoDB Atlas.
+### Auth
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| POST | /api/auth/register | No | Register new customer (fullName, mobile, password) |
+| POST | /api/auth/login | No | Login (userId + password) → token + user |
+| PATCH | /api/auth/forgot-password | No | Request password reset |
+| PATCH | /api/auth/reset-password | No | Set new password with reset token |
+
+### Customers (Admin)
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | /api/admin/customers | Admin | List all customers |
+| PATCH | /api/admin/customers/:id/approve | Admin | Approve + assign userId |
+| PATCH | /api/admin/customers/:id/reject | Admin | Reject customer |
+
+### Services
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | /api/services | No | List all active services |
+| GET | /api/services/all | Admin | List all (including inactive) |
+| POST | /api/services | Admin | Create service |
+| PATCH | /api/services/:id | Admin | Update service |
+| DELETE | /api/services/:id | Admin | Delete service |
+
+### Salons
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | /api/salons | No | List approved salons (public) |
+| GET | /api/salons/all | Admin | List all salons |
+| GET | /api/salons/my-salon | Partner | Get own salon |
+| POST | /api/salons/register | No | Register new salon |
+| PATCH | /api/salons/:id | Admin | Update salon (approve/reject/edit) |
+| PATCH | /api/salons/:id/approve | Admin | Approve salon + create partner account |
+
+### Bookings
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | /api/bookings | User/Admin | List bookings (role-filtered) |
+| POST | /api/bookings | Customer | Create booking |
+| PATCH | /api/bookings/:id/status | Admin | Update status (CONFIRMED/CANCELLED) |
+| PATCH | /api/bookings/:id/start | Partner | Start service (→ IN_PROGRESS + startedAt) |
+| PATCH | /api/bookings/:id/partner-complete | Partner | Mark done (→ PARTNER_COMPLETED) |
+| PATCH | /api/bookings/:id/close | Admin | Close + payment reconciliation |
+| PATCH | /api/bookings/:id/reopen | Admin | Reopen closed booking for edit |
+| GET | /api/bookings/:id/invoice | User | Generate invoice data |
+
+### Orders (Shop)
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | /api/orders | User/Admin | List orders |
+| POST | /api/orders | Customer | Create order |
+| PATCH | /api/orders/:id/status | Admin | Update order status |
+
+### Payments
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | /api/payments | Admin | List payment proofs |
+| PATCH | /api/payments/:id/approve | Admin | Approve payment |
+| PATCH | /api/payments/:id/reject | Admin | Reject payment |
+
+### EMI
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | /api/emi | User | List EMI plans |
+| POST | /api/emi/:id/pay | User | Submit EMI payment |
+| PATCH | /api/emi/:id/approve | Admin | Approve EMI payment |
+
+### Wallet (BOB)
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | /api/wallet | User | Get own wallet |
+| POST | /api/wallet/deposit | User | Request deposit |
+| POST | /api/wallet/use | User | Use wallet balance |
+| GET | /api/wallet/lookup/:customerId | Admin | Check customer balance |
+
+### Payouts (Vendor)
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | /api/payouts | Admin | List all payouts |
+| GET | /api/payouts/earnings/:salonId | Partner | Vendor earnings ledger |
+| GET | /api/payouts/summary | Admin | Salon-wise aggregated stats |
+| PATCH | /api/payouts/:id/share | Admin | Set vendor net payout |
+| PATCH | /api/payouts/:id/pay | Admin | Mark payout as paid |
+| POST | /api/payouts/settle/:month | Admin | Monthly settlement |
+
+### Ratings
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | /api/ratings | Public | List ratings |
+| POST | /api/ratings | Customer | Submit rating |
+| DELETE | /api/ratings/:id | Admin | Delete rating |
+
+### WhatsApp
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | /api/whatsapp | Admin | List dispatch records |
+| POST | /api/whatsapp/send | Admin | Send WhatsApp message |
 
 ---
 
-## 7. Original Master-Plan checklist (from docx) → status
+## 5. DATABASE MODELS
 
-| # | Item | Status |
-|---|---|---|
-| 3 | Landing page | ✅ |
-| 4–8 | Book Now flow (service → form → HOME/SALON) | ✅ |
-| 9 | Signup/Login manual (no OTP, userId) | ✅ |
-| 10 | Salon/vendor registration + admin approval | ✅ |
-| 10b | Public Partner Salon pages (/salons list + /salons/[slug]) — rating,
-  gallery, work images, Google map, reviews, Book Now w/ salon services,
-  booking = manual approval; admin salons ✏️ Manage assigns | ✅ new |
-| 11 | ESSN Shop | ✅ |
-| 12 | Learn/Academy | ✅ (live courses + enrollment, EMI COURSE plans) |
-| 13 | Universal checkout (Full/EMI/BOB/Mixed) | FULL ✅ — EMI/BOB/Mixed partial |
-| 14 | BOB Wallet | ✅ (manual approval) |
-| 15 | EMI + repayments | ✅ (flexible, admin approve) |
-| 16 | Mixed/Split payment | ⏳ placeholder |
-| 17 | WhatsApp dispatch | ✅ manual copy-paste |
-| 18–19 | Service execution + admin closure | ✅ |
-| 20 | Universal ratings | ✅ |
-| 21 | Customer dashboard | ✅ |
-| 22–24 | Admin panel structure + DB-driven frontend | ✅ |
-| 25–27 | Schema, roles, security (JWT) | ✅ |
-| 31 | Testing (E2E) | ✅ live |
-| 32 | Deployment | ✅ |
+### User
+```
+userId, fullName, email, mobile, password, role (CUSTOMER/ADMIN/SALON_OWNER),
+status (PENDING/APPROVED/REJECTED), dob, address, avatar,
+bobAccountNumber, bobStatus
+```
 
----
+### Booking
+```
+bookingId, customerId, serviceName, serviceCategory, serviceLocation (HOME/SALON),
+address, salonId, salonName, date, timeSlot, customerName, customerPhone,
+amount (listed), listedPrice, finalPrice, paymentMethod (FULL/EMI/BOB/MIXED),
+bobPaidAmount, cashAmount, emiAmount, paymentStatus (PENDING/PAID/PARTIAL),
+paidVia (CASH/UPI/BOB/EMI), status (PENDING/CONFIRMED/IN_PROGRESS/PARTNER_COMPLETED/COMPLETED/CANCELLED),
+startedAt, partnerCompletedAt, closedAt, adminRemarks, rating,
+paymentCollectionMethod (COMPANY/VENDOR_DIRECT/SPLIT),
+vendorDirectAmount, companyCollectedAmount,
+gstSlab, basePrice, gstAmount, cgst, sgst,
+platformCommission, vendorGrossPayout, vendorNetPayout,
+walletTransactionId
+```
 
-## 8. KNOWN GAPS / NOT DONE YET
+### Salon
+```
+name, slug, ownerName, phone, email, city, address, image,
+type (UNISEX/WOMENS/MENS/HOME_STUDIO/MAKEUP_STUDIO),
+status (PENDING/APPROVED/REJECTED), userId, servicesIds [],
+rating: { stars, count }
+```
 
-1. EMI plans are auto-created when admin CLOSES an EMI-mode booking/order
-   (closure payment section → PAID VIA = EMI) — service/product/course naam,
-   total, 25% down paid, 75% balance customer ke EMI Details me dikhta hai
-   (rules 7/8). Balance flexible repayments (min ₹1) `POST /emi/:id/pay` →
-   admin approve. COURSE EMI DONE: academy enrollment order (`orderType:
-   COURSE`) EMI close pe `utils/emiSync.js` COURSE purchaseType se 25/75 plan
-   banata hai.
-2. Mixed/Split payment logic in checkout is placeholder (₹0 hardcoded).
-3. Course enrollment full flow LIVE + verified E2E (enroll → admin 25% EMI
-   pay → COURSE EMIPlan in customer EMI details). Public /academy now reads
-   /api/courses (admin /admin/courses se manage).
-4. Salon public pages `/salons` + `/salons/[slug]` LIVE (list w/ star rating -
-   naam - location; detail: gallery, work images, address + Google map embed,
-   reviews, BOOK NOW → us salon ki services → booking request = manual
-   approval). Salon images/map/services admin "✏️ Manage Salon Page" se set
-   hote hain. Registration page `/salon/register` bhi hai.
-5. `admin/content` (Website Content) and most of `admin/settings` are static —
-   only Change Password is DB-backed.
-6. WhatsApp "SENT" state is derived from bookings (resets) — fine for manual use.
+### Service
+```
+name, slug, category, subcategory, price, duration, description,
+image, includes [], isActive
+```
 
----
+### Payout
+```
+salonId, salonName, bookingId, bookingCode, customerId, customerName, serviceName,
+listedPrice, finalPrice, paymentCollectionMethod, companyCollectedAmount, vendorDirectAmount,
+bobWalletUsed, emiPending, gstSlab, basePrice, gstAmount, cgst, sgst,
+commissionRate (10%), platformCommission, vendorGrossPayout, vendorNetPayout,
+status (PENDING/SETTLED/PAID/PARTIAL), paidAmount, paidAt, paidVia, transactionRef,
+settledMonth, adminRemarks, closedAt
+```
 
-## 9. WORKFLOW RULES FOR FUTURE TURNS
+### EMIPlan
+```
+customerId, purchaseType (SERVICE/PRODUCT/COURSE), purchaseName,
+bookingId, orderId, totalAmount, bobPaidAmount, paidAmount, pendingAmount,
+paymentHistory [], status (ACTIVE/COMPLETED/CANCELLED),
+tenureDays (180), lateFeePerDay (10), totalLateFee, lastLateFeeCalc
+```
 
-1. **Before ANY new feature/edit: read `QURUX_MASTER_NOTE.md` (this file).**
-2. If unsure about original intent → read the docx master note in Downloads.
-3. Ask the user before changing anything in the BOB flow semantics or the
-   manual-payment rule — they are strict.
-4. When user is NOT watching, do NOT silently redesign existing flows
-   (esp. BOB) — follow this note, make minimal edits, and explain changes.
-5. After code changes: `npx tsc --noEmit` (frontend), `node -e require(...)`
-   syntax check (backend), then commit + push (backend auto-deploys) +
-   `npx vercel --prod --yes` (frontend), then live E2E against api.qurux.in.
-6. Admin test account is created from Railway `ADMIN_PASSWORD`; do not
-   hardcode passwords into files that may be pushed to the repos.
+### Wallet
+```
+customerId, deposits [{ originalAmount, usedAmount, depositDate, status, benefitEnabled }],
+usageHistory [{ amount, description, date, balanceAfter }]
+```
+
+### Product, Course, Order, Payment, Rating, WhatsAppDispatch, PasswordReset
 
 ---
 
-_Last updated: after "manual payment everywhere" fix (PaymentForm real,
-no auto-PAID, admin approve queues) + BOB deposit approval flow._
+## 6. BUSINESS RULES
+
+### Booking Flow
+```
+Customer Book → Admin Approve (assign vendor) → Partner Start Service →
+Partner Complete → Admin Verify + Payment Update + Close → Customer Rating
+```
+
+### Payment Rules
+1. **NO payment at booking time** — only payment mode is saved
+2. Payment collected after service, admin closes with payment details
+3. **Full Payment** — paid = final price, due = 0
+4. **EMI** — min 25% down payment, rest becomes EMI balance
+5. **BOB Wallet** — deducts from customer's BOB balance (FIFO)
+6. Admin can never give rating — only customer rates
+
+### GST Rules (Tax-Inclusive)
+- Final Price is **tax-inclusive** (GST already included)
+- Base = Final Price / (1 + GST Rate / 100)
+- GST = Final Price - Base
+- CGST = GST / 2, SGST = GST / 2
+- Slabs: 0%, 5%, 12%, 18%, 28%
+
+### Vendor Payout Formula
+```
+Vendor Gross Payout = Final Price - Platform Commission (10%)
+Net Payout Due = Gross - Direct Payment to Vendor
+```
+
+### EMI Late Fee
+- Tenure: 6 months (180 days) — 0% interest
+- After 180 days: ₹10/day automated penalty
+
+### BOB Wallet Benefit
+- 30 days after deposit: 20% benefit
+- Each additional month: +10% benefit
+- Maximum: 100% extra
+- FIFO deduction order
+
+---
+
+## 7. ADMIN PANEL PAGES
+
+| Page | Route | Key Features |
+|------|-------|-------------|
+| Dashboard | /admin | Stats overview |
+| Customers | /admin/customers | Approve/reject, search, status filter |
+| Salons/Vendors | /admin/salons | Approve/reject, salon type (Unisex/Women Only), manage |
+| Services | /admin/services | CRUD, category filter, edit button |
+| Bookings | /admin/bookings | View all, status filter, link to closures |
+| Products | /admin/products | CRUD, category filter, Coming Soon banner |
+| Courses | /admin/courses | CRUD, edit button |
+| Orders | /admin/orders | Status filter, view details |
+| Payments | /admin/payments | Type + Status filter, approve/reject |
+| EMI | /admin/emi | Status filter, approve payments |
+| BOB Payments | /admin/bob-payments | Deposit approvals |
+| Ratings | /admin/ratings | Star filter, delete reviews |
+| Service Closures | /admin/closures | **Main payment page** — multi-filter, GST, vendor payout |
+| WhatsApp | /admin/whatsapp | Manual message dispatch |
+| Password Resets | /admin/password-resets | Approve password changes |
+| Content | /admin/content | Website content management |
+| Settings | /admin/settings | Admin settings |
+
+---
+
+## 8. PARTNER SALON DASHBOARD
+
+Route: /salon/dashboard
+
+### Features
+- Login with userId + password (same auth as customer)
+- View assigned bookings (only own salon — isolation rule)
+- **Start Service** button (PENDING/CONFIRMED → IN_PROGRESS)
+- **Complete Service** button (IN_PROGRESS → PARTNER_COMPLETED)
+- WhatsApp-to-Customer button (IN_PROGRESS + CONFIRMED)
+- WhatsApp-to-Admin button (PARTNER_COMPLETED + COMPLETED)
+- EMI Plans tab
+- Cannot see customer's BOB wallet balance
+
+---
+
+## 9. CUSTOMER FACING PAGES
+
+| Page | Route | Description |
+|------|-------|-------------|
+| Home | / | Hero slider, feature cards, why choose, download app |
+| Book | /book | Service selection with category filter |
+| Booking | /booking | Salon picker, payment mode, time slot, submit |
+| Shop | /shop | Products (Coming Soon banner active) |
+| Academy | /academy | Courses listing |
+| Salons | /salons | Partner salon list with ratings |
+| Salon Detail | /salons/[slug] | Salon info, services, book now |
+| BOB | /bob | Wallet dashboard, deposit, savings |
+| Account | /account | Login / Register |
+| Dashboard | /account/dashboard | Customer bookings, EMI, rating |
+
+---
+
+## 10. DESIGN SYSTEM
+
+### Colors
+- **Primary Pink:** #ec4899 (pink-600)
+- **Rose Gold:** gradient from pink-500 to rose-600
+- **Background:** pink-50 via white to slate-100
+- **Success:** green-600
+- **Warning:** orange-600
+- **Error:** red-600
+
+### Typography
+- **Logo:** Great Vibes (script font) — "qurux" wordmark
+- **Headings:** System font, font-black
+- **Body:** System font, text-sm/text-base
+
+### Components
+- Rounded cards: rounded-2xl, rounded-3xl
+- Buttons: rounded-full, pink-600 bg
+- Badges: rounded-full, colored bg + text
+- Filter buttons: pink/green/purple filled when active
+
+---
+
+## 11. DEPLOYMENT
+
+### Frontend (Vercel)
+```bash
+cd quruxfrontend
+npx vercel --prod --yes --scope qurux
+```
+- Auto-deploys on git push (if connected)
+- Manual: `npx vercel --prod --yes --scope qurux`
+- Domain: www.qurux.in
+
+### Backend (Railway)
+```bash
+cd quruxbacken+database
+git push origin master
+```
+- Auto-deploys on git push
+- URL: qurux-backend-production.up.railway.app
+- Custom domain: api.qurux.in
+
+### Database (MongoDB Atlas)
+- Cluster: qurux.yz0c3ld.mongodb.net
+- DB: qurux
+- User: truetspl_db_user
+
+---
+
+## 12. CRITICAL RULES (NEVER BREAK)
+
+1. **Admin manual approval** — everything goes through admin
+2. **No payment at booking** — payment after service only
+3. **Customer-only ratings** — admin never rates
+4. **Partner isolation** — salon sees only own bookings
+5. **GST is tax-inclusive** — final price includes GST
+6. **EMI min 25%** — must pay 25% upfront for EMI
+7. **FIFO wallet deduction** — oldest deposits used first
+8. **finalPrice ≤ 2x listed** — sanity check on close
+9. **Edit always available** — admin can reopen closed bookings
+10. **Manual WhatsApp** — no auto WhatsApp, all manual
+
+---
+
+## 13. KNOWN ISSUES / TODO
+
+- [ ] Invoice PDF generation (currently JSON endpoint only)
+- [ ] Auto late fee calculation cron job (₹10/day after 180 days)
+- [ ] Email invoice dispatch
+- [ ] Product shop is "Coming Soon" — no real products yet
+- [ ] Partner salon dashboard needs earnings/ledger page
+- [ ] Admin payout management page (routes exist, no UI page)
+
+---
+
+## 14. QUICK EDIT REFERENCE
+
+### To add a new admin page:
+1. Create `app/admin/[name]/page.tsx`
+2. Add to `components/admin/AdminLayout.tsx` sidebar
+3. Add API route in backend if needed
+
+### To add a new API route:
+1. Create `routes/[name].js`
+2. Mount in `server.js`: `app.use("/api/[name]", require("./routes/[name]"))`
+3. Add frontend API calls in `lib/api.ts`
+
+### To modify booking flow:
+1. Check `routes/bookings.js` — all booking routes
+2. Check `app/admin/closures/page.tsx` — admin closure UI
+3. Check `app/salon/dashboard/page.tsx` — partner dashboard
+
+### To modify payment logic:
+1. `routes/bookings.js` — close route (line ~250)
+2. `utils/walletUse.js` — wallet FIFO deduction
+3. `utils/emiSync.js` — EMI plan creation
+
+---
+
+*This document is the single source of truth for the QURUX project. Update it whenever major changes are made.*
