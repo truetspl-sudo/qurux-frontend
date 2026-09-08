@@ -122,17 +122,22 @@ export default function AdminPaymentsPage() {
         </div>
       )}
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm outline-none focus:border-pink-500">
-          <option value="All">All Types</option>
-          {["BOOKING", "ORDER", "EMI", "WALLET"].map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm outline-none focus:border-pink-500">
-          <option value="PENDING">Pending (Review Queue)</option>
-          <option value="All">All Status</option>
-          {["PENDING", "APPROVED", "REJECTED"].map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <button onClick={load} className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">↻ Refresh</button>
+      <div className="mt-6 flex flex-wrap gap-2">
+        <p className="w-full text-xs font-bold uppercase text-gray-400">TYPE</p>
+        {["All", "BOOKING", "ORDER", "EMI", "WALLET"].map((t) => (
+          <button key={t} type="button" onClick={() => setFilterType(t)} className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${filterType === t ? "bg-pink-600 text-white" : "bg-white text-gray-600 shadow-sm hover:bg-pink-50"}`}>
+            {t === "All" ? "All Types" : t === "BOOKING" ? "📅 Booking" : t === "ORDER" ? "🛍️ Order" : t === "EMI" ? "📊 EMI" : "💰 Wallet"}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <p className="w-full text-xs font-bold uppercase text-gray-400">STATUS</p>
+        {["All", "PENDING", "APPROVED", "REJECTED"].map((s) => (
+          <button key={s} type="button" onClick={() => setFilterStatus(s)} className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${filterStatus === s ? "bg-green-600 text-white" : "bg-white text-gray-600 shadow-sm hover:bg-green-50"}`}>
+            {s === "All" ? "All Status" : s === "PENDING" ? "⏳ Pending" : s === "APPROVED" ? "✅ Approved" : "❌ Rejected"}
+          </button>
+        ))}
+        <button onClick={load} className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50">↻ Refresh</button>
       </div>
 
       <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">

@@ -208,16 +208,13 @@ Use these to log in and manage your salon bookings.
           className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
         />
 
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm outline-none focus:border-pink-500"
-        >
-          <option value="All">All Status</option>
-          <option value="PENDING">Pending</option>
-          <option value="APPROVED">Approved</option>
-          <option value="REJECTED">Rejected</option>
-        </select>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {["All", "PENDING", "APPROVED", "REJECTED"].map((s) => (
+          <button key={s} type="button" onClick={() => setFilterStatus(s)} className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${filterStatus === s ? "bg-pink-600 text-white" : "bg-white text-gray-600 shadow-sm hover:bg-pink-50"}`}>
+            {s === "All" ? "All" : s === "PENDING" ? "⏳ Pending" : s === "APPROVED" ? "✅ Approved" : "❌ Rejected"}
+          </button>
+        ))}
       </div>
 
       {/* Salon List */}
