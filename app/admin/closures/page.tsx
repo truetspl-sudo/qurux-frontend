@@ -499,6 +499,17 @@ export default function AdminClosuresPage() {
               walletAmt
             )
           }
+          onReopen={async () => {
+            setBusy(true);
+            const res = await apiPatch(`/bookings/${selected.id}/reopen`, {});
+            setBusy(false);
+            if (res.ok) {
+              setClosures((prev) => prev.map((c) => c.id === selected.id ? { ...c, status: "ADMIN_VERIFIED" as const } : c));
+              setSelected((prev) => prev ? { ...prev, status: "ADMIN_VERIFIED" } : null);
+            } else {
+              alert(res.message || "Reopen failed.");
+            }
+          }}
         />
       )}
     </AdminLayout>
@@ -523,6 +534,7 @@ type ClosureModalProps = {
     finalPriceAmt: number,
     walletAmt: number
   ) => void;
+  onReopen: () => void;
 };
 
 function ClosureModal({
@@ -532,6 +544,7 @@ function ClosureModal({
   onChecklist,
   onVerify,
   onClosures,
+  onReopen,
 }: ClosureModalProps) {
   const [adminRemarks, setAdminRemarks] = useState(closure.adminRemarks);
   // Final price — listed price default; admin service ke baad final price badal sakta hai
@@ -799,12 +812,20 @@ function ClosureModal({
                       walletOverBalance ? "border-red-400" : "border-blue-200"
                     }`}
                   />
-                  <p className={`mt-1 text-[11px] ${walletOverBalance ? "font-bold text-red-600" : "text-blue-600"}`}>
-                    {bobAvailable === null
-                      ? "Customer ka BOB wallet nahi hai."
-                      : `Available: ₹${bobAvailable.toLocaleString("en-IN")}`}
-                    {walletOverBalance ? " — balance se zyada nahi!" : ""}
-                  </p>
+                  {/* Customer BOB balance — prominent display */}
+                  <div className="mt-2 rounded-lg bg-blue-100 px-3 py-2">
+                    <p className="text-[11px] font-bold text-blue-600">CUSTOMER BOB BALANCE</p>
+                    {bobAvailable === null ? (
+                      <p className="text-sm font-bold text-gray-400">Loading...</p>
+                    ) : (
+                      <p className={`text-lg font-black ${bobAvailable > 0 ? "text-blue-700" : "text-gray-400"}`}>
+                        ₹{bobAvailable.toLocaleString("en-IN")}
+                      </p>
+                    )}
+                    {walletOverBalance && (
+                      <p className="text-[11px] font-bold text-red-600">⚠ Balance se zyada nahi ho sakta!</p>
+                    )}
+                  </div>
                 </div>
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
                   <p className="text-xs font-bold text-amber-700">💵 CASH / UPI PAID (₹)</p>
@@ -943,28 +964,44 @@ function ClosureModal({
 
         {/* Closed Status */}
         {closure.status === "CLOSED" && (
-          <div className="mt-5 rounded-2xl bg-green-50 p-6 text-center">
-            <div className="text-4xl">🔒</div>
-            <p className="mt-3 text-xl font-black text-green-700">SERVICE CLOSED</p>
-            <p className="mt-2 text-sm font-bold text-green-700">💳 Payment updated by admin — {closure.paymentStatus === "PAID" ? "PAID" : closure.paymentStatus} via {closure.paidVia || "CASH"}</p>
-            {closure.paidVia === "EMI" && (
-              <div className="mx-auto mt-3 max-w-sm rounded-xl bg-white p-3 text-left text-xs">
-                <p className="font-bold text-blue-800">📊 EMI PLAN (customer ke EMI Details me)</p>
-                <p className="mt-1 text-gray-700">
-                  Total ₹{closure.amount.toLocaleString("en-IN")} • Abhi paid ₹
-                  {closure.cashCollected.toLocaleString("en-IN")} • Balance ₹
-                  {closure.emiPending.toLocaleString("en-IN")}
-                </p>
-                <p className="mt-1 text-blue-700">
-                  {closure.emiPending > 0
-                    ? "Customer flexible EMI repayments karega — admin approve karega. Balance 0 hone par due zero."
-                    : "Balance ₹0 — due zero ✅"}
-                </p>
-              </div>
-            )}
-            {closure.adminRemarks && (
-              <p className="mt-3 text-sm text-gray-600">{closure.adminRemarks}</p>
-            )}
+          <div className="mt-5 space-y-4">
+            <div className="rounded-2xl bg-green-50 p-6 text-center">
+              <div className="text-4xl">🔒</div>
+              <p className="mt-3 text-xl font-black text-green-700">SERVICE CLOSED</p>
+              <p className="mt-2 text-sm font-bold text-green-700">💳 Payment updated by admin — {closure.paymentStatus === "PAID" ? "PAID" : closure.paymentStatus} via {closure.paidVia || "CASH"}</p>
+              {closure.paidVia === "EMI" && (
+                <div className="mx-auto mt-3 max-w-sm rounded-xl bg-white p-3 text-left text-xs">
+                  <p className="font-bold text-blue-800">📊 EMI PLAN (customer ke EMI Details me)</p>
+                  <p className="mt-1 text-gray-700">
+                    Total ₹{(closure.finalPrice || closure.amount).toLocaleString("en-IN")} • Abhi paid ₹
+                    {closure.cashCollected.toLocaleString("en-IN")} • Balance ₹
+                    {closure.emiPending.toLocaleString("en-IN")}
+                  </p>
+                  <p className="mt-1 text-blue-700">
+                    {closure.emiPending > 0
+                      ? "Customer flexible EMI repayments karega — admin approve karega. Balance 0 hone par due zero."
+                      : "Balance ₹0 — due zero ✅"}
+                  </p>
+                </div>
+              )}
+              {closure.adminRemarks && (
+                <p className="mt-3 text-sm text-gray-600">{closure.adminRemarks}</p>
+              )}
+            </div>
+
+            {/* Reopen for Edit button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm("Booking reopen karni hai? Payment details dobara edit kar sakte hain.")) {
+                  onReopen();
+                }
+              }}
+              disabled={busy}
+              className="w-full rounded-full border-2 border-dashed border-gray-300 bg-white px-6 py-3 text-sm font-bold text-gray-600 transition hover:border-pink-400 hover:text-pink-600 disabled:opacity-50"
+            >
+              {busy ? "Processing..." : "✏️ REOPEN FOR PAYMENT EDIT"}
+            </button>
           </div>
         )}
       </div>

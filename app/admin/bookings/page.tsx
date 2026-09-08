@@ -167,17 +167,21 @@ export default function AdminBookingsPage() {
                   🔒 OPEN SERVICE CLOSURE →
                 </Link>
               </div>
+            ) : selected.status === "COMPLETED" ? (
+              <div className="mt-5 space-y-3">
+                <div className="rounded-2xl bg-green-100 p-5 text-center text-sm font-bold text-green-700">
+                  ✅ Booking closed — payment reconciled by admin.
+                </div>
+                <Link
+                  href="/admin/closures"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-600 transition hover:border-pink-400 hover:text-pink-600"
+                >
+                  ✏️ EDIT PAYMENT DETAILS →
+                </Link>
+              </div>
             ) : (
-              <div
-                className={`mt-5 rounded-2xl p-5 text-center text-sm font-bold ${
-                  selected.status === "COMPLETED"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-600"
-                }`}
-              >
-                {selected.status === "COMPLETED"
-                  ? "✅ Booking closed — payment reconciled by admin."
-                  : "Booking cancelled."}
+              <div className="mt-5 rounded-2xl bg-red-100 p-5 text-center text-sm font-bold text-red-600">
+                Booking cancelled.
               </div>
             )}
           </div>
