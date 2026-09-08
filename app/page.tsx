@@ -3,6 +3,7 @@ import HeroSlider from "@/components/HeroSlider";
 import FeatureCards from "@/components/FeatureCards";
 import WhyChoose from "@/components/WhyChoose";
 import Footer from "@/components/Footer";
+import InstallApp from "@/components/InstallApp";
 
 export default function Home() {
   return (
@@ -12,6 +13,7 @@ export default function Home() {
       <FeatureCards />
       <WhyChoose />
       <Footer />
+      <InstallApp />
     </main>
   );
 }

@@ -90,13 +90,7 @@ export default function HeroSlider() {
                 }}
               />
 
-              {slide.href && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center">
-                  <span className="rounded-full bg-pink-600 px-7 py-2.5 text-sm font-bold uppercase tracking-wider text-white shadow-lg ring-2 ring-white/70 transition group-hover:bg-pink-700 sm:text-base">
-                    Book Now →
-                  </span>
-                </div>
-              )}
+
             </div>
           );
 
