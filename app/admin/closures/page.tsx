@@ -15,6 +15,9 @@ type BookingClosure = {
   serviceDate: string;
   serviceType: "Home Service" | "Salon";
   amount: number;
+  customerId?: string;
+  finalPrice?: number;
+  listedPrice?: number;
   paymentMethod: "Full Payment" | "No Cost EMI" | "Pay from BOB" | "Mixed/Split";
   bobUsed: number;
   emiPending: number;
@@ -183,6 +186,12 @@ export default function AdminClosuresPage() {
             serviceDate: b.date || "",
             serviceType: b.serviceLocation === "HOME" ? "Home Service" : "Salon",
             amount: Number(b.amount || 0),
+            customerId:
+              b.customerId && typeof b.customerId === "object"
+                ? b.customerId._id || ""
+                : b.customerId || "",
+            finalPrice: Number(b.finalPrice || b.amount || 0),
+            listedPrice: Number(b.listedPrice || b.amount || 0),
             paymentMethod: b.paymentMethod === "BOB" ? "Pay from BOB" : b.paymentMethod === "EMI" ? "No Cost EMI" : b.paymentMethod === "MIXED" ? "Mixed/Split" : "Full Payment",
             bobUsed: Number(b.bobPaidAmount || 0),
             emiPending: Number(b.emiAmount || 0),
@@ -277,55 +286,45 @@ export default function AdminClosuresPage() {
     adminRemarks: string,
     payStatus: string,
     cashCollectedAmt: number,
-    paidVia: string
+    paidVia: string,
+    finalPriceAmt: number,
+    walletAmt: number
   ) {
     const closure = closures.find((c) => c.id === id) || null;
 
     setBusy(true);
+    // Backend close route: final price (listed vs final) + BOB wallet settlement
+    // (FIFO wallet deduction + walletTransactionId). Admin rating nahi deta.
     const res = await apiPatch(`/bookings/${id}/close`, {
       adminRemarks,
       paymentStatus: payStatus,
       cashAmount: cashCollectedAmt,
       paidVia,
+      finalPrice: finalPriceAmt || "",
+      walletAmount: walletAmt || 0,
     });
     setBusy(false);
     if (!res.ok) {
       alert(res.message || "Failed to close booking. Please try again.");
       return;
     }
-    // EMI close → backend apne aap EMIPlan banata hai (total/paid/balance),
-    // balance = amount - collected. Yahan list me bhi wahi numbers dikhate hain.
-    const balance =
-      paidVia === "EMI" ? Math.max(0, (closure?.amount || 0) - cashCollectedAmt) : 0;
-    const effPayStatus = paidVia === "EMI" ? (balance > 0 ? "PARTIAL" : "PAID") : payStatus;
-    setClosures((prev) =>
-      prev.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              status: "CLOSED" as const,
-              paymentStatus: effPayStatus,
-              paidVia,
-              cashCollected: cashCollectedAmt,
-              emiPending: balance,
-              adminRemarks,
-            }
-          : c
-      )
-    );
-    setSelected((prev) =>
-      prev
-        ? {
-            ...prev,
-            status: "CLOSED",
-            paymentStatus: effPayStatus,
-            paidVia,
-            cashCollected: cashCollectedAmt,
-            emiPending: balance,
-            adminRemarks,
-          }
-        : null
-    );
+    // Local mirror = backend settlement
+    const bill = Math.max(0, Number(finalPriceAmt) || closure?.amount || 0);
+    const walletUsed = Math.min(bill, Math.max(0, Number(walletAmt) || 0));
+    const bobTotal = Math.min(bill, walletUsed);
+    const balance = Math.max(0, bill - walletUsed - cashCollectedAmt);
+    const donePatch = {
+      status: "CLOSED" as const,
+      finalPrice: bill,
+      paymentStatus: payStatus,
+      paidVia,
+      bobUsed: bobTotal,
+      cashCollected: cashCollectedAmt,
+      emiPending: balance,
+      adminRemarks,
+    };
+    setClosures((prev) => prev.map((c) => (c.id === id ? { ...c, ...donePatch } : c)));
+    setSelected((prev) => (prev ? { ...prev, ...donePatch } : null));
   }
 
   const pendingCount = closures.filter((c) => c.status === "PARTNER_COMPLETED").length;
@@ -489,8 +488,16 @@ export default function AdminClosuresPage() {
           onClose={() => setSelected(null)}
           onChecklist={(key) => updateChecklist(selected.id, key)}
           onVerify={() => verifyClosure(selected.id)}
-          onClosures={(adminRemarks, payStatus, cashCollectedAmt, paidVia) =>
-            closeClosure(selected.id, adminRemarks, payStatus, cashCollectedAmt, paidVia)
+          onClosures={(adminRemarks, payStatus, cashCollectedAmt, paidVia, finalPriceAmt, walletAmt) =>
+            closeClosure(
+              selected.id,
+              adminRemarks,
+              payStatus,
+              cashCollectedAmt,
+              paidVia,
+              finalPriceAmt,
+              walletAmt
+            )
           }
         />
       )}
@@ -508,7 +515,14 @@ type ClosureModalProps = {
   onClose: () => void;
   onChecklist: (key: keyof BookingClosure["verificationChecklist"]) => void;
   onVerify: () => void;
-  onClosures: (adminRemarks: string, payStatus: string, cashCollectedAmt: number, paidVia: string) => void;
+  onClosures: (
+    adminRemarks: string,
+    payStatus: string,
+    cashCollectedAmt: number,
+    paidVia: string,
+    finalPriceAmt: number,
+    walletAmt: number
+  ) => void;
 };
 
 function ClosureModal({
@@ -520,61 +534,56 @@ function ClosureModal({
   onClosures,
 }: ClosureModalProps) {
   const [adminRemarks, setAdminRemarks] = useState(closure.adminRemarks);
-  // Mode ka default booking ke option ke hisaab se — EMI booking → EMI mode,
-  // BOB booking → BOB mode (kyunki booking ke waqt koi payment nahi hui).
-  const defaultVia = () =>
-    closure.paymentMethod === "No Cost EMI"
-      ? "EMI"
-      : closure.paymentMethod === "Pay from BOB"
-        ? "BOB"
-        : closure.paymentMethod === "Mixed/Split"
-          ? "EMI"
-          : "CASH";
-  // RULE (25/75 EMI): EMI pe bill ka minimum 25% abhi pay karna hoga;
-  // baaki 75% EMI balance customer flexible repayments me dega.
-  const billTotal = Math.max(0, Number(closure.amount) || 0);
-  const minDown = Math.ceil(billTotal * 0.25);
-  const [paidVia, setPaidVia] = useState(closure.paidVia || defaultVia());
-  const [payStatus, setPayStatus] = useState(() => {
-    const via = closure.paidVia || defaultVia();
-    if (via === "EMI") {
-      const collected = Math.max(Number(closure.cashCollected || 0), minDown);
-      return Math.max(0, billTotal - collected) > 0 ? "PARTIAL" : "PAID";
-    }
-    return closure.paymentStatus === "PARTIAL" ? "PARTIAL" : "PAID";
-  });
-  const [cashCollectedAmt, setCashCollectedAmt] = useState(
-    String(
-      (closure.paidVia || defaultVia()) === "EMI"
-        ? Math.max(Number(closure.cashCollected || 0), minDown)
-        : closure.cashCollected || 0
-    )
-  );
+  // Final price — listed price default; admin service ke baad final price badal sakta hai
+  const initFinal = Math.max(0, Number(closure.finalPrice || closure.amount || 0));
 
-  const emiDownInvalid =
-    paidVia === "EMI" && (Number(cashCollectedAmt) || 0) < minDown;
+  const [finalPriceAmt, setFinalPriceAmt] = useState(String(initFinal));
+  // BOB wallet settlement — admin closure pe wallet se kitna pay hua
+  const [walletAmt, setWalletAmt] = useState("0");
+  const [bobAvailable, setBobAvailable] = useState<number | null>(null);
+  const [cashCollectedAmt, setCashCollectedAmt] = useState(String(closure.cashCollected || 0));
 
-  // EMI mode → minimum 25% abhi, balance 75% EMI plan me (status PARTIAL),
-  // pura amount collect karne pe PAID (due zero).
-  function changePaidVia(v: string) {
-    setPaidVia(v);
-    if (v === "EMI") {
-      const amt = Math.max(Number(cashCollectedAmt) || 0, minDown);
-      setCashCollectedAmt(String(amt));
-      setPayStatus(billTotal - amt > 0 ? "PARTIAL" : "PAID");
-    }
-  }
-  function onCashChange(v: string) {
-    setCashCollectedAmt(v);
-    if (paidVia === "EMI") {
-      const balance = Math.max(0, billTotal - (Number(v) || 0));
-      setPayStatus(balance > 0 ? "PARTIAL" : "PAID");
-    }
-  }
+  // Customer ka BOB balance (admin closure modal me dikhane ke liye)
+  useEffect(() => {
+    if (!closure.customerId) return;
+    let alive = true;
+    (async () => {
+      const res = await apiGet<any>(`/wallet/lookup/${closure.customerId}`);
+      if (!alive) return;
+      if (res.ok) {
+        setBobAvailable(
+          Number(res.data?.summary?.availableBalance ?? res.data?.summary?.totalBalance ?? 0)
+        );
+      } else {
+        setBobAvailable(null);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [closure.customerId]);
+
+  const finalNum = Math.max(0, Number(finalPriceAmt) || 0);
+  const walletNum = Math.min(Math.max(0, Number(walletAmt) || 0), finalNum);
+  // Existing BOB (booking pe pehle se) + naya closure wallet settlement — EMI sirf bache hue pe
+  const existingBob = Math.min(finalNum, Math.max(0, Number(closure.bobUsed || 0)));
+  const bobTotal = Math.min(finalNum, existingBob + walletNum);
+  const collectedNum = Math.max(0, Number(cashCollectedAmt) || 0);
+  const walletOverBalance = bobAvailable !== null && walletNum > bobAvailable;
+  const balanceAmt = Math.max(0, finalNum - walletNum - collectedNum);
+  const balancePercent = finalNum > 0 ? (balanceAmt / finalNum) * 100 : 0;
+  const canCreateEMI = balancePercent <= 75;
+  const minDown25 = Math.ceil(finalNum * 0.25);
+  const emiDownInvalid = balanceAmt > 0 && collectedNum + walletNum < minDown25;
+  const paidStatusInvalid = balanceAmt > 0 && !canCreateEMI;
+  const closeInvalid = emiDownInvalid || paidStatusInvalid || walletOverBalance || finalNum <= 0;
+
+  function onCashChange(v: string) { setCashCollectedAmt(v); }
+  function onFinalChange(v: string) { setFinalPriceAmt(v); }
+  function onWalletChange(v: string) { setWalletAmt(v); }
 
   const cl = closure.verificationChecklist;
   const allChecked = cl.serviceDelivered && cl.customerPresent && cl.qualityConfirmed && cl.paymentConfirmed;
-  const totalPaid = closure.bobUsed + closure.emiPending + closure.cashCollected;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -634,47 +643,42 @@ function ClosureModal({
           </div>
         )}
 
-        {/* Payment Reconciliation */}
-        <div className="mt-5 rounded-2xl border border-gray-200 p-5">
-          <p className="text-sm font-bold uppercase tracking-[0.2em] text-pink-600">
-            PAYMENT RECONCILIATION
-          </p>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p className="text-xs font-bold text-gray-400">TOTAL AMOUNT</p>
-              <p className="mt-1 text-2xl font-black text-gray-900">
-                ₹{closure.amount.toLocaleString("en-IN")}
-              </p>
+        {/* Payment Summary — sirf CLOSED status pe dikhao (admin ne fill kar diya) */}
+        {closure.status === "CLOSED" && closure.paymentStatus && (
+          <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5">
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-green-700">
+              💳 PAYMENT SUMMARY
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl bg-white p-3">
+                <p className="text-xs font-bold text-gray-500">FINAL PRICE</p>
+                <p className="mt-1 text-xl font-black text-gray-900">₹{(closure.finalPrice || closure.amount).toLocaleString("en-IN")}</p>
+              </div>
+              <div className="rounded-xl bg-white p-3">
+                <p className="text-xs font-bold text-gray-500">PAID VIA</p>
+                <p className="mt-1 font-bold text-gray-900">{closure.paidVia || "—"}</p>
+              </div>
+              <div className="rounded-xl bg-white p-3">
+                <p className="text-xs font-bold text-gray-500">STATUS</p>
+                <p className="mt-1 font-bold text-green-700">{closure.paymentStatus}</p>
+              </div>
             </div>
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p className="text-xs font-bold text-gray-400">PAYMENT METHOD</p>
-              <p className="mt-1 font-bold text-gray-900">{closure.paymentMethod}</p>
-            </div>
-          </div>
-
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl bg-green-50 p-3">
-              <p className="text-xs font-bold text-green-700">BOB WALLET USED</p>
-              <p className="mt-1 font-bold text-green-700">₹{closure.bobUsed.toLocaleString("en-IN")}</p>
-            </div>
-            <div className="rounded-xl bg-amber-50 p-3">
-              <p className="text-xs font-bold text-amber-700">CASH COLLECTED</p>
-              <p className="mt-1 font-bold text-amber-700">₹{closure.cashCollected.toLocaleString("en-IN")}</p>
-            </div>
-            <div className="rounded-xl bg-blue-50 p-3">
-              <p className="text-xs font-bold text-blue-700">EMI PENDING</p>
-              <p className="mt-1 font-bold text-blue-700">₹{closure.emiPending.toLocaleString("en-IN")}</p>
-            </div>
-          </div>
-
-          <div className="mt-3 rounded-xl bg-slate-100 p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-gray-700">Total Paid/Collected</span>
-              <span className="text-lg font-black text-gray-900">₹{totalPaid.toLocaleString("en-IN")}</span>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl bg-blue-50 p-3">
+                <p className="text-xs font-bold text-blue-700">BOB WALLET</p>
+                <p className="mt-1 font-bold text-blue-700">₹{(closure.bobUsed || 0).toLocaleString("en-IN")}</p>
+              </div>
+              <div className="rounded-xl bg-amber-50 p-3">
+                <p className="text-xs font-bold text-amber-700">CASH / UPI</p>
+                <p className="mt-1 font-bold text-amber-700">₹{(closure.cashCollected || 0).toLocaleString("en-IN")}</p>
+              </div>
+              <div className="rounded-xl bg-orange-50 p-3">
+                <p className="text-xs font-bold text-orange-700">EMI PENDING</p>
+                <p className="mt-1 font-bold text-orange-700">₹{(closure.emiPending || 0).toLocaleString("en-IN")}</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Step 1: Verification Checklist */}
         {closure.status === "PARTNER_COMPLETED" && (
@@ -725,13 +729,13 @@ function ClosureModal({
         {/* Step 2: Payment Reconciliation + Close (shown after verification) */}
         {closure.status === "ADMIN_VERIFIED" && (
           <div className="mt-5 space-y-5">
-            {/* Step 2: Payment + Close — rating yahan nahi, customer apne dashboard se deta hai */}
+            {/* Step 2 Header */}
             <div className="rounded-2xl border border-pink-200 bg-pink-50 p-5">
               <p className="text-sm font-bold uppercase tracking-[0.2em] text-pink-600">
                 STEP 2: PAYMENT & CLOSE
               </p>
               <p className="mt-1 text-sm text-gray-600">
-                Rating customer service ke baad apne dashboard se dega.
+                Service price fill karein, final price enter karein, payment details submit karein.
               </p>
             </div>
 
@@ -749,118 +753,190 @@ function ClosureModal({
               />
             </div>
 
-            {/* Payment Update — RULE: admin closure ke waqt payment update karta hai */}
+            {/* ═══ NEW PAYMENT UPDATE ═══ */}
             <div className="rounded-2xl border border-green-200 bg-green-50/50 p-5">
               <p className="text-sm font-bold uppercase tracking-[0.2em] text-green-700">
-                💳 PAYMENT UPDATE (AFTER SERVICE)
+                💳 PAYMENT UPDATE
               </p>
-              <p className="mt-1 text-sm text-gray-600">
-                Customer ne service ke baad payment kar di hai? Status update karein.
-              </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <div>
-                  <label className="mb-1 block text-xs font-bold text-gray-600">PAID VIA (MODE)</label>
-                  <select
-                    value={paidVia}
-                    onChange={(e) => changePaidVia(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-green-500"
-                  >
-                    <option value="CASH">💵 Cash</option>
-                    <option value="UPI">📱 UPI</option>
-                    <option value="BOB">🏦 BOB Wallet</option>
-                    <option value="EMI">📊 EMI</option>
-                  </select>
+
+              {/* Row 1: Service Price (listed) + Final Price (admin editable) */}
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl bg-gray-100 p-4">
+                  <p className="text-xs font-bold text-gray-500">SERVICE PRICE (LISTED)</p>
+                  <p className="mt-1 text-2xl font-black text-gray-800">
+                    ₹{Number(closure.amount || 0).toLocaleString("en-IN")}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-gray-400">Booking me listed price</p>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-bold text-gray-600">PAYMENT STATUS</label>
-                  <select
-                    value={payStatus}
-                    onChange={(e) => setPayStatus(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-green-500"
-                  >
-                    <option value="PAID">✓ PAID</option>
-                    <option value="PARTIAL">PARTIAL</option>
-                    <option value="PENDING">PENDING</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-bold text-gray-600">AMOUNT COLLECTED (₹)</label>
+                <div className="rounded-xl border-2 border-green-300 bg-white p-4">
+                  <p className="text-xs font-bold text-green-700">FINAL PRICE (₹)</p>
                   <input
                     type="number"
-                    min={0}
-                    value={cashCollectedAmt}
-                    onChange={(e) => onCashChange(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-green-500"
+                    min={1}
+                    value={finalPriceAmt}
+                    onChange={(e) => onFinalChange(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-lg font-black outline-none focus:border-green-500 focus:bg-white"
                   />
+                  {Number(closure.amount) !== finalNum && finalNum > 0 && (
+                    <p className="mt-1 text-[11px] text-orange-600 font-semibold">
+                      ⚠ Listed ₹{Number(closure.amount || 0).toLocaleString("en-IN")} se alag — saari calculation final price se hogi.
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* EMI mode → plan auto-create ka preview (customer EMI details me dikhega) */}
-              {paidVia === "EMI" && (() => {
-                const collected = Math.max(Number(cashCollectedAmt) || 0, 0);
-                const balance = Math.max(0, billTotal - collected);
-                const invalid = collected < minDown;
+              {/* Row 2: BOB Wallet + Cash/UPI */}
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                  <p className="text-xs font-bold text-blue-700">🏦 BOB WALLET PAID (₹)</p>
+                  <input
+                    type="number"
+                    min={0}
+                    max={finalNum}
+                    value={walletAmt}
+                    onChange={(e) => onWalletChange(e.target.value)}
+                    className={`mt-1 w-full rounded-lg border bg-white px-3 py-2 text-lg font-black outline-none focus:border-blue-500 ${
+                      walletOverBalance ? "border-red-400" : "border-blue-200"
+                    }`}
+                  />
+                  <p className={`mt-1 text-[11px] ${walletOverBalance ? "font-bold text-red-600" : "text-blue-600"}`}>
+                    {bobAvailable === null
+                      ? "Customer ka BOB wallet nahi hai."
+                      : `Available: ₹${bobAvailable.toLocaleString("en-IN")}`}
+                    {walletOverBalance ? " — balance se zyada nahi!" : ""}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-xs font-bold text-amber-700">💵 CASH / UPI PAID (₹)</p>
+                  <input
+                    type="number"
+                    min={0}
+                    max={finalNum}
+                    value={cashCollectedAmt}
+                    onChange={(e) => onCashChange(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-lg font-black outline-none focus:border-amber-500"
+                  />
+                  <p className="mt-1 text-[11px] text-amber-600">Cash ya UPI — jo bhi customer ne diya</p>
+                </div>
+              </div>
+
+              {/* Row 3: Auto-calculated balance + EMI logic */}
+              {(() => {
+                const bobPaid = Math.min(finalNum, Math.max(0, Number(walletAmt) || 0));
+                const cashPaid = Math.max(0, Number(cashCollectedAmt) || 0);
+                const totalPaidNow = bobPaid + cashPaid;
+                const balance = Math.max(0, finalNum - totalPaidNow);
+                const balancePercent = finalNum > 0 ? (balance / finalNum) * 100 : 0;
+                const canCreateEMI = balancePercent <= 75; // balance ≤ 75% of final → EMI allowed
+                const minDown25 = Math.ceil(finalNum * 0.25);
+
                 return (
-                  <div className={`mt-4 rounded-xl border p-4 text-sm ${invalid ? "border-red-300 bg-red-50" : "border-blue-200 bg-blue-50"}`}>
-                    <p className={`font-bold ${invalid ? "text-red-800" : "text-blue-800"}`}>
-                      📊 EMI RULE — MIN 25% DOWN + 75% EMI BALANCE
-                    </p>
-                    <p className={`mt-1 ${invalid ? "text-red-700" : "text-blue-700"}`}>
-                      Bill ₹{billTotal.toLocaleString("en-IN")} pe minimum 25% ={" "}
-                      <strong>₹{minDown.toLocaleString("en-IN")}</strong> abhi pay karna hoga.
-                      Baaki 75% tak EMI balance customer ke <strong>EMI Details</strong> me
-                      banega — customer weekly / jab jitna paisa ho flexible repayments me dega.
-                    </p>
-                    {!invalid && (
-                      <div className="mt-2 grid gap-2 text-xs sm:grid-cols-4">
-                        <div className="rounded-lg bg-white p-2">
-                          <p className="font-bold text-gray-400">SERVICE</p>
-                          <p className="mt-0.5 font-bold text-gray-900">{closure.service}</p>
+                  <>
+                    {/* Balance row */}
+                    <div className="mt-4 rounded-xl bg-slate-100 p-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-gray-600">BALANCE AMOUNT</span>
+                        <span className={`text-2xl font-black ${balance > 0 ? "text-orange-600" : "text-green-600"}`}>
+                          ₹{balance.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-200">
+                          <div
+                            className={`h-full rounded-full transition-all ${balance > 0 ? "bg-orange-400" : "bg-green-500"}`}
+                            style={{ width: `${Math.min(100, 100 - balancePercent)}%` }}
+                          />
                         </div>
-                        <div className="rounded-lg bg-white p-2">
-                          <p className="font-bold text-gray-400">TOTAL</p>
-                          <p className="mt-0.5 font-black text-gray-900">₹{billTotal.toLocaleString("en-IN")}</p>
-                        </div>
-                        <div className="rounded-lg bg-white p-2">
-                          <p className="font-bold text-gray-400">DOWN PAYMENT (ABHI)</p>
-                          <p className="mt-0.5 font-black text-green-700">₹{collected.toLocaleString("en-IN")}</p>
-                        </div>
-                        <div className="rounded-lg bg-white p-2">
-                          <p className="font-bold text-gray-400">EMI BALANCE (75% TAK)</p>
-                          <p className="mt-0.5 font-black text-orange-700">₹{balance.toLocaleString("en-IN")}</p>
-                        </div>
+                        <span className="text-xs font-bold text-gray-500">
+                          {Math.round(100 - balancePercent)}% paid
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-gray-500">
+                        Final ₹{finalNum.toLocaleString("en-IN")} − BOB ₹{bobPaid.toLocaleString("en-IN")} − Cash/UPI ₹{cashPaid.toLocaleString("en-IN")} = Balance ₹{balance.toLocaleString("en-IN")}
+                      </p>
+                    </div>
+
+                    {/* EMI logic */}
+                    {balance > 0 && (
+                      <div className="mt-3">
+                        {!canCreateEMI ? (
+                          <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4">
+                            <p className="text-sm font-bold text-red-800">
+                              ⚠️ EMI NAHI BANEGA — Balance ₹{balance.toLocaleString("en-IN")} ({Math.round(balancePercent)}%) final price ka 75% se zyada hai.
+                            </p>
+                            <p className="mt-1 text-sm text-red-700">
+                              Customer se aur ₹{Math.max(0, balance - Math.ceil(finalNum * 0.75)).toLocaleString("en-IN")} collect karein, fir EMI create hoga.
+                              Ya poora amount Cash/UPI me le ke CLOSE karein.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                            <p className="text-sm font-bold text-blue-800">
+                              📊 EMI PLAN AUTO-CREATE HOGA
+                            </p>
+                            <div className="mt-2 grid gap-2 text-xs sm:grid-cols-3">
+                              <div className="rounded-lg bg-white p-2">
+                                <p className="font-bold text-gray-400">TOTAL BILL</p>
+                                <p className="mt-0.5 font-black text-gray-900">₹{finalNum.toLocaleString("en-IN")}</p>
+                              </div>
+                              <div className="rounded-lg bg-white p-2">
+                                <p className="font-bold text-gray-400">PAID NOW</p>
+                                <p className="mt-0.5 font-black text-green-700">₹{totalPaidNow.toLocaleString("en-IN")}</p>
+                              </div>
+                              <div className="rounded-lg bg-white p-2">
+                                <p className="font-bold text-gray-400">EMI BALANCE</p>
+                                <p className="mt-0.5 font-black text-orange-700">₹{balance.toLocaleString("en-IN")}</p>
+                              </div>
+                            </div>
+                            <p className="mt-2 text-xs text-blue-700">
+                              Balance ₹{balance.toLocaleString("en-IN")} customer ke <strong>EMI Details</strong> me dikhega — weekly / jab jitna paisa ho flexible repayments me dega.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
-                    <p className={`mt-2 text-xs ${invalid ? "text-red-700" : "text-blue-700"}`}>
-                      {invalid
-                        ? `⚠️ EMI close karne ke liye minimum ₹${minDown.toLocaleString("en-IN")} (25%) abhi collect karna zaroori hai — aur amount bharo.`
-                        : balance > 0
-                          ? `EMI plan auto-create hoga — Total ₹${billTotal.toLocaleString("en-IN")} • Down ₹${collected.toLocaleString("en-IN")} • Balance ₹${balance.toLocaleString("en-IN")}. Pura pay karne par due ₹0.`
-                          : "Balance ₹0 — pura amount collect ho gaya, customer ka due zero."}
-                    </p>
-                  </div>
+
+                    {balance === 0 && totalPaidNow > 0 && (
+                      <div className="mt-3 rounded-xl border border-green-200 bg-green-50 p-4">
+                        <p className="text-sm font-bold text-green-800">
+                          ✅ FULLY PAID — Due ₹0. Booking CLOSE ho jayegi.
+                        </p>
+                      </div>
+                    )}
+                  </>
                 );
               })()}
             </div>
 
-            {emiDownInvalid && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
-                ⚠️ EMI close ke liye minimum ₹{minDown.toLocaleString("en-IN")} (bill ka 25%) abhi pay karna hoga.
-              </div>
-            )}
-
             {/* Close Button */}
             <button
               type="button"
-              onClick={() => onClosures(adminRemarks, payStatus, Number(cashCollectedAmt) || 0, paidVia)}
-              disabled={busy || emiDownInvalid}
+              onClick={() => {
+                const effPayStatus = balanceAmt === 0 ? "PAID" : "PARTIAL";
+                const effPaidVia = balanceAmt > 0 ? "EMI" : (collectedNum > 0 ? "CASH" : "UPI");
+                onClosures(
+                  adminRemarks,
+                  effPayStatus,
+                  collectedNum,
+                  effPaidVia,
+                  finalNum,
+                  walletNum
+                );
+              }}
+              disabled={busy || closeInvalid}
               className={`w-full rounded-full px-6 py-3.5 font-bold text-white transition ${
-                !emiDownInvalid
+                !closeInvalid
                   ? "bg-pink-600 hover:bg-pink-700"
                   : "bg-gray-300 cursor-not-allowed"
               }`}
             >
-              {busy ? "PROCESSING..." : emiDownInvalid ? "🔒 MIN 25% DOWN PAYMENT CHAHIYE" : "🔒 CLOSE SERVICE & UPDATE PAYMENT"}
+              {busy
+                ? "PROCESSING..."
+                : emiDownInvalid
+                  ? "🔒 MIN 25% DOWN PAYMENT CHAHIYE"
+                  : paidStatusInvalid
+                    ? "⚠️ PAID KE LIYE PURA AMOUNT CHAHIYE"
+                    : "🔒 CLOSE SERVICE & UPDATE PAYMENT"}
             </button>
           </div>
         )}

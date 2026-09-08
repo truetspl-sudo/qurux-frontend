@@ -78,6 +78,21 @@ export default function PartnerDashboardPage() {
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [markMsg, setMarkMsg] = useState<{ id: string; text: string; error?: boolean } | null>(null);
 
+  async function startService(id: string) {
+    setMarkingId(id);
+    setMarkMsg(null);
+    const res = await apiPatch<any>(`/bookings/${id}/start`, {});
+    setMarkingId(null);
+    if (res.ok) {
+      setMarkMsg({ id, text: "▶️ Service start ho gayi — IN_PROGRESS." });
+      setBookings((prev) =>
+        prev.map((b) => (b._id === id ? { ...b, status: "IN_PROGRESS" } : b))
+      );
+    } else {
+      setMarkMsg({ id, text: res.message || "Start karne me error aaya.", error: true });
+    }
+  }
+
   async function markServiceDone(id: string) {
     setMarkingId(id);
     setMarkMsg(null);
@@ -428,24 +443,63 @@ export default function PartnerDashboardPage() {
                           {markMsg.text}
                         </p>
                       )}
-                      {b.status === "PARTNER_COMPLETED" ? (
+                      {/* ── PENDING / CONFIRMED → START SERVICE ── */}
+                      {(b.status === "PENDING" || b.status === "CONFIRMED") && (
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => startService(b._id)}
+                            disabled={markingId === b._id}
+                            className="rounded-full bg-blue-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            {markingId === b._id ? "Starting..." : "▶️ START SERVICE"}
+                          </button>
+                          <a
+                            href={`https://wa.me/${b.customerPhone.startsWith("+91") ? b.customerPhone : `91${b.customerPhone}`}?text=${encodeURIComponent(
+                              [`Hi ${b.customerName},`, "", `Aapki booking ${b.bookingId} confirm ho gayi hai.`, `Service: ${b.serviceName}`, `Date: ${b.date} at ${b.timeSlot || "TBD"}`, "", "Jaldi milte hain! 🙏"].join("\n")
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-green-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-green-700"
+                          >
+                            💬 WhatsApp to Customer
+                          </a>
+                        </span>
+                      )}
+
+                      {/* ── IN_PROGRESS → COMPLETE SERVICE + WhatsApp to Customer ── */}
+                      {b.status === "IN_PROGRESS" && (
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => markServiceDone(b._id)}
+                            disabled={markingId === b._id}
+                            className="rounded-full bg-green-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-green-700 disabled:opacity-50"
+                          >
+                            {markingId === b._id ? "Completing..." : "✅ COMPLETE SERVICE"}
+                          </button>
+                          <a
+                            href={`https://wa.me/${b.customerPhone.startsWith("+91") ? b.customerPhone : `91${b.customerPhone}`}?text=${encodeURIComponent(
+                              [`Hi ${b.customerName},`, "", `Aapki service ${b.serviceName} ho gayi hai!`, `Booking: ${b.bookingId}`, "", "Koi feedback ho to batayein. Dhanyawad! 🙏"].join("\n")
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-700"
+                          >
+                            💬 WhatsApp to Customer
+                          </a>
+                        </span>
+                      )}
+
+                      {/* ── PARTNER_COMPLETED → Admin verification pending + nudge ── */}
+                      {b.status === "PARTNER_COMPLETED" && (
                         <span className="inline-flex flex-wrap items-center gap-2">
                           <span className="inline-flex items-center gap-2 rounded-full bg-purple-100 px-4 py-2 text-xs font-bold text-purple-700">
                             ⏳ ADMIN VERIFICATION PENDING
                           </span>
                           <a
                             href={`https://wa.me/919911227916?text=${encodeURIComponent(
-                              [
-                                "🎋 QURUX Makeover & Academy — Partner Salon",
-                                "",
-                                `📋 Booking: ${b.bookingId}`,
-                                `💄 Service: ${b.serviceName}`,
-                                `👤 Customer: ${b.customerName} (${b.customerPhone})`,
-                                `📅 Date: ${b.date} at ${b.timeSlot || "TBD"}`,
-                                `💳 Payment: ${b.paymentMethod} — ₹${b.amount}`,
-                                "",
-                                "✅ Service complete ho gayi hai. Kripya closure verification + payment update karke booking close kar dein. Dhanyawad! 🙏",
-                              ].join("\n")
+                              [`🎋 QURUX Makeover & Academy — Partner Salon`, "", `📋 Booking: ${b.bookingId}`, `💄 Service: ${b.serviceName}`, `👤 Customer: ${b.customerName} (${b.customerPhone})`, `📅 Date: ${b.date} at ${b.timeSlot || "TBD"}`, `💳 Payment: ${b.paymentMethod} — ₹${b.amount}`, "", "✅ Service complete ho gayi hai. Kripya closure verification + payment update karke booking close kar dein. Dhanyawad! 🙏"].join("\n")
                             )}`}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -454,35 +508,17 @@ export default function PartnerDashboardPage() {
                             💬 WhatsApp to Admin
                           </a>
                         </span>
-                      ) : b.status === "PENDING" || b.status === "CONFIRMED" || b.status === "IN_PROGRESS" ? (
-                        <button
-                          type="button"
-                          onClick={() => markServiceDone(b._id)}
-                          disabled={markingId === b._id}
-                          className="rounded-full bg-green-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-green-700 disabled:opacity-50"
-                        >
-                          {markingId === b._id
-                            ? "Marking..."
-                            : "✅ Mark Service Completed"}
-                        </button>
-                      ) : b.status === "COMPLETED" ? (
+                      )}
+
+                      {/* ── COMPLETED / CLOSED ── */}
+                      {b.status === "COMPLETED" && (
                         <span className="inline-flex flex-wrap items-center gap-2">
                           <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-xs font-bold text-green-700">
                             🔒 CLOSED BY ADMIN
                           </span>
                           <a
                             href={`https://wa.me/919911227916?text=${encodeURIComponent(
-                              [
-                                "🎋 QURUX Makeover & Academy — Partner Salon",
-                                "",
-                                `📋 Booking: ${b.bookingId}`,
-                                `💄 Service: ${b.serviceName}`,
-                                `👤 Customer: ${b.customerName} (${b.customerPhone})`,
-                                `📅 Date: ${b.date} at ${b.timeSlot || "TBD"}`,
-                                `💳 Payment: ${b.paymentMethod} — ₹${b.amount}`,
-                                "",
-                                "✅ Service complete ho gayi hai aur booking close ho gayi hai. Kripya closure verification + payment update karein. Dhanyawad! 🙏",
-                              ].join("\n")
+                              [`🎋 QURUX Makeover & Academy — Partner Salon`, "", `📋 Booking: ${b.bookingId}`, `💄 Service: ${b.serviceName}`, `👤 Customer: ${b.customerName} (${b.customerPhone})`, "", "✅ Booking close ho gayi hai. Dhanyawad! 🙏"].join("\n")
                             )}`}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -491,7 +527,7 @@ export default function PartnerDashboardPage() {
                             💬 WhatsApp to Admin
                           </a>
                         </span>
-                      ) : null}
+                      )}
                     </div>
                   </div>
                 ))}
