@@ -251,16 +251,48 @@ export default function AdminEMIPage() {
               </button>
             </div>
 
-            {/* Plan Info */}
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl bg-gray-50 p-4">
-                <p className="text-xs font-bold text-gray-400">PURCHASE</p>
-                <p className="mt-1 font-bold text-gray-900">{selected.purchaseName}</p>
+            {/* Customer Details */}
+            {typeof selected.customerId === "object" && selected.customerId && (
+              <div className="mt-4 rounded-2xl border border-pink-200 bg-pink-50 p-4">
+                <p className="text-xs font-bold uppercase text-pink-600">👤 CUSTOMER DETAILS</p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                  <div>
+                    <p className="text-[11px] text-gray-500">Name</p>
+                    <p className="font-bold text-gray-900">{selected.customerId.fullName || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-gray-500">Mobile</p>
+                    <p className="font-bold text-gray-900">{selected.customerId.mobile || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-gray-500">User ID</p>
+                    <p className="font-bold text-gray-900">{selected.customerId.userId || "—"}</p>
+                  </div>
+                </div>
               </div>
-              <div className="rounded-2xl bg-gray-50 p-4">
-                <p className="text-xs font-bold text-gray-400">TYPE</p>
-                <p className="mt-1 font-bold text-gray-900">{selected.purchaseType}</p>
+            )}
+
+            {/* Invoice / Service Info */}
+            <div className="mt-4 rounded-2xl border border-gray-200 p-4">
+              <p className="text-xs font-bold uppercase text-gray-500">🧾 INVOICE DETAILS</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                <div>
+                  <p className="text-[11px] text-gray-500">Service / Product</p>
+                  <p className="font-bold text-gray-900">{selected.purchaseName}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-500">Type</p>
+                  <p className="font-bold text-gray-900">{selected.purchaseType}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-500">Plan Created</p>
+                  <p className="font-bold text-gray-900">{new Date(selected.createdAt).toLocaleDateString("en-IN")}</p>
+                </div>
               </div>
+            </div>
+
+            {/* Payment Summary */}
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl bg-gray-50 p-4">
                 <p className="text-xs font-bold text-gray-400">TOTAL AMOUNT</p>
                 <p className="mt-1 text-xl font-black text-gray-900">₹{selected.totalAmount.toLocaleString("en-IN")}</p>
@@ -357,10 +389,41 @@ export default function AdminEMIPage() {
               )}
             </div>
 
-            <div className="mt-5">
+            <div className="mt-5 flex flex-wrap items-center gap-3">
               <span className={`rounded-full px-4 py-2 text-sm font-bold ${statusColors[selected.status]}`}>
                 {selected.status}
               </span>
+
+              {/* WhatsApp Reminder */}
+              {selected.status === "ACTIVE" && selected.pendingAmount > 0 && typeof selected.customerId === "object" && selected.customerId && (
+                <a
+                  href={`https://wa.me/${selected.customerId.mobile?.startsWith("+91") ? selected.customerId.mobile : `91${selected.customerId.mobile || ""}`}?text=${encodeURIComponent(
+                    [
+                      `Hi ${selected.customerId.fullName || "Customer"}! 👋`,
+                      "",
+                      `QURUX Makeover & Academy se aapka reminder hai. 🌸`,
+                      "",
+                      `📋 *Service:* ${selected.purchaseName}`,
+                      `💰 *Total:* ₹${selected.totalAmount.toLocaleString("en-IN")}`,
+                      `✅ *Paid:* ₹${(selected.bobPaidAmount + selected.paidAmount).toLocaleString("en-IN")}`,
+                      `⏳ *Pending:* ₹${selected.pendingAmount.toLocaleString("en-IN")}`,
+                      "",
+                      `Aap apni suvidha ke anusar payment kar sakte hain — koi fixed date nahi hai.`,
+                      `Baaki amount aap flexible tarike se de sakte hain.`,
+                      "",
+                      `📞 Payment karne ke baad screenshot humein WhatsApp par bhej dein.`,
+                      `🧑‍💼 Kisi bhi sawaal ke liye humse baat karein.`,
+                      "",
+                      `Thank you for choosing QURUX! 🙏✨`,
+                    ].join("\n")
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-green-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-green-700"
+                >
+                  📱 Send Payment Reminder
+                </a>
+              )}
             </div>
           </div>
         </div>
