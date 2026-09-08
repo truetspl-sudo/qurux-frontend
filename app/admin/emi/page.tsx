@@ -102,9 +102,33 @@ export default function AdminEMIPage() {
     setActionLoading("");
   }
 
-  const filtered = plans.filter((p) => filterStatus === "All" || p.status === filterStatus);
+  const filtered = plans.filter((p) => {
+    const f = filterStatus as string;
+    if (f !== "All" && f !== "OVERDUE" && p.status !== f) return false;
+    if (f === "OVERDUE") {
+      const age = Math.floor((Date.now() - new Date(p.createdAt).getTime()) / 86400000);
+      return p.status === "ACTIVE" && age > 180 && p.pendingAmount > 0;
+    }
+    return true;
+  });
   const activePlans = plans.filter((p) => p.status === "ACTIVE");
-  const totalPending = activePlans.reduce((s, p) => s + p.pendingAmount, 0);
+  const closedPlans = plans.filter((p) => p.status === "COMPLETED");
+  const cancelledPlans = plans.filter((p) => p.status === "CANCELLED");
+  const totalAmount = plans.reduce((s, p) => s + p.totalAmount, 0);
+  const totalReceived = plans.reduce((s, p) => s + p.bobPaidAmount + p.paidAmount, 0);
+  const totalPendingAmt = plans.reduce((s, p) => s + p.pendingAmount, 0);
+  // Overdue: ACTIVE plans older than 180 days with pending balance
+  const overduePlans = activePlans.filter((p) => {
+    const age = Math.floor((Date.now() - new Date(p.createdAt).getTime()) / 86400000);
+    return age > 180 && p.pendingAmount > 0;
+  });
+  const totalOverdue = overduePlans.reduce((s, p) => s + p.pendingAmount, 0);
+  // Penalty: ₹10/day * days overdue * pending amount (simplified)
+  const totalPenalty = overduePlans.reduce((s, p) => {
+    const age = Math.floor((Date.now() - new Date(p.createdAt).getTime()) / 86400000);
+    const overdueDays = Math.max(0, age - 180);
+    return s + (overdueDays * 10); // ₹10/day
+  }, 0);
   const pendingPayments = plans.reduce(
     (acc, p) => acc + p.paymentHistory.filter((ph) => ph.status === "PENDING").length,
     0
@@ -117,38 +141,71 @@ export default function AdminEMIPage() {
 
   return (
     <AdminLayout title="EMI Management" subtitle="Manage EMI plans — approve/reject payments, track balances.">
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-gray-500">TOTAL PLANS</p>
-          <p className="mt-2 text-3xl font-black text-gray-900">{plans.length}</p>
+      {/* Stats Row 1 — Counts */}
+      <div className="grid gap-3 sm:grid-cols-4">
+        <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase text-gray-500">TOTAL EMI PLANS</p>
+          <p className="mt-1 text-2xl font-black text-gray-900">{plans.length}</p>
         </div>
-        <div className="rounded-2xl bg-blue-50 p-5 shadow-sm">
-          <p className="text-sm font-semibold text-blue-700">ACTIVE PLANS</p>
-          <p className="mt-2 text-3xl font-black text-blue-700">{activePlans.length}</p>
+        <div className="rounded-2xl bg-blue-50 p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase text-blue-700">OPEN EMI ACCOUNTS</p>
+          <p className="mt-1 text-2xl font-black text-blue-700">{activePlans.length}</p>
         </div>
-        <div className="rounded-2xl bg-orange-50 p-5 shadow-sm">
-          <p className="text-sm font-semibold text-orange-700">PENDING PAYMENTS</p>
-          <p className="mt-2 text-3xl font-black text-orange-700">{pendingPayments}</p>
+        <div className="rounded-2xl bg-green-50 p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase text-green-700">CLOSED EMI ACCOUNTS</p>
+          <p className="mt-1 text-2xl font-black text-green-700">{closedPlans.length + cancelledPlans.length}</p>
         </div>
-        <div className="rounded-2xl bg-pink-50 p-5 shadow-sm">
-          <p className="text-sm font-semibold text-pink-700">TOTAL PENDING</p>
-          <p className="mt-2 text-3xl font-black text-pink-700">₹{totalPending.toLocaleString("en-IN")}</p>
+        <div className="rounded-2xl bg-purple-50 p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase text-purple-700">PENDING PAYMENTS</p>
+          <p className="mt-1 text-2xl font-black text-purple-700">{pendingPayments}</p>
         </div>
       </div>
 
+      {/* Stats Row 2 — Amounts */}
+      <div className="mt-3 grid gap-3 sm:grid-cols-4">
+        <div className="rounded-2xl bg-gray-50 p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase text-gray-500">TOTAL EMI AMOUNT</p>
+          <p className="mt-1 text-2xl font-black text-gray-900">₹{totalAmount.toLocaleString("en-IN")}</p>
+        </div>
+        <div className="rounded-2xl bg-green-50 p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase text-green-700">RECEIVED AMOUNT</p>
+          <p className="mt-1 text-2xl font-black text-green-700">₹{totalReceived.toLocaleString("en-IN")}</p>
+        </div>
+        <div className="rounded-2xl bg-orange-50 p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase text-orange-700">PENDING AMOUNT</p>
+          <p className="mt-1 text-2xl font-black text-orange-700">₹{totalPendingAmt.toLocaleString("en-IN")}</p>
+        </div>
+        <div className="rounded-2xl bg-red-50 p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase text-red-700">OVERDUE (6+ MONTHS)</p>
+          <p className="mt-1 text-2xl font-black text-red-700">₹{totalOverdue.toLocaleString("en-IN")}</p>
+          <p className="text-[11px] text-red-500">{overduePlans.length} plans</p>
+        </div>
+      </div>
+
+      {/* Stats Row 3 — Penalty */}
+      {totalPenalty > 0 && (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border-2 border-red-200 bg-red-50 p-4 shadow-sm">
+            <p className="text-xs font-bold uppercase text-red-700">⚠️ TOTAL PENALTY (₹10/day)</p>
+            <p className="mt-1 text-3xl font-black text-red-700">₹{totalPenalty.toLocaleString("en-IN")}</p>
+            <p className="text-[11px] text-red-500">Auto-calculated: ₹10/day after 6 months on overdue plans</p>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
-      <div className="mt-6 flex gap-2">
-        {["All", "ACTIVE", "COMPLETED", "CANCELLED"].map((s) => (
+      <div className="mt-5 flex flex-wrap gap-2">
+        <p className="w-full text-xs font-bold uppercase text-gray-400">FILTER</p>
+        {["All", "ACTIVE", "COMPLETED", "CANCELLED", "OVERDUE"].map((s) => (
           <button
             key={s}
             type="button"
             onClick={() => setFilterStatus(s)}
-            className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-              filterStatus === s ? "bg-pink-600 text-white" : "bg-white text-gray-700 shadow-sm hover:bg-pink-50"
+            className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
+              filterStatus === s ? "bg-pink-600 text-white" : "bg-white text-gray-600 shadow-sm hover:bg-pink-50"
             }`}
           >
-            {s === "All" ? "All" : s}
+            {s === "All" ? "All" : s === "ACTIVE" ? "🟢 Active" : s === "COMPLETED" ? "✅ Completed" : s === "CANCELLED" ? "❌ Cancelled" : "🔴 Overdue (6mo+)"}
           </button>
         ))}
       </div>
