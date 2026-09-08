@@ -29,7 +29,11 @@ type BookingClosure = {
   paymentCollectionMethod?: string;
   vendorDirectAmount?: number;
   companyCollectedAmount?: number;
+  gstSlab?: number;
   gstAmount?: number;
+  cgst?: number;
+  sgst?: number;
+  basePrice?: number;
   platformCommission?: number;
   vendorGrossPayout?: number;
   vendorNetPayout?: number;
@@ -297,7 +301,8 @@ export default function AdminClosuresPage() {
     finalPriceAmt: number,
     walletAmt: number,
     collectionMethod: string,
-    vendorDirectAmount: number
+    vendorDirectAmount: number,
+    gstSlab: number
   ) {
     const closure = closures.find((c) => c.id === id) || null;
 
@@ -311,6 +316,7 @@ export default function AdminClosuresPage() {
       walletAmount: walletAmt || 0,
       paymentCollectionMethod: collectionMethod,
       vendorDirectAmount: vendorDirectAmount || 0,
+      gstSlab,
     });
     setBusy(false);
     if (!res.ok) {
@@ -497,7 +503,7 @@ export default function AdminClosuresPage() {
           onClose={() => setSelected(null)}
           onChecklist={(key) => updateChecklist(selected.id, key)}
           onVerify={() => verifyClosure(selected.id)}
-          onClosures={(adminRemarks, payStatus, cashCollectedAmt, paidVia, finalPriceAmt, walletAmt, collectionMethod, vendorDirectAmount) =>
+          onClosures={(adminRemarks, payStatus, cashCollectedAmt, paidVia, finalPriceAmt, walletAmt, collectionMethod, vendorDirectAmount, gstSlab) =>
             closeClosure(
               selected.id,
               adminRemarks,
@@ -507,7 +513,8 @@ export default function AdminClosuresPage() {
               finalPriceAmt,
               walletAmt,
               collectionMethod,
-              vendorDirectAmount
+              vendorDirectAmount,
+              gstSlab
             )
           }
           onReopen={async () => {
@@ -545,7 +552,8 @@ type ClosureModalProps = {
     finalPriceAmt: number,
     walletAmt: number,
     collectionMethod: string,
-    vendorDirectAmount: number
+    vendorDirectAmount: number,
+    gstSlab: number
   ) => void;
   onReopen: () => void;
 };
@@ -568,6 +576,7 @@ function ClosureModal({
   const [walletAmt, setWalletAmt] = useState("0");
   const [bobAvailable, setBobAvailable] = useState<number | null>(null);
   const [cashCollectedAmt, setCashCollectedAmt] = useState(String(closure.cashCollected || 0));
+  const [gstSlab, setGstSlab] = useState(closure.gstSlab || 18);
   const [collectionMethod, setCollectionMethod] = useState(closure.paymentCollectionMethod || "COMPANY");
   const [vendorDirectAmt, setVendorDirectAmt] = useState(String(closure.vendorDirectAmount || 0));
   const [companyCollectedAmt, setCompanyCollectedAmt] = useState(String(closure.companyCollectedAmount || 0));
@@ -788,8 +797,8 @@ function ClosureModal({
                 💳 PAYMENT UPDATE
               </p>
 
-              {/* Row 1: Service Price (listed) + Final Price (admin editable) */}
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {/* Row 1: Service Price + Final Price + GST Slab */}
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl bg-gray-100 p-4">
                   <p className="text-xs font-bold text-gray-500">SERVICE PRICE (LISTED)</p>
                   <p className="mt-1 text-2xl font-black text-gray-800">
@@ -811,6 +820,33 @@ function ClosureModal({
                       ⚠ Listed ₹{Number(closure.amount || 0).toLocaleString("en-IN")} se alag — saari calculation final price se hogi.
                     </p>
                   )}
+                </div>
+                <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
+                  <p className="text-xs font-bold text-purple-700">GST SLAB</p>
+                  <select
+                    value={gstSlab}
+                    onChange={(e) => setGstSlab(Number(e.target.value))}
+                    className="mt-1 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm font-bold outline-none focus:border-purple-500"
+                  >
+                    <option value={0}>0% — Exempt</option>
+                    <option value={5}>5%</option>
+                    <option value={12}>12%</option>
+                    <option value={18}>18% (Default)</option>
+                    <option value={28}>28%</option>
+                  </select>
+                  {finalNum > 0 && gstSlab > 0 && (() => {
+                    const divisor = 1 + gstSlab / 100;
+                    const base = Math.round(finalNum / divisor * 100) / 100;
+                    const gst = Math.round((finalNum - base) * 100) / 100;
+                    const half = Math.round(gst / 2 * 100) / 100;
+                    return (
+                      <div className="mt-2 rounded-lg bg-white p-2 text-[11px]">
+                        <p className="font-bold text-gray-500">TAX BIFURCATION (Tax-Inclusive)</p>
+                        <p className="text-gray-700">Base: ₹{base.toLocaleString("en-IN")} • GST: ₹{gst.toLocaleString("en-IN")}</p>
+                        <p className="text-gray-700">CGST: ₹{half.toLocaleString("en-IN")} • SGST: ₹{(gst - half).toLocaleString("en-IN")}</p>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -1025,7 +1061,8 @@ function ClosureModal({
                   finalNum,
                   walletNum,
                   collectionMethod,
-                  collectionMethod === "VENDOR_DIRECT" ? Number(vendorDirectAmt) || 0 : (collectionMethod === "SPLIT" ? Number(vendorDirectAmt) || 0 : 0)
+                  collectionMethod === "VENDOR_DIRECT" ? Number(vendorDirectAmt) || 0 : (collectionMethod === "SPLIT" ? Number(vendorDirectAmt) || 0 : 0),
+                  gstSlab
                 );
               }}
               disabled={busy || closeInvalid}
@@ -1071,6 +1108,36 @@ function ClosureModal({
               {closure.adminRemarks && (
                 <p className="mt-3 text-sm text-gray-600">{closure.adminRemarks}</p>
               )}
+            </div>
+
+            {/* WhatsApp Invoice Dispatch */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <a
+                href={`https://wa.me/${closure.customerPhone.startsWith("+91") ? closure.customerPhone : `91${closure.customerPhone}`}?text=${encodeURIComponent(
+                  [`🧾 *QURUX Invoice — ${closure.bookingId}*`, "", `Service: ${closure.service}`, `Date: ${closure.serviceDate}`,"", `*Final Price: ₹${(closure.finalPrice || closure.amount).toLocaleString("en-IN")}*`, "", closure.emiPending > 0 ? `EMI Balance: ₹${closure.emiPending.toLocaleString("en-IN")}` : "Full Payment Received ✅", "", "Terms: 6 months flexible repayment, 0% interest, ₹10/day late fee after 6 months.", "", "Thank you for choosing QURUX! 🙏"].join("\n")
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-green-700"
+              >
+                📱 Send Invoice to Customer
+              </a>
+              <a
+                href={`https://wa.me/919911227916?text=${encodeURIComponent([
+                  `🧾 *QURUX Vendor Invoice — ${closure.bookingId}*`,
+                  `Service: ${closure.service}`,
+                  `Customer: ${closure.customerName}`,
+                  `Final Price: ₹${(closure.finalPrice || closure.amount).toLocaleString("en-IN")}`,
+                  `Payment: ${closure.paymentStatus} via ${closure.paidVia || "CASH"}`,
+                  ``,
+                  `Invoice details customer ko bhej di gayi hai.`,
+                ].join("\n"))}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-purple-700"
+              >
+                📋 Send Invoice to Vendor
+              </a>
             </div>
 
             {/* Reopen for Edit button */}
