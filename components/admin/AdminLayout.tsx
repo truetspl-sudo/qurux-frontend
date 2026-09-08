@@ -18,7 +18,6 @@ const navItems = [
   { label: "Orders", href: "/admin/orders", icon: "📦" },
   { label: "Payments", href: "/admin/payments", icon: "💳" },
   { label: "EMI", href: "/admin/emi", icon: "📊" },
-  { label: "BOB Payments", href: "/admin/bob-payments", icon: "🏦" },
   { label: "BOB Wallet", href: "/admin/bob", icon: "💰" },
   { label: "Ratings & Reviews", href: "/admin/ratings", icon: "⭐" },
   { label: "Service Closures", href: "/admin/closures", icon: "🔒" },
