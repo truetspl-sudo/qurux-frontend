@@ -174,6 +174,8 @@ export default function AdminClosuresPage() {
   const [closures, setClosures] = useState<BookingClosure[]>([]);
   const [selected, setSelected] = useState<BookingClosure | null>(null);
   const [filterStatus, setFilterStatus] = useState("All");
+  const [filterPayment, setFilterPayment] = useState("ALL");
+  const [filterSalon, setFilterSalon] = useState("ALL");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -232,9 +234,16 @@ export default function AdminClosuresPage() {
     loadClosures();
   }, []);
 
-  const filtered = closures.filter((c) =>
-    filterStatus === "All" || c.status === filterStatus
-  );
+  const filtered = closures.filter((c) => {
+    if (filterStatus !== "All" && c.status !== filterStatus) return false;
+    if (filterPayment === "FULL" && c.emiPending > 0) return false;
+    if (filterPayment === "EMI" && c.emiPending <= 0) return false;
+    if (filterPayment === "PARTIAL" && c.paymentStatus !== "PARTIAL") return false;
+    if (filterSalon !== "ALL" && c.salon !== filterSalon) return false;
+    return true;
+  });
+  // Unique salons for filter
+  const uniqueSalons = [...new Set(closures.map((c) => c.salon).filter(Boolean))];
 
   function updateChecklist(
     id: string,
@@ -408,29 +417,75 @@ export default function AdminClosuresPage() {
         </div>
       </div>
 
-      {/* Filter */}
-      <div className="mt-6 flex gap-3">
+      {/* Filter — Status */}
+      <div className="mt-6 flex flex-wrap gap-2">
+        <p className="w-full text-xs font-bold uppercase text-gray-400">STATUS</p>
         {["All", "PARTNER_COMPLETED", "ADMIN_VERIFIED", "CLOSED"].map((status) => (
           <button
             key={status}
             type="button"
             onClick={() => setFilterStatus(status)}
-            className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+            className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
               filterStatus === status
                 ? "bg-pink-600 text-white"
-                : "bg-white text-gray-700 shadow-sm hover:bg-pink-50"
+                : "bg-white text-gray-600 shadow-sm hover:bg-pink-50"
             }`}
           >
-            {status === "All"
-              ? "All"
-              : status === "PARTNER_COMPLETED"
-                ? "Pending Verification"
-                : status === "ADMIN_VERIFIED"
-                  ? "Verified"
-                  : "Closed"}
+            {status === "All" ? "All" : status === "PARTNER_COMPLETED" ? "⏳ Pending Verification" : status === "ADMIN_VERIFIED" ? "🔍 Verified" : "🔒 Closed"}
           </button>
         ))}
       </div>
+
+      {/* Filter — Payment */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <p className="w-full text-xs font-bold uppercase text-gray-400">PAYMENT</p>
+        {["ALL", "FULL", "EMI", "PARTIAL"].map((pay) => (
+          <button
+            key={pay}
+            type="button"
+            onClick={() => setFilterPayment(pay)}
+            className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
+              filterPayment === pay
+                ? "bg-green-600 text-white"
+                : "bg-white text-gray-600 shadow-sm hover:bg-green-50"
+            }`}
+          >
+            {pay === "ALL" ? "All Payments" : pay === "FULL" ? "✅ Full Payment" : pay === "EMI" ? "📊 EMI Balance" : "⏳ Partial"}
+          </button>
+        ))}
+      </div>
+
+      {/* Filter — Salon/Vendor */}
+      {uniqueSalons.length > 1 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <p className="w-full text-xs font-bold uppercase text-gray-400">VENDOR / SALON</p>
+          <button
+            type="button"
+            onClick={() => setFilterSalon("ALL")}
+            className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
+              filterSalon === "ALL"
+                ? "bg-purple-600 text-white"
+                : "bg-white text-gray-600 shadow-sm hover:bg-purple-50"
+            }`}
+          >
+            All Salons
+          </button>
+          {uniqueSalons.map((salon) => (
+            <button
+              key={salon}
+              type="button"
+              onClick={() => setFilterSalon(salon)}
+              className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
+                filterSalon === salon
+                  ? "bg-purple-600 text-white"
+                  : "bg-white text-gray-600 shadow-sm hover:bg-purple-50"
+              }`}
+            >
+              {salon}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Booking List */}
       <div className="mt-5 space-y-4">
@@ -459,15 +514,25 @@ export default function AdminClosuresPage() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap justify-end">
                 {closure.partnerMarkedDone && (
                   <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
                     🛎 Partner: Service Done
                   </span>
                 )}
-                <span className="rounded-full bg-pink-100 px-3 py-1 text-xs font-bold text-pink-600">
-                  {closure.paymentMethod}
-                </span>
+                {/* Dynamic payment badge */}
+                {(() => {
+                  const fp = closure.finalPrice || closure.amount;
+                  const paid = (closure.cashCollected || 0) + (closure.bobUsed || 0);
+                  const balance = closure.emiPending || Math.max(0, fp - paid);
+                  if (balance <= 0 && paid >= fp) {
+                    return <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">✅ Full Payment</span>;
+                  }
+                  if (balance > 0 && paid > 0) {
+                    return <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">📊 EMI Balance ₹{balance.toLocaleString("en-IN")}</span>;
+                  }
+                  return <span className="rounded-full bg-pink-100 px-3 py-1 text-xs font-bold text-pink-600">{closure.paymentMethod}</span>;
+                })()}
                 <span
                   className={`rounded-full px-4 py-2 text-xs font-bold ${
                     closure.status === "PARTNER_COMPLETED"
