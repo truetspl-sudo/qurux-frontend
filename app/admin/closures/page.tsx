@@ -26,6 +26,13 @@ type BookingClosure = {
   partnerMarkedDone?: boolean;
   paymentStatus?: string;
   paidVia?: string;
+  paymentCollectionMethod?: string;
+  vendorDirectAmount?: number;
+  companyCollectedAmount?: number;
+  gstAmount?: number;
+  platformCommission?: number;
+  vendorGrossPayout?: number;
+  vendorNetPayout?: number;
   partnerRemarks: string;
   adminRemarks: string;
   rating: number;
@@ -288,13 +295,13 @@ export default function AdminClosuresPage() {
     cashCollectedAmt: number,
     paidVia: string,
     finalPriceAmt: number,
-    walletAmt: number
+    walletAmt: number,
+    collectionMethod: string,
+    vendorDirectAmount: number
   ) {
     const closure = closures.find((c) => c.id === id) || null;
 
     setBusy(true);
-    // Backend close route: final price (listed vs final) + BOB wallet settlement
-    // (FIFO wallet deduction + walletTransactionId). Admin rating nahi deta.
     const res = await apiPatch(`/bookings/${id}/close`, {
       adminRemarks,
       paymentStatus: payStatus,
@@ -302,6 +309,8 @@ export default function AdminClosuresPage() {
       paidVia,
       finalPrice: finalPriceAmt || "",
       walletAmount: walletAmt || 0,
+      paymentCollectionMethod: collectionMethod,
+      vendorDirectAmount: vendorDirectAmount || 0,
     });
     setBusy(false);
     if (!res.ok) {
@@ -488,7 +497,7 @@ export default function AdminClosuresPage() {
           onClose={() => setSelected(null)}
           onChecklist={(key) => updateChecklist(selected.id, key)}
           onVerify={() => verifyClosure(selected.id)}
-          onClosures={(adminRemarks, payStatus, cashCollectedAmt, paidVia, finalPriceAmt, walletAmt) =>
+          onClosures={(adminRemarks, payStatus, cashCollectedAmt, paidVia, finalPriceAmt, walletAmt, collectionMethod, vendorDirectAmount) =>
             closeClosure(
               selected.id,
               adminRemarks,
@@ -496,7 +505,9 @@ export default function AdminClosuresPage() {
               cashCollectedAmt,
               paidVia,
               finalPriceAmt,
-              walletAmt
+              walletAmt,
+              collectionMethod,
+              vendorDirectAmount
             )
           }
           onReopen={async () => {
@@ -532,7 +543,9 @@ type ClosureModalProps = {
     cashCollectedAmt: number,
     paidVia: string,
     finalPriceAmt: number,
-    walletAmt: number
+    walletAmt: number,
+    collectionMethod: string,
+    vendorDirectAmount: number
   ) => void;
   onReopen: () => void;
 };
@@ -555,6 +568,9 @@ function ClosureModal({
   const [walletAmt, setWalletAmt] = useState("0");
   const [bobAvailable, setBobAvailable] = useState<number | null>(null);
   const [cashCollectedAmt, setCashCollectedAmt] = useState(String(closure.cashCollected || 0));
+  const [collectionMethod, setCollectionMethod] = useState(closure.paymentCollectionMethod || "COMPANY");
+  const [vendorDirectAmt, setVendorDirectAmt] = useState(String(closure.vendorDirectAmount || 0));
+  const [companyCollectedAmt, setCompanyCollectedAmt] = useState(String(closure.companyCollectedAmount || 0));
 
   // Customer ka BOB balance (admin closure modal me dikhane ke liye)
   useEffect(() => {
@@ -798,6 +814,72 @@ function ClosureModal({
                 </div>
               </div>
 
+              {/* Row 1.5: Payment Collection Method */}
+              <div className="mt-4 rounded-xl border border-purple-200 bg-purple-50 p-4">
+                <p className="text-xs font-bold text-purple-700">📍 PAYMENT COLLECTED BY</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {[
+                    { val: "COMPANY", label: "🏢 Paid to Company (Qurux)", desc: "Customer ne company ko pay kiya" },
+                    { val: "VENDOR_DIRECT", label: "💈 Paid to Vendor Direct", desc: "Customer ne vendor ko seedha diya" },
+                    { val: "SPLIT", label: "✂️ Partial Payment Split", desc: "Dono ko thoda thoda" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.val}
+                      type="button"
+                      onClick={() => setCollectionMethod(opt.val)}
+                      className={`flex-1 rounded-xl border-2 p-3 text-left transition ${
+                        collectionMethod === opt.val
+                          ? "border-purple-500 bg-purple-100"
+                          : "border-gray-200 bg-white hover:border-purple-300"
+                      }`}
+                    >
+                      <p className={`text-sm font-bold ${collectionMethod === opt.val ? "text-purple-700" : "text-gray-700"}`}>{opt.label}</p>
+                      <p className="mt-0.5 text-[11px] text-gray-500">{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
+                {collectionMethod === "VENDOR_DIRECT" && (
+                  <div className="mt-3 rounded-lg bg-white p-3">
+                    <p className="text-xs font-bold text-gray-600">VENDOR DIRECT AMOUNT (₹)</p>
+                    <input
+                      type="number"
+                      min={0}
+                      max={finalNum}
+                      value={vendorDirectAmt}
+                      onChange={(e) => setVendorDirectAmt(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-purple-200 bg-gray-50 px-3 py-2 text-lg font-black outline-none focus:border-purple-500"
+                    />
+                    <p className="mt-1 text-[11px] text-gray-500">Customer ne vendor ko seedha jo amount diya</p>
+                  </div>
+                )}
+                {collectionMethod === "SPLIT" && (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg bg-white p-3">
+                      <p className="text-xs font-bold text-gray-600">COMPANY COLLECTED (₹)</p>
+                      <input
+                        type="number"
+                        min={0}
+                        max={finalNum}
+                        value={companyCollectedAmt}
+                        onChange={(e) => setCompanyCollectedAmt(e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-green-200 bg-gray-50 px-3 py-2 text-lg font-black outline-none focus:border-green-500"
+                      />
+                    </div>
+                    <div className="rounded-lg bg-white p-3">
+<p className="text-xs font-bold text-gray-600">VENDOR COLLECTED (₹)</p>
+                      <input
+                        type="number"
+                        min={0}
+                        max={finalNum}
+                        value={vendorDirectAmt}
+                        onChange={(e) => setVendorDirectAmt(e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-purple-200 bg-gray-50 px-3 py-2 text-lg font-black outline-none focus:border-purple-500"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Row 2: BOB Wallet + Cash/UPI */}
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
@@ -941,7 +1023,9 @@ function ClosureModal({
                   collectedNum,
                   effPaidVia,
                   finalNum,
-                  walletNum
+                  walletNum,
+                  collectionMethod,
+                  collectionMethod === "VENDOR_DIRECT" ? Number(vendorDirectAmt) || 0 : (collectionMethod === "SPLIT" ? Number(vendorDirectAmt) || 0 : 0)
                 );
               }}
               disabled={busy || closeInvalid}
