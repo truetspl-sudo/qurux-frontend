@@ -272,7 +272,7 @@ Net Payout Due = Gross - Direct Payment to Vendor
 | Orders | /admin/orders | Status filter, view details |
 | Payments | /admin/payments | Type + Status filter, approve/reject |
 | EMI | /admin/emi | Status filter, approve payments |
-| BOB Payments | /admin/bob-payments | Deposit approvals |
+| BOB Wallet | /admin/bob | Deposit approvals + wallet management (tabbed) |
 | Ratings | /admin/ratings | Star filter, delete reviews |
 | Service Closures | /admin/closures | **Main payment page** — multi-filter, GST, vendor payout |
 | WhatsApp | /admin/whatsapp | Manual message dispatch |
