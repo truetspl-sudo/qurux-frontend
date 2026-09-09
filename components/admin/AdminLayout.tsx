@@ -21,7 +21,6 @@ const navItems = [
   { label: "BOB Wallet", href: "/admin/bob", icon: "💰" },
   { label: "Ratings & Reviews", href: "/admin/ratings", icon: "⭐" },
   { label: "Service Closures", href: "/admin/closures", icon: "🔒" },
-  { label: "WhatsApp Dispatch", href: "/admin/whatsapp", icon: "💬" },
   { label: "Website Content", href: "/admin/content", icon: "🌐" },
   { label: "Settings", href: "/admin/settings", icon: "⚙️" },
 ];

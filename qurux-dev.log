@@ -1,0 +1,18 @@
+
+> final@0.1.0 dev
+> next dev
+
+▲ Next.js 16.3.0 (Turbopack)
+- Local:         http://localhost:59480
+- Network:       http://10.54.112.176:59480
+- Environments: .env.local
+✓ Ready in 5.5s
+✓ Running next.config.ts took 309ms
+
+ GET / 200 in 1130ms (next.js: 792ms, application-code: 338ms)
+ GET /admin/closures 200 in 180ms (next.js: 48ms, application-code: 132ms)
+ GET /account 200 in 112ms (next.js: 33ms, application-code: 79ms)
+ GET /account 200 in 61ms (next.js: 10ms, application-code: 51ms)
+ GET /account 200 in 36ms (next.js: 7ms, application-code: 29ms)
+ GET /admin/closures 200 in 41ms (next.js: 6ms, application-code: 35ms)
+[?25h
