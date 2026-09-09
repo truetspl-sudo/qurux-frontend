@@ -1144,13 +1144,54 @@ function ClosureModal({
               {closure.adminRemarks && (
                 <p className="mt-3 text-sm text-gray-600">{closure.adminRemarks}</p>
               )}
-            </div>
-
-            {/* WhatsApp Invoice Dispatch */}
-            <div className="grid gap-3 sm:grid-cols-2">
+            </div>              {/* WhatsApp Invoice Dispatch */}
+              <div className="grid gap-3 sm:grid-cols-2">
               <a
                 href={`https://wa.me/${closure.customerPhone.startsWith("+91") ? closure.customerPhone : `91${closure.customerPhone}`}?text=${encodeURIComponent(
-                  [`🧾 *QURUX Invoice — ${closure.bookingId}*`, "", `Service: ${closure.service}`, `Date: ${closure.serviceDate}`,"", `*Final Price: ₹${(closure.finalPrice || closure.amount).toLocaleString("en-IN")}*`, "", closure.emiPending > 0 ? `EMI Balance: ₹${closure.emiPending.toLocaleString("en-IN")}` : "Full Payment Received ✅", "", "Terms: 6 months flexible repayment, 0% interest, ₹10/day late fee after 6 months.", "", "Thank you for choosing QURUX! 🙏"].join("\n")
+                  closure.emiPending > 0
+                    ? [
+                        `Hi ${closure.customerName}! 👋`,
+                        "",
+                        `🧾 *QURUX Invoice — ${closure.bookingId}*`,
+                        ``,
+                        `Service: ${closure.service}`,
+                        `Date: ${closure.serviceDate}`,
+                        ``,
+                        `*Final Price: ₹${(closure.finalPrice || closure.amount).toLocaleString("en-IN")}*`,
+                        `*Paid: ₹${((closure.finalPrice || closure.amount) - closure.emiPending).toLocaleString("en-IN")}*`,
+                        `*EMI Balance: ₹${closure.emiPending.toLocaleString("en-IN")}*`,
+                        ``,
+                        `📋 Invoice: https://www.qurux.in/invoice/${closure.bookingId}`,
+                        ``,
+                        `📝 *EMI Terms:*`,
+                        `• Maximum 6 months flexible repayment`,
+                        `• Pay any amount, anytime — no fixed date`,
+                        `• Zero interest during 6 months`,
+                        `• After 6 months: ₹10/day late fee`,
+                        ``,
+                        `📞 Payment karne ke baad screenshot WhatsApp par bhej dein.`,
+                        ``,
+                        `Thank you for choosing QURUX! 🙏✨`,
+                      ].join("\n")
+                    : [
+                        `Hi ${closure.customerName}! 👋`,
+                        "",
+                        `✅ *Full Payment Received — Thank You!*`,
+                        ``,
+                        `🧾 *QURUX Invoice — ${closure.bookingId}*`,
+                        ``,
+                        `Service: ${closure.service}`,
+                        `Date: ${closure.serviceDate}`,
+                        `Final Price: ₹${(closure.finalPrice || closure.amount).toLocaleString("en-IN")}`,
+                        `Payment: FULLY PAID`,
+                        ``,
+                        `📋 Invoice: https://www.qurux.in/invoice/${closure.bookingId}`,
+                        ``,
+                        `Aapki poori payment receive ho gayi hai. 🎉`,
+                        `Service ke baad aapko koi due nahi hai.`,
+                        ``,
+                        `Thank you for choosing QURUX! 🙏✨`,
+                      ].join("\n")
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -1165,6 +1206,9 @@ function ClosureModal({
                   `Customer: ${closure.customerName}`,
                   `Final Price: ₹${(closure.finalPrice || closure.amount).toLocaleString("en-IN")}`,
                   `Payment: ${closure.paymentStatus} via ${closure.paidVia || "CASH"}`,
+                  closure.emiPending > 0 ? `EMI Balance: ₹${closure.emiPending.toLocaleString("en-IN")}` : `Full Payment ✅`,
+                  ``,
+                  `Invoice: ${process.env.NEXT_PUBLIC_API_URL || "https://api.qurux.in"}/api/bookings/${closure.bookingId}/invoice`,
                   ``,
                   `Invoice details customer ko bhej di gayi hai.`,
                 ].join("\n"))}`}
