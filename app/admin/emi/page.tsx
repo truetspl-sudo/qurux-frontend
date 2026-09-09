@@ -16,7 +16,7 @@ type EMIPayment = {
 
 type EMIPlan = {
   _id: string;
-  customerId: { fullName?: string; mobile?: string; userId?: string } | string;
+  customerId: { fullName?: string; mobile?: string; userId?: string; email?: string } | string;
   purchaseType: "SERVICE" | "PRODUCT" | "COURSE";
   purchaseName: string;
   totalAmount: number;
@@ -309,25 +309,27 @@ export default function AdminEMIPage() {
             </div>
 
             {/* Customer Details */}
-            {typeof selected.customerId === "object" && selected.customerId && (
-              <div className="mt-4 rounded-2xl border border-pink-200 bg-pink-50 p-4">
-                <p className="text-xs font-bold uppercase text-pink-600">👤 CUSTOMER DETAILS</p>
-                <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                  <div>
-                    <p className="text-[11px] text-gray-500">Name</p>
-                    <p className="font-bold text-gray-900">{selected.customerId.fullName || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] text-gray-500">Mobile</p>
-                    <p className="font-bold text-gray-900">{selected.customerId.mobile || "—"}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] text-gray-500">User ID</p>
-                    <p className="font-bold text-gray-900">{selected.customerId.userId || "—"}</p>
-                  </div>
+            <div className="mt-4 rounded-2xl border-2 border-pink-200 bg-pink-50 p-4">
+              <p className="text-xs font-bold uppercase text-pink-600">👤 CUSTOMER DETAILS</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-4">
+                <div>
+                  <p className="text-[11px] text-gray-500">Name</p>
+                  <p className="font-bold text-gray-900">{typeof selected.customerId === "object" && selected.customerId ? (selected.customerId.fullName || "—") : "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-500">Mobile</p>
+                  <p className="font-bold text-gray-900">{typeof selected.customerId === "object" && selected.customerId ? (selected.customerId.mobile || "—") : "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-500">Email</p>
+                  <p className="font-bold text-gray-900">{typeof selected.customerId === "object" && selected.customerId ? (selected.customerId.email || "—") : "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-500">User ID</p>
+                  <p className="font-bold text-gray-900">{typeof selected.customerId === "object" && selected.customerId ? (selected.customerId.userId || "—") : "—"}</p>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Invoice / Service Info */}
             <div className="mt-4 rounded-2xl border border-gray-200 p-4">
@@ -452,9 +454,9 @@ export default function AdminEMIPage() {
               </span>
 
               {/* WhatsApp Reminder */}
-              {selected.status === "ACTIVE" && selected.pendingAmount > 0 && typeof selected.customerId === "object" && selected.customerId && (
+              {selected.status === "ACTIVE" && selected.pendingAmount > 0 && typeof selected.customerId === "object" && selected.customerId && selected.customerId.mobile && (
                 <a
-                  href={`https://wa.me/${selected.customerId.mobile?.startsWith("+91") ? selected.customerId.mobile : `91${selected.customerId.mobile || ""}`}?text=${encodeURIComponent(
+                  href={`https://wa.me/${selected.customerId.mobile?.replace(/^\+?91/, "")}?text=${encodeURIComponent(
                     [
                       `Hi ${selected.customerId.fullName || "Customer"}! 👋`,
                       "",
