@@ -9,6 +9,8 @@ type Booking = {
   id: string;
   customerName: string;
   phone: string;
+  email: string;
+  userId: string;
   service: string;
   date: string;
   timeSlot: string;
@@ -46,13 +48,17 @@ export default function AdminBookingsPage() {
             : res.message || "Failed to load bookings");
           return;
         }
-        setBookings(res.data.map((b: any) => ({
-          id: b.bookingId, customerName: b.customerName, phone: b.customerPhone,
+        setBookings(res.data.map((b: any) => {
+          const cust = b.customerId && typeof b.customerId === "object" ? b.customerId : {};
+          return {
+          id: b.bookingId, customerName: b.customerName || cust.fullName || "", phone: b.customerPhone || cust.mobile || "",
+          email: b.customerEmail || cust.email || "", userId: cust.userId || "",
           service: b.serviceName, date: b.date, timeSlot: b.timeSlot || "",
           location: b.serviceLocation === "HOME" ? `Home — ${b.address}` : (b.salonName || "QURUX Salon"),
           locationType: b.serviceLocation === "HOME" ? "Home Service" : "Salon",
           paymentMethod: b.paymentMethod, amount: b.amount, status: b.status,
-        })));
+          };
+        }));
       } catch {}
       setLoading(false);
     }
@@ -125,7 +131,16 @@ export default function AdminBookingsPage() {
                   <td className="px-5 py-4 text-gray-600">{booking.date} • {booking.timeSlot}</td>
                   <td className="px-5 py-4 font-bold text-pink-600">₹{booking.amount.toLocaleString("en-IN")}</td>
                   <td className="px-5 py-4"><span className={`rounded-full px-3 py-1 text-xs font-bold ${statusColors[booking.status]}`}>{booking.status.replace("_", " ")}</span></td>
-                  <td className="px-5 py-4"><button type="button" onClick={() => setSelected(booking)} className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-100">View</button></td>
+                  <td className="px-5 py-4">
+                    <div className="flex gap-1.5">
+                      <button type="button" onClick={() => setSelected(booking)} className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-100">View</button>
+                      {booking.status === "COMPLETED" ? (
+                        <Link href="/admin/closures" className="rounded-lg bg-pink-50 px-3 py-1.5 text-xs font-bold text-pink-600 hover:bg-pink-100">Edit</Link>
+                      ) : (
+                        <Link href="/admin/closures" className="rounded-lg bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-600 hover:bg-purple-100">Close</Link>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -144,7 +159,30 @@ export default function AdminBookingsPage() {
               </div>
               <button type="button" onClick={() => setSelected(null)} className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-xl font-bold hover:bg-gray-200">×</button>
             </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {/* Customer Details */}
+            <div className="mt-4 rounded-2xl border-2 border-pink-200 bg-pink-50 p-4">
+              <p className="text-xs font-bold uppercase text-pink-600">👤 CUSTOMER DETAILS</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-4">
+                <div>
+                  <p className="text-[11px] text-gray-500">Name</p>
+                  <p className="font-bold text-gray-900">{selected.customerName}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-500">Mobile</p>
+                  <p className="font-bold text-gray-900">{selected.phone || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-500">Email</p>
+                  <p className="font-bold text-gray-900">{selected.email || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-500">User ID</p>
+                  <p className="font-bold text-gray-900">{selected.userId || "—"}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl bg-gray-50 p-4"><p className="text-xs font-bold text-gray-400">SERVICE</p><p className="mt-1 font-bold text-gray-900">{selected.service}</p></div>
               <div className="rounded-2xl bg-gray-50 p-4"><p className="text-xs font-bold text-gray-400">DATE & TIME</p><p className="mt-1 font-bold text-gray-900">{selected.date} • {selected.timeSlot}</p></div>
               <div className="rounded-2xl bg-gray-50 p-4"><p className="text-xs font-bold text-gray-400">LOCATION TYPE</p><p className="mt-1 font-bold text-gray-900">{selected.locationType}</p></div>
