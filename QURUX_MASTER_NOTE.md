@@ -1,6 +1,6 @@
 # QURUX MAKEOVER & ACADEMY — MASTER REFERENCE NOTE
 
-> **Last Updated:** September 8, 2026
+> **Last Updated:** September 9, 2026
 > **Version:** Production Live
 > **Frontend:** https://www.qurux.in (Vercel)
 > **Backend:** https://api.qurux.in (Railway)
@@ -81,7 +81,7 @@ PORT=8080
 | GET | /api/salons | No | List approved salons (public) |
 | GET | /api/salons/all | Admin | List all salons |
 | GET | /api/salons/my-salon | Partner | Get own salon |
-| POST | /api/salons/register | No | Register new salon |
+| POST | /api/salons/register | No | Register new salon (with photos, Google map, WhatsApp) |
 | PATCH | /api/salons/:id | Admin | Update salon (approve/reject/edit) |
 | PATCH | /api/salons/:id/approve | Admin | Approve salon + create partner account |
 
@@ -93,9 +93,9 @@ PORT=8080
 | PATCH | /api/bookings/:id/status | Admin | Update status (CONFIRMED/CANCELLED) |
 | PATCH | /api/bookings/:id/start | Partner | Start service (→ IN_PROGRESS + startedAt) |
 | PATCH | /api/bookings/:id/partner-complete | Partner | Mark done (→ PARTNER_COMPLETED) |
-| PATCH | /api/bookings/:id/close | Admin | Close + payment reconciliation |
+| PATCH | /api/bookings/:id/close | Admin | Close + payment reconciliation + payout |
 | PATCH | /api/bookings/:id/reopen | Admin | Reopen closed booking for edit |
-| GET | /api/bookings/:id/invoice | User | Generate invoice data |
+| GET | /api/bookings/:id/invoice | User | Generate invoice data (JSON) |
 
 ### Orders (Shop)
 | Method | Route | Auth | Description |
@@ -114,16 +114,21 @@ PORT=8080
 ### EMI
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
-| GET | /api/emi | User | List EMI plans |
-| POST | /api/emi/:id/pay | User | Submit EMI payment |
-| PATCH | /api/emi/:id/approve | Admin | Approve EMI payment |
+| GET | /api/emi | User/Admin | List EMI plans (with populated customer) |
+| POST | /api/emi | Customer | Create EMI plan |
+| GET | /api/emi/:id | User | Get single plan details |
+| POST | /api/emi/:id/pay | User | Submit flexible payment |
+| PATCH | /api/emi/:planId/approve/:paymentId | Admin | Approve EMI payment |
+| PATCH | /api/emi/:planId/reject/:paymentId | Admin | Reject EMI payment |
 
 ### Wallet (BOB)
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
 | GET | /api/wallet | User | Get own wallet |
+| GET | /api/wallet/all | Admin | List all wallets |
 | POST | /api/wallet/deposit | User | Request deposit |
 | POST | /api/wallet/use | User | Use wallet balance |
+| POST | /api/wallet/promotional | Admin | Credit promotional balance |
 | GET | /api/wallet/lookup/:customerId | Admin | Check customer balance |
 
 ### Payouts (Vendor)
@@ -143,12 +148,6 @@ PORT=8080
 | POST | /api/ratings | Customer | Submit rating |
 | DELETE | /api/ratings/:id | Admin | Delete rating |
 
-### WhatsApp
-| Method | Route | Auth | Description |
-|--------|-------|------|-------------|
-| GET | /api/whatsapp | Admin | List dispatch records |
-| POST | /api/whatsapp/send | Admin | Send WhatsApp message |
-
 ---
 
 ## 5. DATABASE MODELS
@@ -163,12 +162,12 @@ bobAccountNumber, bobStatus
 ### Booking
 ```
 bookingId, customerId, serviceName, serviceCategory, serviceLocation (HOME/SALON),
-address, salonId, salonName, date, timeSlot, customerName, customerPhone,
+address, salonId, salonName, date, timeSlot, customerName, customerPhone, customerEmail,
 amount (listed), listedPrice, finalPrice, paymentMethod (FULL/EMI/BOB/MIXED),
 bobPaidAmount, cashAmount, emiAmount, paymentStatus (PENDING/PAID/PARTIAL),
 paidVia (CASH/UPI/BOB/EMI), status (PENDING/CONFIRMED/IN_PROGRESS/PARTNER_COMPLETED/COMPLETED/CANCELLED),
 startedAt, partnerCompletedAt, closedAt, adminRemarks, rating,
-paymentCollectionMethod (COMPANY/VENDOR_DIRECT/SPLIT),
+paymentCollectionMethod (COMPANY/VENDOR_DIRECT),
 vendorDirectAmount, companyCollectedAmount,
 gstSlab, basePrice, gstAmount, cgst, sgst,
 platformCommission, vendorGrossPayout, vendorNetPayout,
@@ -177,9 +176,13 @@ walletTransactionId
 
 ### Salon
 ```
-name, slug, ownerName, phone, email, city, address, image,
-type (UNISEX/WOMENS/MENS/HOME_STUDIO/MAKEUP_STUDIO),
-status (PENDING/APPROVED/REJECTED), userId, servicesIds [],
+name, slug, type (UNISEX/WOMEN_ONLY/WOMENS/MENS/HOME_STUDIO/MAKEUP_STUDIO),
+address, city, pincode, gstNumber, image,
+frontImage, interiorImages[], workImages[], certificates[],
+googleMapUrl, whatsappLink,
+ownerName, ownerEmail, ownerMobile, alternatePhone,
+yearsOfExperience, teamSize, servicesOffered[], about,
+userId, servicesIds[], status (PENDING/APPROVED/REJECTED),
 rating: { stars, count }
 ```
 
@@ -201,16 +204,20 @@ settledMonth, adminRemarks, closedAt
 
 ### EMIPlan
 ```
-customerId, purchaseType (SERVICE/PRODUCT/COURSE), purchaseName,
+customerId (populated: fullName, mobile, email, userId),
+purchaseType (SERVICE/PRODUCT/COURSE), purchaseName,
 bookingId, orderId, totalAmount, bobPaidAmount, paidAmount, pendingAmount,
-paymentHistory [], status (ACTIVE/COMPLETED/CANCELLED),
+paymentHistory [{ amount, transactionId, screenshotUrl, status, submittedAt, approvedAt }],
+status (ACTIVE/COMPLETED/CANCELLED),
 tenureDays (180), lateFeePerDay (10), totalLateFee, lastLateFeeCalc
 ```
 
 ### Wallet
 ```
-customerId, deposits [{ originalAmount, usedAmount, depositDate, status, benefitEnabled }],
-usageHistory [{ amount, description, date, balanceAfter }]
+customerId, accountNumber,
+deposits [{ originalAmount, usedAmount, depositDate, status, benefitEnabled, reference, screenshotUrl }],
+usageHistory [{ amount, description, date, balanceAfter }],
+promotionalBalance, promotionalHistory []
 ```
 
 ### Product, Course, Order, Payment, Rating, WhatsAppDispatch, PasswordReset
@@ -221,17 +228,19 @@ usageHistory [{ amount, description, date, balanceAfter }]
 
 ### Booking Flow
 ```
-Customer Book → Admin Approve (assign vendor) → Partner Start Service →
-Partner Complete → Admin Verify + Payment Update + Close → Customer Rating
+Customer Book → Admin Approve (assign vendor) → Partner Start Service (IN_PROGRESS) →
+Partner Complete (PARTNER_COMPLETED) → Admin Verify + Payment Update + Close (COMPLETED) →
+Customer Rating
 ```
 
 ### Payment Rules
 1. **NO payment at booking time** — only payment mode is saved
 2. Payment collected after service, admin closes with payment details
 3. **Full Payment** — paid = final price, due = 0
-4. **EMI** — min 25% down payment, rest becomes EMI balance
+4. **EMI** — min 25% down payment, rest becomes EMI balance (flexible, no fixed date)
 5. **BOB Wallet** — deducts from customer's BOB balance (FIFO)
 6. Admin can never give rating — only customer rates
+7. **Edit always available** — admin can reopen closed bookings
 
 ### GST Rules (Tax-Inclusive)
 - Final Price is **tax-inclusive** (GST already included)
@@ -264,19 +273,19 @@ Net Payout Due = Gross - Direct Payment to Vendor
 |------|-------|-------------|
 | Dashboard | /admin | Stats overview |
 | Customers | /admin/customers | Approve/reject, search, status filter |
-| Salons/Vendors | /admin/salons | Approve/reject, salon type (Unisex/Women Only), manage |
+| Password Resets | /admin/password-resets | Approve password changes |
+| Salons/Vendors | /admin/salons | Approve/reject, salon type, manage, service assignment |
 | Services | /admin/services | CRUD, category filter, edit button |
-| Bookings | /admin/bookings | View all, status filter, link to closures |
+| Bookings | /admin/bookings | View all, status filter, customer details modal, View/Edit buttons |
 | Products | /admin/products | CRUD, category filter, Coming Soon banner |
 | Courses | /admin/courses | CRUD, edit button |
 | Orders | /admin/orders | Status filter, view details |
 | Payments | /admin/payments | Type + Status filter, approve/reject |
-| EMI | /admin/emi | Status filter, approve payments |
-| BOB Wallet | /admin/bob | Deposit approvals + wallet management (tabbed) |
+| EMI | /admin/emi | Status filter (incl. Overdue), customer details, WhatsApp reminder |
+| BOB Wallet | /admin/bob | Excel-style customer table, search, wallet overview, credit |
 | Ratings | /admin/ratings | Star filter, delete reviews |
-| Service Closures | /admin/closures | **Main payment page** — multi-filter, GST, vendor payout |
-| WhatsApp | /admin/whatsapp | Manual message dispatch |
-| Password Resets | /admin/password-resets | Approve password changes |
+| Service Closures | /admin/closures | **Main payment page** — multi-filter, GST slab, vendor payout, WhatsApp invoice |
+| Data Sheet | /admin/datasheet | Excel-style monthly reports (bookings, orders, EMI, wallet, services) |
 | Content | /admin/content | Website content management |
 | Settings | /admin/settings | Admin settings |
 
@@ -289,11 +298,10 @@ Route: /salon/dashboard
 ### Features
 - Login with userId + password (same auth as customer)
 - View assigned bookings (only own salon — isolation rule)
-- **Start Service** button (PENDING/CONFIRMED → IN_PROGRESS)
+- **Start Service** button (PENDING/CONFIRMED → IN_PROGRESS + startedAt)
 - **Complete Service** button (IN_PROGRESS → PARTNER_COMPLETED)
 - WhatsApp-to-Customer button (IN_PROGRESS + CONFIRMED)
 - WhatsApp-to-Admin button (PARTNER_COMPLETED + COMPLETED)
-- EMI Plans tab
 - Cannot see customer's BOB wallet balance
 
 ---
@@ -302,16 +310,18 @@ Route: /salon/dashboard
 
 | Page | Route | Description |
 |------|-------|-------------|
-| Home | / | Hero slider, feature cards, why choose, download app |
-| Book | /book | Service selection with category filter |
-| Booking | /booking | Salon picker, payment mode, time slot, submit |
-| Shop | /shop | Products (Coming Soon banner active) |
+| Home | / | Hero slider (clickable → /book), feature cards, why choose, download app icon |
+| Book | /book | Service selection with category filter + Browse All Services |
+| Booking | /booking | Salon picker, payment mode, time slot (10AM-9:30PM), submit |
+| Shop | /shop | Products (Coming Soon banner — no products shown) |
 | Academy | /academy | Courses listing |
-| Salons | /salons | Partner salon list with ratings |
-| Salon Detail | /salons/[slug] | Salon info, services, book now |
-| BOB | /bob | Wallet dashboard, deposit, savings |
-| Account | /account | Login / Register |
+| Salons | /salons | Partner salon list with ratings, service count |
+| Salon Detail | /salons/[slug] | Salon info, images, services, ratings, book now |
+| BOB | /bob | Wallet dashboard, deposit (UPI barcode), savings |
+| BOB Payment | /bob/payment | Deposit with transaction ID + screenshot |
+| Account | /account | Login / Register / Forgot Password |
 | Dashboard | /account/dashboard | Customer bookings, EMI, rating |
+| Invoice | /invoice/[id] | Printable invoice (Print/Save as PDF) |
 
 ---
 
@@ -326,7 +336,7 @@ Route: /salon/dashboard
 - **Error:** red-600
 
 ### Typography
-- **Logo:** Great Vibes (script font) — "qurux" wordmark
+- **Logo:** QURUX script (Great Vibes) — pink gradient, cropped PNG
 - **Headings:** System font, font-black
 - **Body:** System font, text-sm/text-base
 
@@ -335,6 +345,7 @@ Route: /salon/dashboard
 - Buttons: rounded-full, pink-600 bg
 - Badges: rounded-full, colored bg + text
 - Filter buttons: pink/green/purple filled when active
+- Admin filter bars: consistent button-style across all pages
 
 ---
 
@@ -377,17 +388,20 @@ git push origin master
 8. **finalPrice ≤ 2x listed** — sanity check on close
 9. **Edit always available** — admin can reopen closed bookings
 10. **Manual WhatsApp** — no auto WhatsApp, all manual
+11. **No partial payment mode** — balance auto-converts to EMI
 
 ---
 
 ## 13. KNOWN ISSUES / TODO
 
-- [ ] Invoice PDF generation (currently JSON endpoint only)
+- [ ] Invoice PDF generation (currently JSON endpoint + printable HTML page)
 - [ ] Auto late fee calculation cron job (₹10/day after 180 days)
 - [ ] Email invoice dispatch
 - [ ] Product shop is "Coming Soon" — no real products yet
 - [ ] Partner salon dashboard needs earnings/ledger page
 - [ ] Admin payout management page (routes exist, no UI page)
+- [ ] Salon registration photos — currently base64 in form (need cloud upload for production)
+- [ ] WhatsApp Dispatch page removed — consider if needed again
 
 ---
 
@@ -412,6 +426,11 @@ git push origin master
 1. `routes/bookings.js` — close route (line ~250)
 2. `utils/walletUse.js` — wallet FIFO deduction
 3. `utils/emiSync.js` — EMI plan creation
+
+### To modify salon registration:
+1. `app/salon/register/page.tsx` — registration form
+2. `models/Salon.js` — salon schema
+3. `routes/salons.js` — backend routes
 
 ---
 
