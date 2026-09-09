@@ -26,8 +26,71 @@ export default function SalonRegisterPage() {
     teamSize: "",
     gstNumber: "",
     description: "",
+    googleMapUrl: "",
+    whatsappLink: "",
     agreeTerms: false,
   });
+  const [frontImage, setFrontImage] = useState<string>("");
+  const [interiorImages, setInteriorImages] = useState<string[]>([]);
+  const [workImages, setWorkImages] = useState<string[]>([]);
+  const [certificates, setCertificates] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  // Auto-resize image to max 800px width, compress to JPEG 0.8
+  async function resizeImage(file: File): Promise<string> {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX = 800;
+          let w = img.width;
+          let h = img.height;
+          if (w > MAX) { h = (h * MAX) / w; w = MAX; }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/jpeg", 0.8));
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleImageUpload(
+    e: React.ChangeEvent<HTMLInputElement>,
+    target: "front" | "interior" | "work" | "cert",
+    idx?: number
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { alert("Max 10MB allowed."); return; }
+    setUploading(true);
+    try {
+      const resized = await resizeImage(file);
+      if (target === "front") {
+        setFrontImage(resized);
+      } else if (target === "interior") {
+        setInteriorImages((prev) => [...prev, resized]);
+      } else if (target === "work") {
+        setWorkImages((prev) => [...prev, resized]);
+      } else {
+        setCertificates((prev) => [...prev, resized]);
+      }
+    } catch {}
+    setUploading(false);
+    e.target.value = "";
+  }
+
+  function removeImage(target: "front" | "interior" | "work" | "cert", idx: number) {
+    if (target === "front") setFrontImage("");
+    else if (target === "interior") setInteriorImages((p) => p.filter((_, i) => i !== idx));
+    else if (target === "work") setWorkImages((p) => p.filter((_, i) => i !== idx));
+    else setCertificates((p) => p.filter((_, i) => i !== idx));
+  }
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -115,6 +178,12 @@ export default function SalonRegisterPage() {
         teamSize: teamMap[form.teamSize] || 1,
         servicesOffered: form.servicesOffered,
         about: form.description,
+        googleMapUrl: form.googleMapUrl,
+        whatsappLink: form.whatsappLink,
+        frontImage,
+        interiorImages,
+        workImages,
+        certificates,
       };
       const res = await fetch((process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002") + "/api/salons/register", {
         method: "POST",
@@ -541,6 +610,117 @@ export default function SalonRegisterPage() {
                 className="mt-1.5 w-full resize-none rounded-xl border border-gray-200 px-4 py-3.5 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
               />
             </label>
+
+            {/* Google Location & WhatsApp */}
+            <div className="rounded-2xl bg-pink-50 p-5">
+              <p className="text-sm font-bold uppercase tracking-[0.2em] text-pink-600">Location & Contact</p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-bold text-gray-800">
+                Google Maps Location URL
+                <input
+                  type="url"
+                  name="googleMapUrl"
+                  value={form.googleMapUrl}
+                  onChange={handleChange}
+                  placeholder="https://maps.google.com/..."
+                  className="mt-1.5 w-full rounded-xl border border-gray-200 px-4 py-3.5 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                />
+                <p className="mt-1 text-[11px] text-gray-400">Google Maps se link copy karke paste karein</p>
+              </label>
+
+              <label className="block text-sm font-bold text-gray-800">
+                WhatsApp Link
+                <input
+                  type="url"
+                  name="whatsappLink"
+                  value={form.whatsappLink}
+                  onChange={handleChange}
+                  placeholder="https://wa.me/91XXXXXXXXXX"
+                  className="mt-1.5 w-full rounded-xl border border-gray-200 px-4 py-3.5 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                />
+                <p className="mt-1 text-[11px] text-gray-400">Apna WhatsApp chat link paste karein</p>
+              </label>
+            </div>
+
+            {/* Photo Uploads */}
+            <div className="rounded-2xl bg-pink-50 p-5">
+              <p className="text-sm font-bold uppercase tracking-[0.2em] text-pink-600">📸 Salon Photos</p>
+              <p className="mt-1 text-xs text-gray-500">Images automatically resize for fast loading. Max 10MB per image.</p>
+            </div>
+
+            {/* Shop Front */}
+            <div>
+              <p className="text-sm font-bold text-gray-800">Shop Front Photo *</p>
+              {frontImage ? (
+                <div className="relative mt-2 inline-block">
+                  <img src={frontImage} alt="Front" className="h-40 rounded-xl object-cover" />
+                  <button type="button" onClick={() => removeImage("front", 0)} className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">×</button>
+                </div>
+              ) : (
+                <label className="mt-2 flex cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-pink-300 bg-white p-6 transition hover:border-pink-500 hover:bg-pink-50">
+                  <span className="text-3xl">🏪</span>
+                  <span className="mt-2 text-sm font-bold text-pink-600">Shop ka front photo upload karein</span>
+                  <span className="mt-1 text-xs text-gray-400">JPG, PNG — Max 10MB</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "front")} />
+                </label>
+              )}
+            </div>
+
+            {/* Interior */}
+            <div>
+              <p className="text-sm font-bold text-gray-800">Interior Photos</p>
+              <div className="mt-2 flex flex-wrap gap-3">
+                {interiorImages.map((img, i) => (
+                  <div key={i} className="relative">
+                    <img src={img} alt="Interior" className="h-28 rounded-xl object-cover" />
+                    <button type="button" onClick={() => removeImage("interior", i)} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">×</button>
+                  </div>
+                ))}
+                <label className="flex h-28 w-28 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-pink-300 transition hover:border-pink-500 hover:bg-pink-50">
+                  <span className="text-2xl">➕</span>
+                  <span className="mt-1 text-[10px] font-bold text-pink-600">Add More</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "interior")} />
+                </label>
+              </div>
+            </div>
+
+            {/* Work Photos */}
+            <div>
+              <p className="text-sm font-bold text-gray-800">Previous Work Photos</p>
+              <div className="mt-2 flex flex-wrap gap-3">
+                {workImages.map((img, i) => (
+                  <div key={i} className="relative">
+                    <img src={img} alt="Work" className="h-28 rounded-xl object-cover" />
+                    <button type="button" onClick={() => removeImage("work", i)} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">×</button>
+                  </div>
+                ))}
+                <label className="flex h-28 w-28 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-pink-300 transition hover:border-pink-500 hover:bg-pink-50">
+                  <span className="text-2xl">➕</span>
+                  <span className="mt-1 text-[10px] font-bold text-pink-600">Add More</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "work")} />
+                </label>
+              </div>
+            </div>
+
+            {/* Certificates */}
+            <div>
+              <p className="text-sm font-bold text-gray-800">Certificates (Optional)</p>
+              <div className="mt-2 flex flex-wrap gap-3">
+                {certificates.map((img, i) => (
+                  <div key={i} className="relative">
+                    <img src={img} alt="Certificate" className="h-28 rounded-xl object-cover" />
+                    <button type="button" onClick={() => removeImage("cert", i)} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">×</button>
+                  </div>
+                ))}
+                <label className="flex h-28 w-28 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-pink-300 transition hover:border-pink-500 hover:bg-pink-50">
+                  <span className="text-2xl">➕</span>
+                  <span className="mt-1 text-[10px] font-bold text-pink-600">Add More</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "cert")} />
+                </label>
+              </div>
+            </div>
 
             {/* Terms */}
             <label className="flex items-start gap-3">
