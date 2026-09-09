@@ -238,7 +238,6 @@ export default function AdminClosuresPage() {
     if (filterStatus !== "All" && c.status !== filterStatus) return false;
     if (filterPayment === "FULL" && c.emiPending > 0) return false;
     if (filterPayment === "EMI" && c.emiPending <= 0) return false;
-    if (filterPayment === "PARTIAL" && c.paymentStatus !== "PARTIAL") return false;
     if (filterSalon !== "ALL" && c.salon !== filterSalon) return false;
     return true;
   });
@@ -439,7 +438,7 @@ export default function AdminClosuresPage() {
       {/* Filter — Payment */}
       <div className="mt-3 flex flex-wrap gap-2">
         <p className="w-full text-xs font-bold uppercase text-gray-400">PAYMENT</p>
-        {["ALL", "FULL", "EMI", "PARTIAL"].map((pay) => (
+        {["ALL", "FULL", "EMI"].map((pay) => (
           <button
             key={pay}
             type="button"
@@ -450,7 +449,7 @@ export default function AdminClosuresPage() {
                 : "bg-white text-gray-600 shadow-sm hover:bg-green-50"
             }`}
           >
-            {pay === "ALL" ? "All Payments" : pay === "FULL" ? "✅ Full Payment" : pay === "EMI" ? "📊 EMI Balance" : "⏳ Partial"}
+            {pay === "ALL" ? "All Payments" : pay === "FULL" ? "✅ Full Payment" : "📊 EMI Balance"}
           </button>
         ))}
       </div>
@@ -922,7 +921,6 @@ function ClosureModal({
                   {[
                     { val: "COMPANY", label: "🏢 Paid to Company (Qurux)", desc: "Customer ne company ko pay kiya" },
                     { val: "VENDOR_DIRECT", label: "💈 Paid to Vendor Direct", desc: "Customer ne vendor ko seedha diya" },
-                    { val: "SPLIT", label: "✂️ Partial Payment Split", desc: "Dono ko thoda thoda" },
                   ].map((opt) => (
                     <button
                       key={opt.val}
@@ -951,32 +949,6 @@ function ClosureModal({
                       className="mt-1 w-full rounded-lg border border-purple-200 bg-gray-50 px-3 py-2 text-lg font-black outline-none focus:border-purple-500"
                     />
                     <p className="mt-1 text-[11px] text-gray-500">Customer ne vendor ko seedha jo amount diya</p>
-                  </div>
-                )}
-                {collectionMethod === "SPLIT" && (
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-lg bg-white p-3">
-                      <p className="text-xs font-bold text-gray-600">COMPANY COLLECTED (₹)</p>
-                      <input
-                        type="number"
-                        min={0}
-                        max={finalNum}
-                        value={companyCollectedAmt}
-                        onChange={(e) => setCompanyCollectedAmt(e.target.value)}
-                        className="mt-1 w-full rounded-lg border border-green-200 bg-gray-50 px-3 py-2 text-lg font-black outline-none focus:border-green-500"
-                      />
-                    </div>
-                    <div className="rounded-lg bg-white p-3">
-<p className="text-xs font-bold text-gray-600">VENDOR COLLECTED (₹)</p>
-                      <input
-                        type="number"
-                        min={0}
-                        max={finalNum}
-                        value={vendorDirectAmt}
-                        onChange={(e) => setVendorDirectAmt(e.target.value)}
-                        className="mt-1 w-full rounded-lg border border-purple-200 bg-gray-50 px-3 py-2 text-lg font-black outline-none focus:border-purple-500"
-                      />
-                    </div>
                   </div>
                 )}
               </div>
@@ -1125,8 +1097,7 @@ function ClosureModal({
                   effPaidVia,
                   finalNum,
                   walletNum,
-                  collectionMethod,
-                  collectionMethod === "VENDOR_DIRECT" ? Number(vendorDirectAmt) || 0 : (collectionMethod === "SPLIT" ? Number(vendorDirectAmt) || 0 : 0),
+                  collectionMethod,                   collectionMethod === "VENDOR_DIRECT" ? Number(vendorDirectAmt) || 0 : 0,
                   gstSlab
                 );
               }}
