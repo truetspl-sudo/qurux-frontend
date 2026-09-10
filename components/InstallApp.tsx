@@ -75,11 +75,12 @@ export default function InstallApp() {
 
         <div className="flex items-center gap-4">
           {/* Icon */}
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 shadow-lg">
-            <span className="text-2xl font-black text-white" style={{ fontFamily: "'Great Vibes', cursive" }}>
-              Q
-            </span>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icons/icon-192.png"
+            alt="QURUX"
+            className="h-14 w-14 shrink-0 rounded-2xl shadow-lg"
+          />
 
           <div className="flex-1">
             <p className="text-sm font-black text-gray-900">Download QURUX App</p>

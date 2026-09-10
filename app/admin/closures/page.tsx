@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { apiGet, apiPatch } from "@/lib/api";
+import { generateInvoicePdf, generateVendorInvoicePdf, type InvoiceData } from "@/lib/invoicePdf";
 
 type BookingClosure = {
   id: string;
@@ -51,125 +52,6 @@ type BookingClosure = {
   };
 };
 
-const defaultClosures: BookingClosure[] = [
-  {
-    id: "cl1",
-    bookingId: "BK-2026-0891",
-    customerName: "Priya Sharma",
-    customerPhone: "9876543210",
-    service: "Classic Bridal Makeup",
-    salon: "QURUX Salon — Naraina Vihar",
-    bookingDate: "2026-08-20",
-    serviceDate: "2026-08-28",
-    serviceType: "Salon",
-    amount: 15999,
-    paymentMethod: "Full Payment",
-    bobUsed: 0,
-    emiPending: 0,
-    cashCollected: 15999,
-    status: "PARTNER_COMPLETED",
-    partnerRemarks: "Service completed successfully. Customer was happy with the bridal look.",
-    adminRemarks: "",
-    rating: 0,
-    customerRemarks: "",
-    address: "",
-    timeSlot: "10:00 AM",
-    verificationChecklist: {
-      serviceDelivered: false,
-      customerPresent: false,
-      qualityConfirmed: false,
-      paymentConfirmed: false,
-    },
-  },
-  {
-    id: "cl2",
-    bookingId: "BK-2026-0887",
-    customerName: "Anjali Mehta",
-    customerPhone: "9123456789",
-    service: "Korean Glow Facial",
-    salon: "Home Service",
-    bookingDate: "2026-08-18",
-    serviceDate: "2026-08-27",
-    serviceType: "Home Service",
-    amount: 2499,
-    paymentMethod: "Pay from BOB",
-    bobUsed: 2499,
-    emiPending: 0,
-    cashCollected: 0,
-    status: "PARTNER_COMPLETED",
-    partnerRemarks: "Facial completed at customer's home address. Customer satisfied.",
-    adminRemarks: "",
-    rating: 0,
-    customerRemarks: "",
-    address: "45/A, Sector 12, Uttam Nagar, Delhi — 110059",
-    timeSlot: "2:00 PM",
-    verificationChecklist: {
-      serviceDelivered: false,
-      customerPresent: false,
-      qualityConfirmed: false,
-      paymentConfirmed: false,
-    },
-  },
-  {
-    id: "cl3",
-    bookingId: "BK-2026-0876",
-    customerName: "Ritu Kapoor",
-    customerPhone: "9001234567",
-    service: "Party Makeup + Hair Styling",
-    salon: "QURUX Salon — Uttam Nagar",
-    bookingDate: "2026-08-15",
-    serviceDate: "2026-08-25",
-    serviceType: "Salon",
-    amount: 8498,
-    paymentMethod: "No Cost EMI",
-    bobUsed: 0,
-    emiPending: 5498,
-    cashCollected: 3000,
-    status: "ADMIN_VERIFIED",
-    partnerRemarks: "Party makeup and hair styling done. Customer approved the final look.",
-    adminRemarks: "Verified with customer. All good.",
-    rating: 5,
-    customerRemarks: "Loved the look! Very professional.",
-    address: "",
-    timeSlot: "4:00 PM",
-    verificationChecklist: {
-      serviceDelivered: true,
-      customerPresent: true,
-      qualityConfirmed: true,
-      paymentConfirmed: true,
-    },
-  },
-  {
-    id: "cl4",
-    bookingId: "BK-2026-0865",
-    customerName: "Sunita Devi",
-    customerPhone: "9988776655",
-    service: "Full Body Wax",
-    salon: "QURUX Salon — Naraina Vihar",
-    bookingDate: "2026-08-10",
-    serviceDate: "2026-08-22",
-    serviceType: "Salon",
-    amount: 1599,
-    paymentMethod: "Mixed/Split",
-    bobUsed: 800,
-    emiPending: 0,
-    cashCollected: 799,
-    status: "CLOSED",
-    partnerRemarks: "Full body wax completed.",
-    adminRemarks: "Closed. Payment reconciled — BOB ₹800 + Cash ₹799.",
-    rating: 4,
-    customerRemarks: "Good service, a bit painful but overall fine.",
-    address: "",
-    timeSlot: "11:00 AM",
-    verificationChecklist: {
-      serviceDelivered: true,
-      customerPresent: true,
-      qualityConfirmed: true,
-      paymentConfirmed: true,
-    },
-  },
-];
-
 export default function AdminClosuresPage() {
   const [closures, setClosures] = useState<BookingClosure[]>([]);
   const [selected, setSelected] = useState<BookingClosure | null>(null);
@@ -213,6 +95,17 @@ export default function AdminClosuresPage() {
             status: b.status === "COMPLETED" ? "CLOSED" : "PARTNER_COMPLETED",
             paymentStatus: b.paymentStatus || (b.status === "COMPLETED" ? "PAID" : "PENDING"),
             paidVia: b.paidVia || "",
+            paymentCollectionMethod: b.paymentCollectionMethod || "",
+            vendorDirectAmount: Number(b.vendorDirectAmount || 0),
+            companyCollectedAmount: Number(b.companyCollectedAmount || 0),
+            gstSlab: Number(b.gstSlab ?? 18),
+            gstAmount: Number(b.gstAmount || 0),
+            cgst: Number(b.cgst || 0),
+            sgst: Number(b.sgst || 0),
+            basePrice: Number(b.basePrice || 0),
+            platformCommission: Number(b.platformCommission || 0),
+            vendorGrossPayout: Number(b.vendorGrossPayout || 0),
+            vendorNetPayout: Number(b.vendorNetPayout || 0),
             partnerRemarks: "",
             adminRemarks: b.adminRemarks || "",
             rating: Number(b.rating || 0),
@@ -324,6 +217,9 @@ export default function AdminClosuresPage() {
       walletAmount: walletAmt || 0,
       paymentCollectionMethod: collectionMethod,
       vendorDirectAmount: vendorDirectAmount || 0,
+      companyCollectedAmount: collectionMethod === "SPLIT"
+        ? Math.max(0, cashCollectedAmt - (vendorDirectAmount || 0))
+        : collectionMethod === "COMPANY" ? cashCollectedAmt : 0,
       gstSlab,
     });
     setBusy(false);
@@ -641,9 +537,23 @@ function ClosureModal({
   const [bobAvailable, setBobAvailable] = useState<number | null>(null);
   const [cashCollectedAmt, setCashCollectedAmt] = useState(String(closure.cashCollected || 0));
   const [gstSlab, setGstSlab] = useState(closure.gstSlab || 18);
-  const [collectionMethod, setCollectionMethod] = useState(closure.paymentCollectionMethod || "COMPANY");
+  const [collectionMethod, setCollectionMethod] = useState(
+    closure.paymentCollectionMethod === "VENDOR_DIRECT"
+      ? "VENDOR_DIRECT"
+      : closure.paymentCollectionMethod === "SPLIT"
+        ? "SPLIT"
+        : "COMPANY"
+  );
   const [vendorDirectAmt, setVendorDirectAmt] = useState(String(closure.vendorDirectAmount || 0));
   const [companyCollectedAmt, setCompanyCollectedAmt] = useState(String(closure.companyCollectedAmount || 0));
+
+  // SPLIT mode: Cash/UPI = Company + Vendor auto-total
+  useEffect(() => {
+    if (collectionMethod !== "SPLIT") return;
+    const total = (Number(companyCollectedAmt) || 0) + (Number(vendorDirectAmt) || 0);
+    setCashCollectedAmt(String(total));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collectionMethod, companyCollectedAmt, vendorDirectAmt]);
 
   // Customer ka BOB balance (admin closure modal me dikhane ke liye)
   useEffect(() => {
@@ -686,6 +596,77 @@ function ClosureModal({
 
   const cl = closure.verificationChecklist;
   const allChecked = cl.serviceDelivered && cl.customerPresent && cl.qualityConfirmed && cl.paymentConfirmed;
+
+  /* ── Invoice data for PDF ── */
+  function invoiceData(vendor: boolean): InvoiceData {
+    const finalP = closure.finalPrice || closure.amount;
+    const emiBal = closure.emiPending || Math.max(0, finalP - (closure.cashCollected || 0) - (closure.bobUsed || 0));
+    return {
+      bookingId: closure.bookingId,
+      customerName: closure.customerName,
+      customerPhone: closure.customerPhone,
+      service: closure.service,
+      salon: closure.salon,
+      serviceType: closure.serviceType,
+      serviceDate: closure.serviceDate,
+      timeSlot: closure.timeSlot,
+      finalPrice: finalP,
+      bobUsed: closure.bobUsed || 0,
+      cashUpiPaid: closure.cashCollected || 0,
+      emiBalance: emiBal,
+      paymentStatus: closure.paymentStatus || "",
+      paidVia: closure.paidVia || "",
+      gstSlab: closure.gstSlab ?? 18,
+      basePrice: closure.basePrice,
+      gstAmount: closure.gstAmount,
+      cgst: closure.cgst,
+      sgst: closure.sgst,
+      companyCollected: closure.companyCollectedAmount || 0,
+      vendorCollected: closure.vendorDirectAmount || 0,
+      ...(vendor
+        ? { platformCommission: closure.platformCommission || Math.round(finalP * 0.1), vendorNetPayout: closure.vendorNetPayout || Math.round(finalP * 0.9) }
+        : {}),
+    };
+  }
+
+  /* ── WhatsApp share with PDF attached (Web Share API level 2) ── */
+  async function shareViaWhatsApp(vendor: boolean) {
+    try {
+      const doc = vendor ? generateVendorInvoicePdf(invoiceData(true)) : generateInvoicePdf(invoiceData(false));
+      const blob = doc.output("blob");
+      const file = new File([blob], `QURUX-Invoice-${closure.bookingId}${vendor ? "-Vendor" : ""}.pdf`, { type: "application/pdf" });
+      const nav = navigator as any;
+      if (nav.canShare && nav.canShare({ files: [file] })) {
+        await nav.share({
+          files: [file],
+          title: `QURUX Invoice — ${closure.bookingId}`,
+          text: vendor
+            ? `QURUX Vendor Invoice ${closure.bookingId} — ${closure.service}`
+            : `QURUX Invoice ${closure.bookingId} — Thank you!`,
+        });
+        return;
+      }
+      // Fallback: download PDF + open WhatsApp with message
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      const finalP = closure.finalPrice || closure.amount;
+      const emiBal = closure.emiPending || 0;
+      const msg = vendor
+        ? [`🧾 *QURUX Vendor Invoice — ${closure.bookingId}*`, `Service: ${closure.service}`, `Customer: ${closure.customerName}`, `Final Price: ₹${finalP.toLocaleString("en-IN")}`, `PDF downloaded — attach & send.`].join("\n")
+        : emiBal > 0
+          ? [`Hi ${closure.customerName}! 👋`, ``, `🧾 *QURUX Invoice — ${closure.bookingId}*`, `Final Price: ₹${finalP.toLocaleString("en-IN")}`, `*EMI Balance: ₹${emiBal.toLocaleString("en-IN")}*`, ``, `📋 Invoice PDF downloaded — attach & send: https://www.qurux.in/invoice/${closure.bookingId}`].join("\n")
+          : [`Hi ${closure.customerName}! 👋`, ``, `✅ *Full Payment Received — Thank You!*`, ``, `🧾 *QURUX Invoice — ${closure.bookingId}*`, `Final Price: ₹${finalP.toLocaleString("en-IN")}`, `Payment: FULLY PAID`, ``, `📋 Invoice PDF downloaded — attach & send.`].join("\n");
+      const phone = vendor ? "919911227916" : closure.customerPhone.startsWith("+91") ? closure.customerPhone.replace("+", "") : `91${closure.customerPhone}`;
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+    } catch (e) {
+      console.error("Invoice share failed", e);
+      alert("Invoice PDF ban gaya hai — download folder me check karein, fir WhatsApp pe attach karke bhejein.");
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -921,6 +902,7 @@ function ClosureModal({
                   {[
                     { val: "COMPANY", label: "🏢 Paid to Company (Qurux)", desc: "Customer ne company ko pay kiya" },
                     { val: "VENDOR_DIRECT", label: "💈 Paid to Vendor Direct", desc: "Customer ne vendor ko seedha diya" },
+                    { val: "SPLIT", label: "✂️ Split (Company + Vendor)", desc: "Dono ne milke collect kiya — auto total" },
                   ].map((opt) => (
                     <button
                       key={opt.val}
@@ -937,6 +919,35 @@ function ClosureModal({
                     </button>
                   ))}
                 </div>
+                {collectionMethod === "SPLIT" && (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg bg-white p-3">
+                      <p className="text-xs font-bold text-gray-600">COMPANY COLLECTED (₹)</p>
+                      <input
+                        type="number"
+                        min={0}
+                        max={finalNum}
+                        value={companyCollectedAmt}
+                        onChange={(e) => setCompanyCollectedAmt(e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-green-200 bg-gray-50 px-3 py-2 text-lg font-black outline-none focus:border-green-500"
+                      />
+                    </div>
+                    <div className="rounded-lg bg-white p-3">
+                      <p className="text-xs font-bold text-gray-600">VENDOR COLLECTED (₹)</p>
+                      <input
+                        type="number"
+                        min={0}
+                        max={finalNum}
+                        value={vendorDirectAmt}
+                        onChange={(e) => setVendorDirectAmt(e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-purple-200 bg-gray-50 px-3 py-2 text-lg font-black outline-none focus:border-purple-500"
+                      />
+                    </div>
+                    <p className="text-[11px] font-semibold text-purple-600 sm:col-span-2">
+                      ✅ Cash/UPI Paid = Company ₹{(Number(companyCollectedAmt) || 0).toLocaleString("en-IN")} + Vendor ₹{(Number(vendorDirectAmt) || 0).toLocaleString("en-IN")} = <strong>₹{((Number(companyCollectedAmt) || 0) + (Number(vendorDirectAmt) || 0)).toLocaleString("en-IN")}</strong> (auto)
+                    </p>
+                  </div>
+                )}
                 {collectionMethod === "VENDOR_DIRECT" && (
                   <div className="mt-3 rounded-lg bg-white p-3">
                     <p className="text-xs font-bold text-gray-600">VENDOR DIRECT AMOUNT (₹)</p>
@@ -1097,7 +1108,8 @@ function ClosureModal({
                   effPaidVia,
                   finalNum,
                   walletNum,
-                  collectionMethod,                   collectionMethod === "VENDOR_DIRECT" ? Number(vendorDirectAmt) || 0 : 0,
+                  collectionMethod,
+                  collectionMethod === "COMPANY" ? 0 : Number(vendorDirectAmt) || 0,
                   gstSlab
                 );
               }}
@@ -1144,80 +1156,23 @@ function ClosureModal({
               {closure.adminRemarks && (
                 <p className="mt-3 text-sm text-gray-600">{closure.adminRemarks}</p>
               )}
-            </div>              {/* WhatsApp Invoice Dispatch */}
-              <div className="grid gap-3 sm:grid-cols-2">
-              <a
-                href={`https://wa.me/${closure.customerPhone.startsWith("+91") ? closure.customerPhone : `91${closure.customerPhone}`}?text=${encodeURIComponent(
-                  closure.emiPending > 0
-                    ? [
-                        `Hi ${closure.customerName}! 👋`,
-                        "",
-                        `🧾 *QURUX Invoice — ${closure.bookingId}*`,
-                        ``,
-                        `Service: ${closure.service}`,
-                        `Date: ${closure.serviceDate}`,
-                        ``,
-                        `*Final Price: ₹${(closure.finalPrice || closure.amount).toLocaleString("en-IN")}*`,
-                        `*Paid: ₹${((closure.finalPrice || closure.amount) - closure.emiPending).toLocaleString("en-IN")}*`,
-                        `*EMI Balance: ₹${closure.emiPending.toLocaleString("en-IN")}*`,
-                        ``,
-                        `📋 Invoice: https://www.qurux.in/invoice/${closure.bookingId}`,
-                        ``,
-                        `📝 *EMI Terms:*`,
-                        `• Maximum 6 months flexible repayment`,
-                        `• Pay any amount, anytime — no fixed date`,
-                        `• Zero interest during 6 months`,
-                        `• After 6 months: ₹10/day late fee`,
-                        ``,
-                        `📞 Payment karne ke baad screenshot WhatsApp par bhej dein.`,
-                        ``,
-                        `Thank you for choosing QURUX! 🙏✨`,
-                      ].join("\n")
-                    : [
-                        `Hi ${closure.customerName}! 👋`,
-                        "",
-                        `✅ *Full Payment Received — Thank You!*`,
-                        ``,
-                        `🧾 *QURUX Invoice — ${closure.bookingId}*`,
-                        ``,
-                        `Service: ${closure.service}`,
-                        `Date: ${closure.serviceDate}`,
-                        `Final Price: ₹${(closure.finalPrice || closure.amount).toLocaleString("en-IN")}`,
-                        `Payment: FULLY PAID`,
-                        ``,
-                        `📋 Invoice: https://www.qurux.in/invoice/${closure.bookingId}`,
-                        ``,
-                        `Aapki poori payment receive ho gayi hai. 🎉`,
-                        `Service ke baad aapko koi due nahi hai.`,
-                        ``,
-                        `Thank you for choosing QURUX! 🙏✨`,
-                      ].join("\n")
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
+            </div>
+            {/* WhatsApp Invoice Dispatch — with PDF attachment */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => shareViaWhatsApp(false)}
                 className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-green-700"
               >
-                📱 Send Invoice to Customer
-              </a>
-              <a
-                href={`https://wa.me/919911227916?text=${encodeURIComponent([
-                  `🧾 *QURUX Vendor Invoice — ${closure.bookingId}*`,
-                  `Service: ${closure.service}`,
-                  `Customer: ${closure.customerName}`,
-                  `Final Price: ₹${(closure.finalPrice || closure.amount).toLocaleString("en-IN")}`,
-                  `Payment: ${closure.paymentStatus} via ${closure.paidVia || "CASH"}`,
-                  closure.emiPending > 0 ? `EMI Balance: ₹${closure.emiPending.toLocaleString("en-IN")}` : `Full Payment ✅`,
-                  ``,
-                  `Invoice: ${process.env.NEXT_PUBLIC_API_URL || "https://api.qurux.in"}/api/bookings/${closure.bookingId}/invoice`,
-                  ``,
-                  `Invoice details customer ko bhej di gayi hai.`,
-                ].join("\n"))}`}
-                target="_blank"
-                rel="noopener noreferrer"
+                📱 Send Invoice (PDF) to Customer
+              </button>
+              <button
+                type="button"
+                onClick={() => shareViaWhatsApp(true)}
                 className="flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-purple-700"
               >
-                📋 Send Invoice to Vendor
-              </a>
+                📋 Send Invoice (PDF) to Vendor
+              </button>
             </div>
 
             {/* Reopen for Edit button */}

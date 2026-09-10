@@ -17,11 +17,12 @@ export const metadata: Metadata = {
   description: "QURUX Makeover & Academy — Beauty Services, Products & BOB Wallet. Book salon services, shop beauty products, and save with the Bank of Beauty.",
   icons: {
     icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/favicon.png", type: "image/png" },
+      { url: "/favicon.ico", type: "image/x-icon", sizes: "any" },
+      { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/favicon.png", type: "image/png", sizes: "64x64" },
     ],
-    apple: "/icon.svg",
-    shortcut: "/icon.svg",
+    apple: "/apple-touch-icon.png",
+    shortcut: "/icons/icon-192.png",
   },
   manifest: "/manifest.webmanifest",
 };
