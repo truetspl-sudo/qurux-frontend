@@ -105,11 +105,11 @@ export default function PaymentForm({
           ✓
         </div>
         <h2 className="mt-4 text-2xl font-black text-gray-900">
-          Payment Submitted!
+          Payment Successful! 🎉
         </h2>
         <p className="mt-2 text-sm text-gray-600">
-          Aapki UPI payment detail admin verification ke liye bhej di gayi hai.
-          Admin approve karte hi booking/order PAID ho jayegi. Confirmation WhatsApp par milegi.
+          Aapki payment successfully verify ho gayi! Booking/order PAID ho gaya hai.
+          Confirmation WhatsApp par milegi. Admin panel me record dikhega.
         </p>
       </div>
     );

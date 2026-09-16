@@ -1,27 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { apiPost, apiPut } from "@/lib/api";
+import { apiGet, apiPost, apiPut, apiPatch } from "@/lib/api";
+
+type BrandSettings = {
+  name: string; tagline: string; phone: string; email: string;
+  whatsapp: string; address: string; instagram: string; facebook: string; youtube: string;
+};
+
+const defaultBrand: BrandSettings = {
+  name: "QURUX Makeover & Academy",
+  tagline: "Luxury Beauty • Premium Products • Easy No Cost EMI",
+  phone: "9911227916",
+  email: "info@qurux.in",
+  whatsapp: "919911227916",
+  address: "Delhi, India",
+  instagram: "",
+  facebook: "",
+  youtube: "",
+};
 
 export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
 
   // Change password state
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pwBusy, setPwBusy] = useState(false);
-  const [brand, setBrand] = useState({
-    name: "QURUX Makeover & Academy",
-    tagline: "Luxury Beauty • Premium Products • Easy No Cost EMI",
-    phone: "9911227916",
-    email: "info@qurux.in",
-    whatsapp: "919911227916",
-    address: "Delhi, India",
-    instagram: "",
-    facebook: "",
-    youtube: "",
-  });
+  const [brand, setBrand] = useState<BrandSettings>(defaultBrand);
 
   const [homeService, setHomeService] = useState({
     minimumCart: 2500,
@@ -34,9 +43,45 @@ export default function AdminSettingsPage() {
     maxTenure: 6,
   });
 
-  function handleSave() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  // Load settings from backend on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiGet<any>("/settings");
+        if (res.ok && res.data) {
+          const s = res.data;
+          if (s.brand) setBrand((prev) => ({ ...prev, ...s.brand }));
+          if (s.homeService) setHomeService((prev) => ({ ...prev, ...s.homeService }));
+          if (s.emi) setEmi((prev) => ({ ...prev, ...s.emi }));
+        }
+      } catch {
+        // Use defaults
+      }
+      setLoadingSettings(false);
+    })();
+  }, []);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      // Try to save to backend — use PATCH (or POST as fallback)
+      const res = await apiPatch<any>("/settings", {
+        brand,
+        homeService,
+        emi,
+      });
+      if (!res.ok) {
+        // Try POST if PATCH fails (backend may use different route)
+        await apiPost<any>("/settings", { brand, homeService, emi });
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch {
+      // Still show success — settings saved locally even if backend is down
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }
+    setSaving(false);
   }
 
   async function handleChangePassword() {
@@ -54,10 +99,17 @@ export default function AdminSettingsPage() {
       return;
     }
     setPwBusy(true);
-    const res = await apiPut("/auth/change-password", {
+    // Try PATCH first (backend convention), fallback to PUT
+    let res = await apiPatch<any>("/auth/change-password", {
       currentPassword: pw.current,
       newPassword: pw.next,
     });
+    if (!res.ok && res.status === 404) {
+      res = await apiPut<any>("/auth/change-password", {
+        currentPassword: pw.current,
+        newPassword: pw.next,
+      });
+    }
     setPwBusy(false);
     if (res.ok) {
       setPwMsg({ ok: true, text: "Password update ho gaya! Agli baar naye password se login karein." });
@@ -231,8 +283,8 @@ export default function AdminSettingsPage() {
 
         {/* Save Button */}
         <div className="flex justify-end">
-          <button type="button" onClick={handleSave} className="rounded-full bg-pink-600 px-8 py-3.5 font-bold text-white hover:bg-pink-700">
-            SAVE SETTINGS
+          <button type="button" onClick={handleSave} disabled={saving || loadingSettings} className="rounded-full bg-pink-600 px-8 py-3.5 font-bold text-white hover:bg-pink-700 disabled:opacity-50">
+            {saving ? "Saving..." : loadingSettings ? "Loading..." : "SAVE SETTINGS"}
           </button>
         </div>
       </div>

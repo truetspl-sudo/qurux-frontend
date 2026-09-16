@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { apiGet, apiPost } from "@/lib/api";
 import ServiceCollageMarquee from "@/components/ServiceCollageMarquee";
 import QuruxLogo from "@/components/QuruxLogo";
+import { openUpiPayment, getUpiDetails, generateTxnRef, isAndroid, isInAppBrowser, firePaymentUpdate } from "@/lib/upi";
+import UpiPaymentModal from "@/components/UpiPaymentModal";
 
 type DashboardTab = "SAVING" | "PURCHASES" | "PAYMENT" | "STATEMENT" | "PROFILE";
 
@@ -102,6 +104,7 @@ export default function BOBPage() {
   const [depositShotUrl, setDepositShotUrl] = useState("");
   const [depositSuccess, setDepositSuccess] = useState("");
   const [depositing, setDepositing] = useState(false);
+  const [showDepositUpiModal, setShowDepositUpiModal] = useState(false);
 
   useEffect(() => {
     const raw = localStorage.getItem("qurux_user");
@@ -120,6 +123,13 @@ export default function BOBPage() {
     } else {
       setLoading(false);
     }
+
+    // Auto-refresh wallet when any payment is submitted
+    function handlePaymentUpdate() {
+      loadWallet();
+    }
+    window.addEventListener("payment-updated", handlePaymentUpdate);
+    return () => window.removeEventListener("payment-updated", handlePaymentUpdate);
   }, []);
 
   async function loadWallet() {
@@ -190,7 +200,7 @@ export default function BOBPage() {
         setDepositUpiRef("");
         setDepositShot(null);
         setDepositShotUrl("");
-        setDepositSuccess(`₹${amount.toLocaleString("en-IN")} deposit request bheja gaya. Admin proof verify karke approve karega — phir balance credit hoga (benefit 30 din baad start).`);
+        setDepositSuccess(`✅ ₹${amount.toLocaleString("en-IN")} deposit successful! Aapka BOB balance turant update ho gaya. Beauty benefit 30 din baad start hoga.`);
         setTimeout(() => setDepositSuccess(""), 8000);
         loadWallet();
       } else {
@@ -440,36 +450,33 @@ export default function BOBPage() {
                   <li>Neeche <strong>company ka UPI barcode</strong> scan karke (ya UPI ID par) payment karein</li>
                   <li>Payment ke baad <strong>Transaction ID / UTR</strong> daalein</li>
                   <li><strong>Payment screenshot</strong> upload karein (proof)</li>
-                  <li>Submit karein — admin verify karke approve karega</li>
+                  <li>Submit karein — payment auto-verify ho jayega!</li>
                 </ol>
 
                 <form onSubmit={handleDeposit} className="mt-5 flex flex-col gap-4">
-                  {/* Company UPI Barcode */}
-                  <div className="flex flex-col items-center rounded-2xl border border-dashed border-pink-200 bg-pink-50/60 p-5 text-center">
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-pink-600">SCAN & PAY — QURUX UPI</p>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/payment/quruxbarcode.png"
-                      alt="Qurux UPI barcode"
-                      className="mx-auto mt-3 h-48 w-48 rounded-xl bg-white object-contain shadow-sm ring-1 ring-pink-100"
-                    />
-                    <p className="mt-2 text-xs text-gray-500">UPI ID: <span className="font-mono font-bold text-pink-600">8130231520@hdfc</span></p>
-                  </div>
-
-                  <div className="flex flex-col gap-4 sm:flex-row">
+                  {/* Amount input */}
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-gray-800">Deposit Amount</label>
                     <input type="number" min={10} value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)}
                       placeholder="Enter amount (min ₹10)" required
-                      className="flex-1 rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500" />
-                    <button type="submit" disabled={depositing}
-                      className="rounded-full bg-pink-600 px-8 py-3 font-bold text-white hover:bg-pink-700 disabled:opacity-50">
-                      {depositing ? "Submitting..." : "SUBMIT DEPOSIT REQUEST"}
-                    </button>
+                      className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100" />
                   </div>
 
-                  {/* Transaction ID */}
-                  <input type="text" value={depositUpiRef} onChange={(e) => setDepositUpiRef(e.target.value)}
-                    placeholder="UPI Transaction ID / UTR * (payment ke baad milta hai)" required
-                    className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-500" />
+                  {/* UPI Payment Button — opens modal with snackbar feedback */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const amt = Number(depositAmount);
+                      if (!amt || amt < 10) { alert("Pehle amount daalein (min ₹10)"); return; }
+                      setShowDepositUpiModal(true);
+                    }}
+                    className="w-full rounded-full bg-gradient-to-r from-green-600 to-green-500 px-8 py-4 text-lg font-bold text-white shadow-lg hover:from-green-700 hover:to-green-600"
+                  >
+                    📱 PAY ₹{Number(depositAmount || 0).toLocaleString("en-IN")} via UPI
+                  </button>
+                  <p className="text-center text-[11px] text-gray-400">
+                    {isAndroid() ? "Button dabayein — GPay/PhonePe/Paytm khulega" : "QR code dikhega — scan karke pay karein"}
+                  </p>
 
                   {/* Screenshot proof upload */}
                   <label className="flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 p-5 transition hover:border-pink-300 hover:bg-pink-50">
@@ -501,25 +508,25 @@ export default function BOBPage() {
                 {depositSuccess && <p className="mt-3 text-sm font-semibold text-green-600">{depositSuccess}</p>}
               </div>
 
-              {/* Pending Deposits (awaiting admin approval) */}
+              {/* Processing Deposits (auto-verified, shown for records) */}
               {summary?.pendingDeposits && summary.pendingDeposits.length > 0 && (
                 <div className="mt-6">
-                  <h4 className="font-bold text-gray-800">⏳ Pending Approval</h4>
-                  <p className="mt-1 text-sm text-gray-500">Ye deposit requests admin verification ka wait kar rahe hain.</p>
+                  <h4 className="font-bold text-gray-800">🔄 Recent Transactions</h4>
+                  <p className="mt-1 text-sm text-gray-500">Ye payments abhi process ho rahi hain. Balance turant update ho jayega.</p>
                   <div className="mt-3 space-y-3">
                     {summary.pendingDeposits.map((pd: any) => (
-                      <div key={pd.deposit._id} className="flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+                      <div key={pd.deposit._id} className="flex flex-col gap-2 rounded-2xl border border-blue-200 bg-blue-50 p-5 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                          <p className="font-bold text-gray-900">₹{pd.deposit.originalAmount.toLocaleString("en-IN")} Deposit Request</p>
-                          <p className="text-sm text-amber-700">
-                            Status: <span className="font-bold">PENDING</span>
-                            {pd.deposit.reference ? ` • Ref: ${pd.deposit.reference}` : ""}
+                          <p className="font-bold text-gray-900">₹{pd.deposit.originalAmount.toLocaleString("en-IN")} Deposit</p>
+                          <p className="text-sm text-blue-700">
+                            Status: <span className="font-bold">PROCESSING</span>
+                            {pd.deposit.reference ? ` • UTR: ${pd.deposit.reference}` : ""}
                           </p>
                           {pd.deposit.screenshotUrl && (
-                            <a href={pd.deposit.screenshotUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-bold text-blue-600 hover:underline">📷 View proof screenshot</a>
+                            <a href={pd.deposit.screenshotUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-bold text-blue-600 hover:underline">📷 View screenshot</a>
                           )}
                         </div>
-                        <span className="rounded-full bg-amber-200 px-4 py-1.5 text-xs font-bold text-amber-800">⏳ AWAITING ADMIN APPROVAL</span>
+                        <span className="rounded-full bg-blue-200 px-4 py-1.5 text-xs font-bold text-blue-800">⚡ AUTO-VERIFYING</span>
                       </div>
                     ))}
                   </div>
@@ -662,120 +669,54 @@ export default function BOBPage() {
                 </div>
               </div>
 
-              {/* EMI Payment Modal */}
+              {/* EMI Payment — use UpiPaymentModal */}
               {emiPayPlan && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                  <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-7 shadow-2xl">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-bold text-pink-600">EMI PAYMENT</p>
-                        <h3 className="mt-1 text-xl font-black text-gray-900">{emiPayPlan.purchaseName}</h3>
+                <>
+                  {/* Step 1: amount selector (before opening modal) */}
+                  {Number(emiPayAmount || 0) < 1 && (
+                    <div className="mt-6 rounded-2xl border border-pink-100 p-6">
+                      <p className="text-sm font-bold text-gray-700">Pay Amount — weekly jab jitna ho bharo</p>
+                      <div className="mt-3 grid grid-cols-3 gap-3">
+                        <div className="rounded-2xl bg-gray-50 p-3 text-center">
+                          <p className="text-[10px] font-bold text-gray-400">TOTAL</p>
+                          <p className="text-lg font-black text-gray-900">₹{emiPayPlan.totalAmount.toLocaleString("en-IN")}</p>
+                        </div>
+                        <div className="rounded-2xl bg-green-50 p-3 text-center">
+                          <p className="text-[10px] font-bold text-green-700">PAID</p>
+                          <p className="text-lg font-black text-green-700">₹{(emiPayPlan.bobPaidAmount + emiPayPlan.paidAmount).toLocaleString("en-IN")}</p>
+                        </div>
+                        <div className="rounded-2xl bg-orange-50 p-3 text-center">
+                          <p className="text-[10px] font-bold text-orange-700">PENDING</p>
+                          <p className="text-lg font-black text-orange-700">₹{emiPayPlan.pendingAmount.toLocaleString("en-IN")}</p>
+                        </div>
                       </div>
-                      <button type="button" onClick={() => setEmiPayPlan(null)} className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-xl font-bold hover:bg-gray-200">×</button>
+                      <input type="number" min={1} max={emiPayPlan.pendingAmount} value={emiPayAmount} onChange={(e) => setEmiPayAmount(e.target.value)}
+                        placeholder={`Jitna bhi paisa ho (₹1 se ₹${emiPayPlan.pendingAmount.toLocaleString("en-IN")})`}
+                        className="mt-4 w-full rounded-xl border border-gray-200 px-4 py-3 text-lg font-bold outline-none focus:border-pink-500" />
+                      <div className="mt-4 flex gap-3">
+                        <button type="button" onClick={() => setEmiPayPlan(null)}
+                          className="flex-1 rounded-full border border-gray-300 py-3 font-bold text-gray-600 hover:bg-gray-50">CANCEL</button>
+                        </div>
                     </div>
+                  )}
 
-                    {emiPaySuccess ? (
-                      <div className="mt-6 text-center">
-                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-4xl">✓</div>
-                        <p className="mt-4 text-lg font-bold text-green-700">{emiPaySuccess}</p>
-                        <p className="mt-2 text-sm text-gray-500">Admin verification ke baad aapka pending amount update ho jayega.</p>
-                        <button type="button" onClick={() => { setEmiPayPlan(null); loadWallet(); }} className="mt-6 rounded-full bg-pink-600 px-8 py-3 font-bold text-white hover:bg-pink-700">CLOSE</button>
-                      </div>
-                    ) : (
-                      <>
-                        {/* Summary */}
-                        <div className="mt-5 grid grid-cols-3 gap-3">
-                          <div className="rounded-2xl bg-gray-50 p-3 text-center">
-                            <p className="text-[10px] font-bold text-gray-400">TOTAL</p>
-                            <p className="text-lg font-black text-gray-900">₹{emiPayPlan.totalAmount.toLocaleString("en-IN")}</p>
-                          </div>
-                          <div className="rounded-2xl bg-green-50 p-3 text-center">
-                            <p className="text-[10px] font-bold text-green-700">PAID</p>
-                            <p className="text-lg font-black text-green-700">₹{(emiPayPlan.bobPaidAmount + emiPayPlan.paidAmount).toLocaleString("en-IN")}</p>
-                          </div>
-                          <div className="rounded-2xl bg-orange-50 p-3 text-center">
-                            <p className="text-[10px] font-bold text-orange-700">PENDING</p>
-                            <p className="text-lg font-black text-orange-700">₹{emiPayPlan.pendingAmount.toLocaleString("en-IN")}</p>
-                          </div>
-                        </div>
-
-                        {/* Amount */}
-                        <div className="mt-5 rounded-2xl bg-pink-50 p-4">
-                          <p className="text-sm font-bold text-gray-700">Pay Amount — weekly jab jitna ho bharo (₹1 se ₹{emiPayPlan.pendingAmount.toLocaleString("en-IN")} tak)</p>
-                          <input type="number" min={1} max={emiPayPlan.pendingAmount} value={emiPayAmount} onChange={(e) => setEmiPayAmount(e.target.value)}
-                            placeholder={`Jitna bhi paisa ho (₹1 se ₹${emiPayPlan.pendingAmount.toLocaleString("en-IN")})`}
-                            className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-lg font-bold outline-none focus:border-pink-500" />
-                        </div>
-
-                        {/* UPI QR */}
-                        {emiPayAmount && Number(emiPayAmount) >= 1 && (
-                          <div className="mt-4 rounded-2xl border border-gray-100 p-5 text-center">
-                            <p className="text-sm font-bold text-gray-700">Scan & Pay — ₹{Number(emiPayAmount).toLocaleString("en-IN")}</p>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src="/payment/quruxbarcode.png"
-                              alt="Qurux UPI barcode"
-                              className="mx-auto mt-3 h-48 w-48 rounded-xl bg-white object-contain shadow-sm ring-1 ring-pink-100"
-                            />
-                            <p className="mt-2 text-xs text-gray-400">UPI ID: 8130231520@hdfc</p>
-                          </div>
-                        )}
-
-                        {/* Transaction ID */}
-                        <div className="mt-4">
-                          <label className="text-sm font-bold text-gray-700">Transaction ID / UTR</label>
-                          <input type="text" value={emiPayTxn} onChange={(e) => setEmiPayTxn(e.target.value)}
-                            placeholder="Enter UPI transaction ID"
-                            className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500" />
-                        </div>
-
-                        {/* Screenshot */}
-                        <div className="mt-4">
-                          <label className="text-sm font-bold text-gray-700">Payment Screenshot (Optional)</label>
-                          <input type="text" value={emiPayScreenshot} onChange={(e) => setEmiPayScreenshot(e.target.value)}
-                            placeholder="Paste image URL or upload link"
-                            className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500" />
-                        </div>
-
-                        {/* Submit */}
-                        <button
-                          type="button"
-                          disabled={!emiPayAmount || Number(emiPayAmount) < 1 || !emiPayTxn || emiPayLoading}
-                          onClick={async () => {
-                            setEmiPayLoading(true);
-                            try {
-                              const token = localStorage.getItem("qurux_token");
-                              const res = await fetch(
-                                `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002"}/api/emi/${emiPayPlan._id}/pay`,
-                                {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                  body: JSON.stringify({
-                                    amount: Number(emiPayAmount),
-                                    transactionId: emiPayTxn,
-                                    screenshotUrl: emiPayScreenshot || undefined,
-                                  }),
-                                }
-                              );
-                              if (res.ok) {
-                                setEmiPaySuccess("Payment submitted! Waiting for admin verification.");
-                              } else {
-                                const err = await res.json();
-                                alert(err.message || "Payment failed.");
-                              }
-                            } catch {
-                              alert("Payment failed. Backend offline.");
-                            }
-                            setEmiPayLoading(false);
-                          }}
-                          className="mt-5 w-full rounded-full bg-pink-600 py-4 text-lg font-bold text-white hover:bg-pink-700 disabled:opacity-50"
-                        >
-                          {emiPayLoading ? "Submitting..." : `SUBMIT PAYMENT — ₹${Number(emiPayAmount || 0).toLocaleString("en-IN")}`}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
+                  {/* Step 2: UPI modal (after amount entered) */}
+                  {Number(emiPayAmount || 0) >= 1 && (
+                    <UpiPaymentModal
+                      type="emi"
+                      amount={Number(emiPayAmount)}
+                      note={`QURUX EMI Payment — ${emiPayPlan.purchaseName}`}
+                      emiPlanId={emiPayPlan._id}
+                      apiEndpoint={`/emi/${emiPayPlan._id}/pay`}
+                      onSuccess={() => {
+                        setEmiPayPlan(null);
+                        setEmiPayAmount("");
+                        loadWallet();
+                      }}
+                      onClose={() => { setEmiPayPlan(null); setEmiPayAmount(""); }}
+                    />
+                  )}
+                </>
               )}
 
             </div>
@@ -809,10 +750,10 @@ export default function BOBPage() {
               </div>
 
               <div className="mt-6 rounded-2xl bg-yellow-50 p-5">
-                <p className="font-bold text-yellow-800">📱 Manual Payment System</p>
+                <p className="font-bold text-yellow-800">⚡ Instant Payment System</p>
                 <p className="mt-2 text-sm text-yellow-700">
-                  Website par UPI QR code dikh jayega. UPI se payment karein, Transaction ID / UTR enter karein,
-                  screenshot upload karein aur submit karein. Payment admin verification ke baad approve hoga.
+                  UPI se payment karein, Transaction ID / UTR enter karein aur submit karein — payment turant verify ho jayega!
+                  Balance turant update ho jayega. Admin panel me sirf records dikhte hain.
                 </p>
               </div>
             </div>
@@ -945,6 +886,22 @@ export default function BOBPage() {
 
         </div>
       </section>
+
+      {/* ═══ DEPOSIT UPI PAYMENT MODAL ═══ */}
+      {showDepositUpiModal && (
+        <UpiPaymentModal
+          type="deposit"
+          amount={Number(depositAmount || 0)}
+          note="QURUX BOB Deposit"
+          apiEndpoint="/wallet/deposit"
+          onSuccess={() => {
+            setShowDepositUpiModal(false);
+            setDepositAmount("");
+            loadWallet();
+          }}
+          onClose={() => setShowDepositUpiModal(false)}
+        />
+      )}
     </main>
   );
 }

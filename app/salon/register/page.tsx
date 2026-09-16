@@ -35,10 +35,11 @@ export default function SalonRegisterPage() {
   const [workImages, setWorkImages] = useState<string[]>([]);
   const [certificates, setCertificates] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
 
   // Auto-resize image to max 800px width, compress to JPEG 0.8
-  async function resizeImage(file: File): Promise<string> {
-    return new Promise((resolve) => {
+  async function resizeImage(file: File): Promise<Blob> {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
@@ -52,12 +53,25 @@ export default function SalonRegisterPage() {
           canvas.height = h;
           const ctx = canvas.getContext("2d");
           ctx?.drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL("image/jpeg", 0.8));
+          canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Blob failed")), "image/jpeg", 0.8);
         };
+        img.onerror = () => reject(new Error("Image load failed"));
         img.src = e.target?.result as string;
       };
+      reader.onerror = () => reject(new Error("File read failed"));
       reader.readAsDataURL(file);
     });
+  }
+
+  // Upload resized image to server, return URL
+  async function uploadToServer(blob: Blob, filename: string): Promise<string> {
+    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const fd = new FormData();
+    fd.append("screenshot", blob, filename);
+    const r = await fetch(`${base}/api/payments/upload`, { method: "POST", body: fd });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.url) throw new Error(data.message || "Upload failed");
+    return data.url;
   }
 
   async function handleImageUpload(
@@ -69,18 +83,23 @@ export default function SalonRegisterPage() {
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) { alert("Max 10MB allowed."); return; }
     setUploading(true);
+    setUploadProgress(`Uploading ${file.name}...`);
     try {
       const resized = await resizeImage(file);
+      const url = await uploadToServer(resized, file.name);
       if (target === "front") {
-        setFrontImage(resized);
+        setFrontImage(url);
       } else if (target === "interior") {
-        setInteriorImages((prev) => [...prev, resized]);
+        setInteriorImages((prev) => [...prev, url]);
       } else if (target === "work") {
-        setWorkImages((prev) => [...prev, resized]);
+        setWorkImages((prev) => [...prev, url]);
       } else {
-        setCertificates((prev) => [...prev, resized]);
+        setCertificates((prev) => [...prev, url]);
       }
-    } catch {}
+    } catch (err: any) {
+      alert("Upload failed: " + (err?.message || "Try again"));
+    }
+    setUploadProgress("");
     setUploading(false);
     e.target.value = "";
   }

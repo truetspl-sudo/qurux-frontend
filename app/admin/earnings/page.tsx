@@ -108,7 +108,7 @@ export default function AdminEarningsPage() {
     }
 
     for (const b of bookings) {
-      const isRevenueDay = b.status === "COMPLETED"; // closed = revenue booked
+      const isRevenueDay = b.status === "COMPLETED" || b.status === "PARTNER_COMPLETED"; // closed or partner-done = revenue booked
       if (!isRevenueDay) continue;
       const day = dayOf(b);
       if (vendorFilter !== "ALL" && b.salonName !== vendorFilter) continue;
