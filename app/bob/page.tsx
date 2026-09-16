@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet } from "@/lib/api";
 import ServiceCollageMarquee from "@/components/ServiceCollageMarquee";
 import QuruxLogo from "@/components/QuruxLogo";
 import { openUpiPayment, getUpiDetails, generateTxnRef, isAndroid, isInAppBrowser, firePaymentUpdate } from "@/lib/upi";
@@ -99,11 +99,7 @@ export default function BOBPage() {
 
   // Deposit form
   const [depositAmount, setDepositAmount] = useState("");
-  const [depositUpiRef, setDepositUpiRef] = useState("");
-  const [depositShot, setDepositShot] = useState<File | null>(null);
-  const [depositShotUrl, setDepositShotUrl] = useState("");
   const [depositSuccess, setDepositSuccess] = useState("");
-  const [depositing, setDepositing] = useState(false);
   const [showDepositUpiModal, setShowDepositUpiModal] = useState(false);
 
   useEffect(() => {
@@ -154,63 +150,7 @@ export default function BOBPage() {
     setLoading(false);
   }
 
-  // Upload deposit payment screenshot (proof) -> returns URL
-  async function uploadDepositShot(file: File): Promise<string> {
-    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-    const token = localStorage.getItem("qurux_token") || "";
-    const fd = new FormData();
-    fd.append("screenshot", file);
-    const r = await fetch(`${base}/api/payments/upload`, {
-      method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: fd,
-    });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.message || "Screenshot upload failed");
-    return data.url || "";
-  }
 
-  async function handleDeposit(e: React.FormEvent) {
-    e.preventDefault();
-    const amount = Number(depositAmount);
-    if (isNaN(amount) || amount < 10) {
-      alert("Minimum deposit ₹10 hai.");
-      return;
-    }
-    if (!depositUpiRef.trim()) {
-      alert("UPI Transaction ID / UTR daalna zaroori hai (payment ke baad milta hai).");
-      return;
-    }
-    setDepositing(true);
-    try {
-      // Upload screenshot proof first if selected
-      let shotUrl = depositShotUrl;
-      if (depositShot && !shotUrl) {
-        shotUrl = await uploadDepositShot(depositShot);
-        setDepositShotUrl(shotUrl);
-      }
-
-      const res = await apiPost<any>("/wallet/deposit", {
-        amount,
-        reference: depositUpiRef.trim(),
-        screenshotUrl: shotUrl,
-      });
-      if (res.ok) {
-        setDepositAmount("");
-        setDepositUpiRef("");
-        setDepositShot(null);
-        setDepositShotUrl("");
-        setDepositSuccess(`✅ ₹${amount.toLocaleString("en-IN")} deposit successful! Aapka BOB balance turant update ho gaya. Beauty benefit 30 din baad start hoga.`);
-        setTimeout(() => setDepositSuccess(""), 8000);
-        loadWallet();
-      } else {
-        alert(res.message || "Deposit failed.");
-      }
-    } catch (err: any) {
-      alert(err?.message || "Deposit failed. Backend offline.");
-    }
-    setDepositing(false);
-  }
 
   function downloadStatement() {
     const lines = [
@@ -443,26 +383,39 @@ export default function BOBPage() {
                 </ul>
               </div>
 
-              {/* Deposit Form — company UPI barcode scan karke pay, proof: txn ID + screenshot */}
+              {/* Deposit Form — Clean UPI-only flow */}
               <div className="mt-6 rounded-2xl border border-pink-100 p-6">
-                <h4 className="font-bold text-gray-800">Make a Deposit</h4>
-                <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-gray-600">
-                  <li>Neeche <strong>company ka UPI barcode</strong> scan karke (ya UPI ID par) payment karein</li>
-                  <li>Payment ke baad <strong>Transaction ID / UTR</strong> daalein</li>
-                  <li><strong>Payment screenshot</strong> upload karein (proof)</li>
-                  <li>Submit karein — payment auto-verify ho jayega!</li>
-                </ol>
+                <h4 className="font-bold text-gray-800">💰 Add Money to BOB</h4>
+                <p className="mt-1 text-sm text-gray-500">Amount daalein aur seedha UPI se pay karein</p>
 
-                <form onSubmit={handleDeposit} className="mt-5 flex flex-col gap-4">
+                <div className="mt-5 flex flex-col gap-4">
                   {/* Amount input */}
                   <div>
                     <label className="mb-2 block text-sm font-bold text-gray-800">Deposit Amount</label>
                     <input type="number" min={10} value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)}
-                      placeholder="Enter amount (min ₹10)" required
-                      className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100" />
+                      placeholder="Enter amount (min ₹10)"
+                      className="w-full rounded-xl border border-gray-200 px-4 py-3 text-lg font-bold outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100" />
                   </div>
 
-                  {/* UPI Payment Button — opens modal with snackbar feedback */}
+                  {/* Quick amount buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    {[100, 500, 1000, 2000, 5000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setDepositAmount(String(amt))}
+                        className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+                          Number(depositAmount) === amt
+                            ? "bg-pink-600 text-white"
+                            : "bg-pink-50 text-pink-600 hover:bg-pink-100"
+                        }`}
+                      >
+                        ₹{amt.toLocaleString("en-IN")}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* UPI Payment Button — opens modal */}
                   <button
                     type="button"
                     onClick={() => {
@@ -470,41 +423,15 @@ export default function BOBPage() {
                       if (!amt || amt < 10) { alert("Pehle amount daalein (min ₹10)"); return; }
                       setShowDepositUpiModal(true);
                     }}
-                    className="w-full rounded-full bg-gradient-to-r from-green-600 to-green-500 px-8 py-4 text-lg font-bold text-white shadow-lg hover:from-green-700 hover:to-green-600"
+                    disabled={!depositAmount || Number(depositAmount) < 10}
+                    className="w-full rounded-full bg-gradient-to-r from-green-600 to-green-500 px-8 py-4 text-lg font-bold text-white shadow-lg hover:from-green-700 hover:to-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     📱 PAY ₹{Number(depositAmount || 0).toLocaleString("en-IN")} via UPI
                   </button>
                   <p className="text-center text-[11px] text-gray-400">
                     {isAndroid() ? "Button dabayein — GPay/PhonePe/Paytm khulega" : "QR code dikhega — scan karke pay karein"}
                   </p>
-
-                  {/* Screenshot proof upload */}
-                  <label className="flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 p-5 transition hover:border-pink-300 hover:bg-pink-50">
-                    {depositShot ? (
-                      <div className="text-center">
-                        <span className="text-3xl">✅</span>
-                        <p className="mt-2 text-sm font-bold text-green-700">{depositShot.name}</p>
-                        <p className="text-xs text-gray-500">Payment screenshot — click to change</p>
-                      </div>
-                    ) : (
-                      <div className="text-center">
-                        <span className="text-3xl">📷</span>
-                        <p className="mt-2 text-sm font-bold text-gray-600">Upload Payment Screenshot (proof)</p>
-                        <p className="text-xs text-gray-400">JPG / PNG — max 5MB</p>
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        setDepositShot(f || null);
-                        if (f) setDepositShotUrl("");
-                      }}
-                    />
-                  </label>
-                </form>
+                </div>
                 {depositSuccess && <p className="mt-3 text-sm font-semibold text-green-600">{depositSuccess}</p>}
               </div>
 
