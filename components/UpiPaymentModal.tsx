@@ -6,6 +6,7 @@ import {
   getUpiDetails,
   generateTxnRef,
   isAndroid,
+  isMobile,
   isInAppBrowser,
   savePendingPayment,
   getPendingPayment,
@@ -16,19 +17,12 @@ import {
 type PaymentType = "deposit" | "emi";
 
 type Props = {
-  /** Payment type: deposit or emi */
   type: PaymentType;
-  /** Amount to pay */
   amount: number;
-  /** Note/description for UPI */
   note: string;
-  /** For EMI: plan ID */
   emiPlanId?: string;
-  /** Backend API endpoint: /wallet/deposit or /emi/:id/pay */
   apiEndpoint: string;
-  /** Called after successful payment submission */
   onSuccess?: () => void;
-  /** Called when modal is closed */
   onClose?: () => void;
 };
 
@@ -55,16 +49,12 @@ export default function UpiPaymentModal({
   const showSnackbar = useCallback(
     (message: string, type: SnackbarType = "info") => {
       setSnackbar({ show: true, message, type });
-      // Auto-hide after 5 seconds
-      setTimeout(
-        () => setSnackbar((s) => ({ ...s, show: false })),
-        5000
-      );
+      setTimeout(() => setSnackbar((s) => ({ ...s, show: false })), 5000);
     },
     []
   );
 
-  // On mount: check if user returned from UPI app with a pending payment
+  // On mount: check if user returned from UPI app
   useEffect(() => {
     const pending = getPendingPayment();
     if (
@@ -72,17 +62,13 @@ export default function UpiPaymentModal({
       pending.type === type &&
       (!emiPlanId || pending.emiPlanId === emiPlanId)
     ) {
-      // User returned from UPI app — show confirm step
       setTxnRef(pending.txnRef || "");
       setStep("confirm");
-      showSnackbar(
-        "Payment kiya? Neeche Transaction ID (UTR) paste karein.",
-        "info"
-      );
+      showSnackbar("Payment kiya? UTR daalein.", "info");
     }
   }, [type, emiPlanId, showSnackbar]);
 
-  // Handle UPI button click
+  // Open UPI app
   function handlePayViaUpi() {
     if (amount <= 0) {
       showSnackbar("Amount kam se kam ₹1 hona chahiye.", "error");
@@ -90,35 +76,18 @@ export default function UpiPaymentModal({
     }
     const ref = generateTxnRef(type === "emi" ? "EMI" : "QRX");
 
-    // Save pending payment before redirect
-    savePendingPayment({
-      amount,
-      type,
-      note,
-      emiPlanId,
-      txnRef: ref,
-    });
-
+    savePendingPayment({ amount, type, note, emiPlanId, txnRef: ref });
     setTxnRef(ref);
 
-    // Open UPI app
     const result = openUpiPayment(amount, note, ref);
 
     if (result === "opened") {
-      showSnackbar(
-        "UPI app khula hai. Payment karke wapas aayein.",
-        "info"
-      );
-      // Move to confirm step after brief delay (user is in UPI app)
+      showSnackbar("UPI app khula hai. Payment karke wapas aayein.", "info");
       setTimeout(() => setStep("confirm"), 2000);
     } else if (result === "copied") {
-      showSnackbar(
-        "UPI ID clipboard pe copy ho gaya hai. UPI app me jaake pay karein.",
-        "info"
-      );
+      showSnackbar("UPI ID copy ho gaya. UPI app me jaake pay karein.", "info");
       setStep("confirm");
     } else {
-      // fallback — in-app browser
       showSnackbar(
         "Is browser me UPI open nahi ho sakta. Chrome/Samsung Browser me kholein.",
         "error"
@@ -126,7 +95,7 @@ export default function UpiPaymentModal({
     }
   }
 
-  // Submit payment to backend (auto-verified)
+  // Submit payment to backend
   async function handleSubmit() {
     if (!txnRef.trim()) {
       showSnackbar("Transaction ID (UTR) daalna zaroori hai.", "error");
@@ -136,7 +105,7 @@ export default function UpiPaymentModal({
     setSubmitting(true);
     try {
       const { autoVerifyPayment } = await import("@/lib/upi");
-      
+
       const result = await autoVerifyPayment(apiEndpoint, {
         amount,
         transactionId: txnRef.trim(),
@@ -144,20 +113,15 @@ export default function UpiPaymentModal({
       });
 
       if (result.success) {
-        // Clear pending payment
         clearPendingPayment();
-
-        // Fire payment-updated event so other pages auto-refresh
         firePaymentUpdate();
-
         setStep("done");
         showSnackbar(
           type === "deposit"
-            ? `✅ ₹${amount.toLocaleString("en-IN")} payment successful! Aapka balance turant update ho gaya.`
-            : `✅ ₹${amount.toLocaleString("en-IN")} EMI payment successful! Pending amount turant kam ho gaya.`,
+            ? `✅ ₹${amount.toLocaleString("en-IN")} payment successful! Balance turant update ho gaya.`
+            : `✅ ₹${amount.toLocaleString("en-IN")} EMI payment successful!`,
           "success"
         );
-
         onSuccess?.();
       } else {
         showSnackbar(
@@ -166,8 +130,7 @@ export default function UpiPaymentModal({
         );
       }
     } catch (err: unknown) {
-      const errMsg =
-        err instanceof Error ? err.message : "Backend offline hai.";
+      const errMsg = err instanceof Error ? err.message : "Backend offline hai.";
       showSnackbar(`Payment submit me problem: ${errMsg}`, "error");
     }
     setSubmitting(false);
@@ -175,7 +138,7 @@ export default function UpiPaymentModal({
 
   return (
     <>
-      {/* ═══ SNACKBAR ═══ */}
+      {/* SNACKBAR */}
       <div
         className={`fixed top-4 left-1/2 z-[100] -translate-x-1/2 transition-all duration-300 ${
           snackbar.show
@@ -193,15 +156,9 @@ export default function UpiPaymentModal({
           }`}
         >
           <span className="text-xl">
-            {snackbar.type === "success"
-              ? "✅"
-              : snackbar.type === "error"
-                ? "❌"
-                : "ℹ️"}
+            {snackbar.type === "success" ? "✅" : snackbar.type === "error" ? "❌" : "ℹ️"}
           </span>
-          <span className="max-w-md text-sm font-semibold">
-            {snackbar.message}
-          </span>
+          <span className="max-w-md text-sm font-semibold">{snackbar.message}</span>
           <button
             type="button"
             onClick={() => setSnackbar((s) => ({ ...s, show: false }))}
@@ -212,16 +169,16 @@ export default function UpiPaymentModal({
         </div>
       </div>
 
-      {/* ═══ MODAL ═══ */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-7 shadow-2xl">
+      {/* MODAL */}
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+        <div className="max-h-[95vh] w-full max-w-md overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-6 shadow-2xl">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-pink-600">
                 {type === "deposit" ? "🏦 BOB DEPOSIT" : "💳 EMI PAYMENT"}
               </p>
-              <h3 className="mt-1 text-xl font-black text-gray-900">
+              <h3 className="mt-1 text-2xl font-black text-gray-900">
                 ₹{amount.toLocaleString("en-IN")}
               </h3>
             </div>
@@ -245,26 +202,35 @@ export default function UpiPaymentModal({
                 </div>
               )}
 
-              {/* UPI Button (Android) or QR (Desktop) */}
-              {isAndroid() ? (
+              {/* Mobile: Direct UPI button */}
+              {isMobile() ? (
                 <div className="text-center">
-                  <p className="text-sm text-gray-600">
-                    Neeche button dabayein — seedha UPI app khulega
-                  </p>
+                  <div className="rounded-2xl bg-green-50 p-5">
+                    <p className="text-3xl">📱</p>
+                    <p className="mt-3 text-sm font-bold text-green-800">
+                      Pay via UPI App
+                    </p>
+                    <p className="mt-1 text-xs text-green-600">
+                      Amount ₹{amount.toLocaleString("en-IN")} pre-fill hoga
+                    </p>
+                    <p className="mt-1 text-xs text-green-600">
+                      QURUX ke account me seedha jayega
+                    </p>
+                  </div>
                   <button
                     type="button"
                     onClick={handlePayViaUpi}
-                    className="mt-4 w-full rounded-full bg-gradient-to-r from-green-600 to-green-500 px-8 py-4 text-lg font-bold text-white shadow-lg hover:from-green-700 hover:to-green-600"
+                    className="mt-4 w-full rounded-full bg-gradient-to-r from-green-600 to-green-500 px-8 py-4 text-lg font-bold text-white shadow-lg hover:from-green-700 hover:to-green-600 active:scale-95 transition-transform"
                   >
                     📱 PAY ₹{amount.toLocaleString("en-IN")} via UPI
                   </button>
-                  <p className="mt-2 text-[11px] text-gray-400">
+                  <p className="mt-3 text-[11px] text-gray-400">
                     GPay, PhonePe, Paytm — jo bhi app hai
                   </p>
                 </div>
               ) : (
+                /* Desktop: QR code fallback */
                 <div className="text-center">
-                  {/* QR Code */}
                   <div className="rounded-2xl border border-dashed border-pink-200 bg-pink-50 p-6">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -285,9 +251,7 @@ export default function UpiPaymentModal({
                   <button
                     type="button"
                     onClick={() => {
-                      navigator.clipboard.writeText(
-                        getUpiDetails().upiId
-                      );
+                      navigator.clipboard.writeText(getUpiDetails().upiId);
                       showSnackbar("UPI ID clipboard pe copy ho gaya!", "success");
                     }}
                     className="mt-3 rounded-full bg-pink-100 px-6 py-2 text-sm font-bold text-pink-600 hover:bg-pink-200"
@@ -302,7 +266,7 @@ export default function UpiPaymentModal({
                 onClick={() => setStep("confirm")}
                 className="w-full text-center text-sm font-semibold text-pink-600 hover:underline"
               >
-                Payment ho gaya? Click here →
+                Payment ho gaya? UTR daalein →
               </button>
             </div>
           )}
@@ -311,7 +275,7 @@ export default function UpiPaymentModal({
           {step === "confirm" && (
             <div className="mt-6 space-y-4">
               <div className="rounded-2xl bg-blue-50 p-4 text-center">
-                <p className="text-lg">💸</p>
+                <p className="text-3xl">💸</p>
                 <p className="mt-2 text-sm font-bold text-blue-800">
                   Payment ho gaya?
                 </p>
@@ -328,8 +292,8 @@ export default function UpiPaymentModal({
                   type="text"
                   value={txnRef}
                   onChange={(e) => setTxnRef(e.target.value)}
-                  placeholder="Enter 12-digit UPI transaction ID"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3.5 text-center font-mono text-lg font-bold outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                  placeholder="12-digit UPI transaction ID"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-4 text-center font-mono text-lg font-bold outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
                 />
                 <p className="mt-1 text-center text-[11px] text-gray-400">
                   UPI app → Transaction Details me dikhta hai
@@ -340,7 +304,7 @@ export default function UpiPaymentModal({
                 type="button"
                 onClick={handleSubmit}
                 disabled={!txnRef.trim() || submitting}
-                className="w-full rounded-full bg-pink-600 py-4 text-lg font-bold text-white shadow-lg hover:bg-pink-700 disabled:opacity-50"
+                className="w-full rounded-full bg-pink-600 py-4 text-lg font-bold text-white shadow-lg hover:bg-pink-700 disabled:opacity-50 active:scale-95 transition-transform"
               >
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">
@@ -362,37 +326,34 @@ export default function UpiPaymentModal({
             </div>
           )}
 
-      {/* ── STEP 3: DONE — auto-verified success ── */}
-      {step === "done" && (
-        <div className="mt-6 text-center">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-5xl">
-            ✓
-          </div>
-          <h3 className="mt-4 text-xl font-black text-green-700">
-            Payment Auto-Verified! 🎉
-          </h3>
-          <p className="mt-2 text-sm text-gray-600">
-            {type === "deposit"
-              ? `₹${amount.toLocaleString("en-IN")} successfully added to your BOB Wallet. Balance turant update ho gaya! Beauty benefit 30 din baad start hoga.`
-              : `₹${amount.toLocaleString("en-IN")} EMI payment successful! Pending amount turant kam ho gaya.`}
-          </p>
-          <div className="mt-4 rounded-2xl bg-green-50 p-4">
-            <p className="text-xs font-bold text-green-700">✅ AUTO-VERIFIED PAYMENT</p>
-            <p className="mt-1 font-mono text-sm text-green-600">UTR: {txnRef}</p>
-            <p className="text-xs text-gray-500">Amount: ₹{amount.toLocaleString("en-IN")}</p>
-          </div>
-          <p className="mt-3 text-xs text-gray-400">
-            Payment auto-verify ho gaya — admin approval ki zarurat nahi. Record admin panel me bhi dikhega.
-          </p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-6 rounded-full bg-pink-600 px-10 py-3 font-bold text-white hover:bg-pink-700"
-          >
-            DONE ✓
-          </button>
-        </div>
-      )}
+          {/* ── STEP 3: DONE ── */}
+          {step === "done" && (
+            <div className="mt-6 text-center">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-5xl">
+                ✓
+              </div>
+              <h3 className="mt-4 text-xl font-black text-green-700">
+                Payment Successful! 🎉
+              </h3>
+              <p className="mt-2 text-sm text-gray-600">
+                {type === "deposit"
+                  ? `₹${amount.toLocaleString("en-IN")} successfully added to your BOB Wallet. Balance turant update ho gaya!`
+                  : `₹${amount.toLocaleString("en-IN")} EMI payment successful! Pending amount turant kam ho gaya.`}
+              </p>
+              <div className="mt-4 rounded-2xl bg-green-50 p-4">
+                <p className="text-xs font-bold text-green-700">✅ PAYMENT VERIFIED</p>
+                <p className="mt-1 font-mono text-sm text-green-600">UTR: {txnRef}</p>
+                <p className="text-xs text-gray-500">Amount: ₹{amount.toLocaleString("en-IN")}</p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="mt-6 rounded-full bg-pink-600 px-10 py-3 font-bold text-white hover:bg-pink-700"
+              >
+                DONE ✓
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>

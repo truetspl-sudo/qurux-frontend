@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { apiGet } from "@/lib/api";
 import ServiceCollageMarquee from "@/components/ServiceCollageMarquee";
 import QuruxLogo from "@/components/QuruxLogo";
-import { openUpiPayment, getUpiDetails, generateTxnRef, isAndroid, isInAppBrowser, firePaymentUpdate } from "@/lib/upi";
+import { isAndroid } from "@/lib/upi";
 import UpiPaymentModal from "@/components/UpiPaymentModal";
 
 type DashboardTab = "SAVING" | "PURCHASES" | "PAYMENT" | "STATEMENT" | "PROFILE";
@@ -429,7 +429,7 @@ export default function BOBPage() {
                     📱 PAY ₹{Number(depositAmount || 0).toLocaleString("en-IN")} via UPI
                   </button>
                   <p className="text-center text-[11px] text-gray-400">
-                    {isAndroid() ? "Button dabayein — GPay/PhonePe/Paytm khulega" : "QR code dikhega — scan karke pay karein"}
+                    GPay, PhonePe, Paytm — jo bhi app hai wo khulega
                   </p>
                 </div>
                 {depositSuccess && <p className="mt-3 text-sm font-semibold text-green-600">{depositSuccess}</p>}
