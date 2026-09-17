@@ -20,9 +20,9 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm">
 
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-2 sm:px-6">
+      <div className="relative mx-auto flex max-w-7xl items-center justify-center px-2 sm:px-6 lg:justify-between">
 
-        {/* Logo */}
+        {/* Logo — mobile me center, desktop me left */}
         <Link href="/" className="flex items-center">
           <Image
             src="/logo/logo.png?v=2"
@@ -62,11 +62,11 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* Mobile Hamburger */}
+        {/* Mobile Hamburger — absolute right, logo centering pe asar nahi */}
         <button
           type="button"
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="flex flex-col gap-1.5 lg:hidden"
+          className="absolute right-3 top-1/2 flex -translate-y-1/2 flex-col gap-1.5 lg:hidden"
           aria-label="Toggle menu"
         >
           <span
