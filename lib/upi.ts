@@ -90,15 +90,11 @@ export function openUpiPayment(
     return "fallback";
   }
 
-  if (isAndroid()) {
-    // Android: open UPI intent directly — opens GPay/PhonePe/Paytm
+  if (isAndroid() || /iphone|ipad|ipod/i.test(navigator.userAgent)) {
+    // Mark launch time so the return-listener can sanity-check the focus gap
+    (window as any).__quruxUpiLaunchedAt = Date.now();
+    // Android/iOS: open UPI intent — opens GPay/PhonePe/Paytm directly
     window.location.href = url;
-    return "opened";
-  }
-
-  if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
-    // iOS: try UPI intent (works if UPI apps installed)
-    window.open(url, "_blank");
     return "opened";
   }
 
@@ -142,9 +138,14 @@ type PendingPayment = {
   emiPlanId?: string;
   timestamp: number;
   txnRef: string;
+  /** Set when the user returns from the UPI app (tab regains focus) */
+  paidAt?: number;
 };
 
 const PENDING_KEY = "qurux_pending_upi";
+
+/** Fired on the window when the user returns from a UPI app */
+export const UPI_RETURN_EVENT = "qurux-upi-return";
 
 export function savePendingPayment(data: Omit<PendingPayment, "timestamp">) {
   if (typeof window === "undefined") return;
@@ -172,6 +173,23 @@ export function getPendingPayment(): PendingPayment | null {
 export function clearPendingPayment() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(PENDING_KEY);
+}
+
+/**
+ * Mark the pending payment as "returned from UPI app".
+ * Called when the page regains visibility after the UPI intent opened —
+ * this is our best native-UPI return signal without a gateway callback.
+ * Returns the updated pending payment (with paidAt date) or null.
+ */
+export function markPendingPaymentReturned(): PendingPayment | null {
+  const pending = getPendingPayment();
+  if (!pending) return null;
+  const updated: PendingPayment = {
+    ...pending,
+    paidAt: pending.paidAt || Date.now(),
+  };
+  localStorage.setItem(PENDING_KEY, JSON.stringify(updated));
+  return updated;
 }
 
 export function firePaymentUpdate() {
@@ -232,6 +250,10 @@ export async function autoVerifyPayment(
     transactionId: string;
     method: string;
     screenshotUrl?: string;
+    /** ISO timestamp of when the user returned from the UPI app */
+    paidAt?: string;
+    /** Human-readable purpose, e.g. "BOB Saving Deposit" */
+    purpose?: string;
   }
 ): Promise<{ success: boolean; message: string }> {
   try {

@@ -92,10 +92,7 @@ export default function BOBPage() {
   const [emiPlans, setEmiPlans] = useState<EMIPlan[]>([]);
   const [emiPayPlan, setEmiPayPlan] = useState<EMIPlan | null>(null);
   const [emiPayAmount, setEmiPayAmount] = useState("");
-  const [emiPayTxn, setEmiPayTxn] = useState("");
-  const [emiPayScreenshot, setEmiPayScreenshot] = useState("");
-  const [emiPayLoading, setEmiPayLoading] = useState(false);
-  const [emiPaySuccess, setEmiPaySuccess] = useState("");
+  const [emiPayReady, setEmiPayReady] = useState(false); // explicit continue → modal sirf button dabane pe khule
 
   // Deposit form
   const [depositAmount, setDepositAmount] = useState("");
@@ -550,7 +547,7 @@ export default function BOBPage() {
                           {plan.status === "ACTIVE" && plan.pendingAmount > 0 && (
                             <button
                               type="button"
-                              onClick={() => { setEmiPayPlan(plan); setEmiPayAmount(""); setEmiPayTxn(""); setEmiPayScreenshot(""); setEmiPaySuccess(""); }}
+                              onClick={() => { setEmiPayPlan(plan); setEmiPayAmount(""); setEmiPayReady(false); }}
                               className="rounded-full bg-pink-600 px-5 py-2 text-sm font-bold text-white hover:bg-pink-700"
                             >
                               PAY EMI
@@ -596,54 +593,45 @@ export default function BOBPage() {
                 </div>
               </div>
 
-              {/* EMI Payment — use UpiPaymentModal */}
+              {/* EMI Payment — amount selector pehle, PAY button se modal khulta hai */}
               {emiPayPlan && (
-                <>
-                  {/* Step 1: amount selector (before opening modal) */}
-                  {Number(emiPayAmount || 0) < 1 && (
-                    <div className="mt-6 rounded-2xl border border-pink-100 p-6">
-                      <p className="text-sm font-bold text-gray-700">Pay Amount — weekly jab jitna ho bharo</p>
-                      <div className="mt-3 grid grid-cols-3 gap-3">
-                        <div className="rounded-2xl bg-gray-50 p-3 text-center">
-                          <p className="text-[10px] font-bold text-gray-400">TOTAL</p>
-                          <p className="text-lg font-black text-gray-900">₹{emiPayPlan.totalAmount.toLocaleString("en-IN")}</p>
-                        </div>
-                        <div className="rounded-2xl bg-green-50 p-3 text-center">
-                          <p className="text-[10px] font-bold text-green-700">PAID</p>
-                          <p className="text-lg font-black text-green-700">₹{(emiPayPlan.bobPaidAmount + emiPayPlan.paidAmount).toLocaleString("en-IN")}</p>
-                        </div>
-                        <div className="rounded-2xl bg-orange-50 p-3 text-center">
-                          <p className="text-[10px] font-bold text-orange-700">PENDING</p>
-                          <p className="text-lg font-black text-orange-700">₹{emiPayPlan.pendingAmount.toLocaleString("en-IN")}</p>
-                        </div>
-                      </div>
-                      <input type="number" min={1} max={emiPayPlan.pendingAmount} value={emiPayAmount} onChange={(e) => setEmiPayAmount(e.target.value)}
-                        placeholder={`Jitna bhi paisa ho (₹1 se ₹${emiPayPlan.pendingAmount.toLocaleString("en-IN")})`}
-                        className="mt-4 w-full rounded-xl border border-gray-200 px-4 py-3 text-lg font-bold outline-none focus:border-pink-500" />
-                      <div className="mt-4 flex gap-3">
-                        <button type="button" onClick={() => setEmiPayPlan(null)}
-                          className="flex-1 rounded-full border border-gray-300 py-3 font-bold text-gray-600 hover:bg-gray-50">CANCEL</button>
-                        </div>
+                <div className="mt-6 rounded-2xl border border-pink-100 p-6">
+                  <p className="text-sm font-bold text-gray-700">Pay Amount — jitna bharo, utna pay karo</p>
+                  <div className="mt-3 grid grid-cols-3 gap-3">
+                    <div className="rounded-2xl bg-gray-50 p-3 text-center">
+                      <p className="text-[10px] font-bold text-gray-400">TOTAL</p>
+                      <p className="text-lg font-black text-gray-900">₹{emiPayPlan.totalAmount.toLocaleString("en-IN")}</p>
                     </div>
-                  )}
-
-                  {/* Step 2: UPI modal (after amount entered) */}
-                  {Number(emiPayAmount || 0) >= 1 && (
-                    <UpiPaymentModal
-                      type="emi"
-                      amount={Number(emiPayAmount)}
-                      note={`QURUX EMI Payment — ${emiPayPlan.purchaseName}`}
-                      emiPlanId={emiPayPlan._id}
-                      apiEndpoint={`/emi/${emiPayPlan._id}/pay`}
-                      onSuccess={() => {
-                        setEmiPayPlan(null);
-                        setEmiPayAmount("");
-                        loadWallet();
+                    <div className="rounded-2xl bg-green-50 p-3 text-center">
+                      <p className="text-[10px] font-bold text-green-700">PAID</p>
+                      <p className="text-lg font-black text-green-700">₹{(emiPayPlan.bobPaidAmount + emiPayPlan.paidAmount).toLocaleString("en-IN")}</p>
+                    </div>
+                    <div className="rounded-2xl bg-orange-50 p-3 text-center">
+                      <p className="text-[10px] font-bold text-orange-700">PENDING</p>
+                      <p className="text-lg font-black text-orange-700">₹{emiPayPlan.pendingAmount.toLocaleString("en-IN")}</p>
+                    </div>
+                  </div>
+                  <input type="number" min={1} max={emiPayPlan.pendingAmount} value={emiPayAmount} onChange={(e) => { setEmiPayAmount(e.target.value); setEmiPayReady(false); }}
+                    placeholder={`Jitna bhi paisa ho (₹1 se ₹${emiPayPlan.pendingAmount.toLocaleString("en-IN")})`}
+                    className="mt-4 w-full rounded-xl border border-gray-200 px-4 py-3 text-lg font-bold outline-none focus:border-pink-500" />
+                  <div className="mt-4 flex gap-3">
+                    <button type="button" onClick={() => { setEmiPayPlan(null); setEmiPayAmount(""); setEmiPayReady(false); }}
+                      className="flex-1 rounded-full border border-gray-300 py-3 font-bold text-gray-600 hover:bg-gray-50">CANCEL</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const amt = Number(emiPayAmount);
+                        if (!amt || amt < 1) { alert("Pehle amount daalein (min ₹1)"); return; }
+                        if (amt > emiPayPlan.pendingAmount) { alert(`Amount pending ₹${emiPayPlan.pendingAmount.toLocaleString("en-IN")} se zyada nahi ho sakta`); return; }
+                        setEmiPayReady(true); // modal sirf ab khulega
                       }}
-                      onClose={() => { setEmiPayPlan(null); setEmiPayAmount(""); }}
-                    />
-                  )}
-                </>
+                      disabled={!emiPayAmount || Number(emiPayAmount) < 1}
+                      className="flex-1 rounded-full bg-gradient-to-r from-green-600 to-green-500 py-3 font-bold text-white shadow-lg hover:from-green-700 hover:to-green-600 disabled:opacity-50"
+                    >
+                      📱 PAY ₹{Number(emiPayAmount || 0).toLocaleString("en-IN")} via UPI
+                    </button>
+                  </div>
+                </div>
               )}
 
             </div>
@@ -825,8 +813,28 @@ export default function BOBPage() {
             setShowDepositUpiModal(false);
             setDepositAmount("");
             loadWallet();
+            setTimeout(() => loadWallet(), 1500);
           }}
           onClose={() => setShowDepositUpiModal(false)}
+        />
+      )}
+
+      {/* ═══ EMI UPI PAYMENT MODAL (sirf PAY button dabane pe khulta hai) ═══ */}
+      {emiPayPlan && emiPayReady && Number(emiPayAmount) >= 1 && (
+        <UpiPaymentModal
+          type="emi"
+          amount={Number(emiPayAmount)}
+          note={`QURUX EMI Payment — ${emiPayPlan.purchaseName}`}
+          emiPlanId={emiPayPlan._id}
+          apiEndpoint={`/emi/${emiPayPlan._id}/pay`}
+          onSuccess={() => {
+            setEmiPayPlan(null);
+            setEmiPayAmount("");
+            setEmiPayReady(false);
+            loadWallet();
+            setTimeout(() => loadWallet(), 1500);
+          }}
+          onClose={() => { setEmiPayPlan(null); setEmiPayAmount(""); setEmiPayReady(false); }}
         />
       )}
     </main>

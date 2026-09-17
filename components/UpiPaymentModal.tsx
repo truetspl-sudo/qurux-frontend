@@ -1,17 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   openUpiPayment,
   getUpiDetails,
   generateTxnRef,
-  isAndroid,
   isMobile,
   isInAppBrowser,
   savePendingPayment,
   getPendingPayment,
   clearPendingPayment,
+  markPendingPaymentReturned,
   firePaymentUpdate,
+  UPI_RETURN_EVENT,
 } from "@/lib/upi";
 
 type PaymentType = "deposit" | "emi";
@@ -28,6 +29,9 @@ type Props = {
 
 type SnackbarType = "success" | "error" | "info";
 
+/** Seconds before auto-submit after returning from UPI app (0 = disabled) */
+const AUTO_SUBMIT_SECONDS = 6;
+
 export default function UpiPaymentModal({
   type,
   amount,
@@ -39,12 +43,17 @@ export default function UpiPaymentModal({
 }: Props) {
   const [step, setStep] = useState<"pay" | "confirm" | "done">("pay");
   const [txnRef, setTxnRef] = useState("");
+  const [paidAt, setPaidAt] = useState<number | null>(null);
+  const [autoCountdown, setAutoCountdown] = useState(AUTO_SUBMIT_SECONDS);
+  const [autoSubmitArmed, setAutoSubmitArmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     show: boolean;
     message: string;
     type: SnackbarType;
   }>({ show: false, message: "", type: "info" });
+
+  const submittedRef = useRef(false);
 
   const showSnackbar = useCallback(
     (message: string, type: SnackbarType = "info") => {
@@ -54,7 +63,51 @@ export default function UpiPaymentModal({
     []
   );
 
-  // On mount: check if user returned from UPI app
+  /* ═══ AUTO-DETECT RETURN FROM UPI APP ═══
+     When the UPI app hands control back, the page regains
+     visibility. We mark paidAt (date auto-fill) and jump to
+     confirm step with the reference auto-filled. */
+  useEffect(() => {
+    let armedAt = Date.now();
+
+    function onVisible() {
+      if (document.visibilityState !== "visible") return;
+      const launchedAt = (window as any).__quruxUpiLaunchedAt;
+      // Ignore focus events that fired before the UPI app even opened
+      // (or long-stale ones) — only a fresh return counts.
+      if (launchedAt && Date.now() - launchedAt < 2500) return;
+      if (submittedRef.current) return;
+
+      const pending = markPendingPaymentReturned();
+      if (!pending) return;
+
+      (window as any).__quruxUpiLaunchedAt = undefined;
+      setPaidAt(pending.paidAt || Date.now());
+      setTxnRef(pending.txnRef || "");
+      setStep("confirm");
+      setAutoSubmitArmed(true);
+      setAutoCountdown(AUTO_SUBMIT_SECONDS);
+      showSnackbar("UPI app se wapas aaye 🎉 — details auto-fill ho gayi", "success");
+    }
+
+    function onUpiReturn() {
+      armedAt = Date.now();
+      onVisible();
+    }
+
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    window.addEventListener(UPI_RETURN_EVENT, onUpiReturn);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      window.removeEventListener(UPI_RETURN_EVENT, onUpiReturn);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // On mount: if a pending payment exists (e.g. user re-opened the page),
+  // pre-fill its reference so nothing is lost.
   useEffect(() => {
     const pending = getPendingPayment();
     if (
@@ -63,10 +116,14 @@ export default function UpiPaymentModal({
       (!emiPlanId || pending.emiPlanId === emiPlanId)
     ) {
       setTxnRef(pending.txnRef || "");
-      setStep("confirm");
-      showSnackbar("Payment kiya? UTR daalein.", "info");
+      if (pending.paidAt) {
+        setPaidAt(pending.paidAt);
+        setStep("confirm");
+        setAutoSubmitArmed(true);
+        setAutoCountdown(AUTO_SUBMIT_SECONDS);
+      }
     }
-  }, [type, emiPlanId, showSnackbar]);
+  }, [type, emiPlanId]);
 
   // Open UPI app
   function handlePayViaUpi() {
@@ -83,7 +140,7 @@ export default function UpiPaymentModal({
 
     if (result === "opened") {
       showSnackbar("UPI app khula hai. Payment karke wapas aayein.", "info");
-      setTimeout(() => setStep("confirm"), 2000);
+      setTimeout(() => setStep((s) => (s === "pay" ? "confirm" : s)), 2000);
     } else if (result === "copied") {
       showSnackbar("UPI ID copy ho gaya. UPI app me jaake pay karein.", "info");
       setStep("confirm");
@@ -95,12 +152,29 @@ export default function UpiPaymentModal({
     }
   }
 
+  /* ═══ AUTO-SUBMIT COUNTDOWN ═══
+     After return from the UPI app, wait a few seconds (bank
+     statement lag) then submit automatically. User can cancel. */
+  useEffect(() => {
+    if (!autoSubmitArmed || step !== "confirm" || submitting) return;
+    if (autoCountdown <= 0) {
+      setAutoSubmitArmed(false);
+      if (!submittedRef.current) handleSubmit();
+      return;
+    }
+    const t = setTimeout(() => setAutoCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSubmitArmed, autoCountdown, step, submitting]);
+
   // Submit payment to backend
   async function handleSubmit() {
     if (!txnRef.trim()) {
       showSnackbar("Transaction ID (UTR) daalna zaroori hai.", "error");
       return;
     }
+    if (submittedRef.current) return;
+    submittedRef.current = true;
 
     setSubmitting(true);
     try {
@@ -110,6 +184,8 @@ export default function UpiPaymentModal({
         amount,
         transactionId: txnRef.trim(),
         method: "UPI",
+        paidAt: paidAt ? new Date(paidAt).toISOString() : undefined,
+        purpose: type === "deposit" ? "BOB Saving Deposit" : `EMI Payment${note ? ` — ${note}` : ""}`,
       });
 
       if (result.success) {
@@ -124,12 +200,14 @@ export default function UpiPaymentModal({
         );
         onSuccess?.();
       } else {
+        submittedRef.current = false; // allow retry
         showSnackbar(
           result.message || "Payment submit failed. Thodi der baad try karein.",
           "error"
         );
       }
     } catch (err: unknown) {
+      submittedRef.current = false; // allow retry
       const errMsg = err instanceof Error ? err.message : "Backend offline hai.";
       showSnackbar(`Payment submit me problem: ${errMsg}`, "error");
     }
@@ -271,16 +349,41 @@ export default function UpiPaymentModal({
             </div>
           )}
 
-          {/* ── STEP 2: CONFIRM — paste Transaction ID ── */}
+          {/* ── STEP 2: CONFIRM — auto-filled from UPI return ── */}
           {step === "confirm" && (
             <div className="mt-6 space-y-4">
+              {/* AUTO-FILL banner (shown when we detected the UPI-app return) */}
+              {autoSubmitArmed && !submitting && (
+                <div className="rounded-2xl border border-green-200 bg-green-50 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black text-green-800">
+                        ⚡ AUTO-SUBMIT IN {autoCountdown}s
+                      </p>
+                      <p className="mt-0.5 text-xs text-green-600">
+                        Payment details auto-fill ho gayi — verify karke khud bhi submit kar sakte hain
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAutoSubmitArmed(false)}
+                      className="whitespace-nowrap rounded-full bg-white px-4 py-2 text-xs font-bold text-gray-600 shadow-sm hover:bg-gray-50"
+                    >
+                      CANCEL
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-2xl bg-blue-50 p-4 text-center">
                 <p className="text-3xl">💸</p>
                 <p className="mt-2 text-sm font-bold text-blue-800">
-                  Payment ho gaya?
+                  {paidAt ? "Payment detected — confirm karein" : "Payment ho gaya?"}
                 </p>
                 <p className="mt-1 text-xs text-blue-600">
-                  Transaction ID (UTR) daalein jo UPI app me dikha
+                  {paidAt
+                    ? `Paid on ${new Date(paidAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} — UTR auto-filled`
+                    : "Transaction ID (UTR) daalein jo UPI app me dikha"}
                 </p>
               </div>
 
@@ -318,7 +421,10 @@ export default function UpiPaymentModal({
 
               <button
                 type="button"
-                onClick={() => setStep("pay")}
+                onClick={() => {
+                  setAutoSubmitArmed(false);
+                  setStep("pay");
+                }}
                 className="w-full text-center text-sm text-gray-500 hover:text-pink-600"
               >
                 ← Wapas jayein
@@ -343,7 +449,12 @@ export default function UpiPaymentModal({
               <div className="mt-4 rounded-2xl bg-green-50 p-4">
                 <p className="text-xs font-bold text-green-700">✅ PAYMENT VERIFIED</p>
                 <p className="mt-1 font-mono text-sm text-green-600">UTR: {txnRef}</p>
-                <p className="text-xs text-gray-500">Amount: ₹{amount.toLocaleString("en-IN")}</p>
+                <p className="text-xs text-gray-500">
+                  Amount: ₹{amount.toLocaleString("en-IN")}
+                  {paidAt
+                    ? ` • Paid: ${new Date(paidAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`
+                    : ""}
+                </p>
               </div>
               <button
                 type="button"
