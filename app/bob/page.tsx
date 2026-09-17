@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { apiGet } from "@/lib/api";
 import ServiceCollageMarquee from "@/components/ServiceCollageMarquee";
 import QuruxLogo from "@/components/QuruxLogo";
@@ -125,8 +125,12 @@ export default function BOBPage() {
     return () => window.removeEventListener("payment-updated", handlePaymentUpdate);
   }, []);
 
+  const walletLoadedRef = useRef(false);
+
   async function loadWallet() {
-    setLoading(true);
+    // Sirf pehli successful load pe spinner — refresh pe nahi (warna open
+    // UPI modal unmount ho kar DONE screen kho jata hai)
+    if (!walletLoadedRef.current) setLoading(true);
     try {
       const res = await apiGet<any>("/wallet/me");
       if (res.ok && res.data) {
@@ -144,6 +148,7 @@ export default function BOBPage() {
       const emiRes = await apiGet<any[]>("/emi");
       if (emiRes.ok) setEmiPlans(emiRes.data || []);
     } catch {}
+    walletLoadedRef.current = true;
     setLoading(false);
   }
 
@@ -810,8 +815,8 @@ export default function BOBPage() {
           note="QURUX BOB Deposit"
           apiEndpoint="/wallet/deposit"
           onSuccess={() => {
-            setShowDepositUpiModal(false);
-            setDepositAmount("");
+            // Modal open hi rehta hai — DONE screen dikhti hai, band user khud karega.
+            // depositAmount yahan clear NAHI karte — prop change modal remount karta hai.
             loadWallet();
             setTimeout(() => loadWallet(), 1500);
           }}
@@ -828,9 +833,8 @@ export default function BOBPage() {
           emiPlanId={emiPayPlan._id}
           apiEndpoint={`/emi/${emiPayPlan._id}/pay`}
           onSuccess={() => {
-            setEmiPayPlan(null);
-            setEmiPayAmount("");
-            setEmiPayReady(false);
+            // IMPORTANT: yahan koi state clear nahi karte jo modal unmount kare —
+            // DONE screen visible rehti hai, user DONE dabata hai to onClose chalta hai
             loadWallet();
             setTimeout(() => loadWallet(), 1500);
           }}

@@ -240,9 +240,16 @@ export function parseUpiCallback(searchParams: URLSearchParams) {
 }
 
 /**
- * Auto-verify payment by submitting to backend
+ * Auto-verify payment by submitting to backend.
+ * Dedupes identical in-flight requests (React StrictMode double-invokes
+ * effects in dev; guards here keep the backend from getting doubles).
  * Returns true if backend confirms payment
  */
+let inFlightVerify: {
+  key: string;
+  promise: Promise<{ success: boolean; message: string }>;
+} | null = null;
+
 export async function autoVerifyPayment(
   endpoint: string,
   data: {
@@ -256,6 +263,12 @@ export async function autoVerifyPayment(
     purpose?: string;
   }
 ): Promise<{ success: boolean; message: string }> {
+  const key = `${endpoint}|${data.transactionId}|${data.amount}`;
+  if (inFlightVerify && inFlightVerify.key === key) {
+    return inFlightVerify.promise; // same payment already submitting
+  }
+
+  const promise = (async (): Promise<{ success: boolean; message: string }> => {
   try {
     const token = typeof window !== "undefined" 
       ? localStorage.getItem("qurux_token") || ""
@@ -285,4 +298,10 @@ export async function autoVerifyPayment(
       message: err instanceof Error ? err.message : "Network error" 
     };
   }
+  })();
+
+  inFlightVerify = { key, promise };
+  const settled = await promise;
+  if (inFlightVerify?.key === key) inFlightVerify = null;
+  return settled;
 }
